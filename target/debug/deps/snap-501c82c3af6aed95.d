@@ -1,0 +1,20 @@
+/workspaces/sentinel/target/debug/deps/snap-501c82c3af6aed95.d: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/bytes.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/compress.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/crc32.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/crc32_table.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/decompress.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/error.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/frame.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/raw.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/read.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/tag.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/write.rs /workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out/crc32_table.rs /workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out/tag.rs
+
+/workspaces/sentinel/target/debug/deps/libsnap-501c82c3af6aed95.rmeta: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/bytes.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/compress.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/crc32.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/crc32_table.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/decompress.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/error.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/frame.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/raw.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/read.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/tag.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/write.rs /workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out/crc32_table.rs /workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out/tag.rs
+
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/lib.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/bytes.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/compress.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/crc32.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/crc32_table.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/decompress.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/error.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/frame.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/raw.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/read.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/tag.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/snap-1.1.2/src/write.rs:
+/workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out/crc32_table.rs:
+/workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out/tag.rs:
+
+# env-dep:OUT_DIR=/workspaces/sentinel/target/debug/build/snap-d356bf3f81313a42/out
