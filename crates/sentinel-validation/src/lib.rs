@@ -1,3 +1,6 @@
+#![allow(unused_imports, dead_code, clippy::for_kv_map)]
+#![allow(unused_imports, dead_code, clippy::for_kv_map)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
