@@ -1,4 +1,3 @@
-#![allow(unused_mut, clippy::collapsible_if)]
 use sentinel_core::{GrenadeType, PlayerId, PlayerState, Tick, TickState, Vec3, Weapon};
 
 /// Result of a visibility check
@@ -241,7 +240,7 @@ impl VisibilityEngine {
         // 3. Enemies that fire unsuppressed weapons
         // 4. Enemies that make loud sounds
 
-        let mut spotted_by = Vec::new();
+        let spotted_by = Vec::new();
         let _target_team = match player_state.team {
             sentinel_core::Team::Terrorist => sentinel_core::Team::CounterTerrorist,
             sentinel_core::Team::CounterTerrorist => sentinel_core::Team::Terrorist,
@@ -285,7 +284,7 @@ impl VisibilityEngine {
         let mut visible_enemies = Vec::new();
         let mut audible_enemies = Vec::new();
         let mut radar_visible = Vec::new();
-        let mut spotted_by = Vec::new();
+        let spotted_by = Vec::new();
 
         let player_team = state
             .players
@@ -311,11 +310,11 @@ impl VisibilityEngine {
             }
 
             // Check radar
-            if let Some(team) = player_team {
-                if other.team == team {
-                    // Teammates are always on radar
-                    radar_visible.push(other.id);
-                }
+            if let Some(team) = player_team
+                && other.team == team
+            {
+                // Teammates are always on radar
+                radar_visible.push(other.id);
             }
         }
 

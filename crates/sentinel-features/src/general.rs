@@ -78,7 +78,7 @@ impl FeatureExt for SurvivalTime {
             Some(s) => s,
             None => return FeatureResult::new(60.0),
         };
-        let p = match state.players.iter().find(|p| p.id == player) {
+        let _p = match state.players.iter().find(|p| p.id == player) {
             Some(p) => p,
             None => return FeatureResult::new(60.0),
         };

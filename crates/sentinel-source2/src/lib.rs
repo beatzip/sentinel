@@ -110,20 +110,20 @@ impl DemoCollector {
         }
 
         // Track player names/teams from spawn events
-        if event.name() == "player_spawn" {
-            if let Some((_, EventData::PlayerId(id))) = data.iter().find(|(k, _)| k == "userid") {
-                let pid = *id;
-                if let Some((_, EventData::String(name))) = data.iter().find(|(k, _)| k == "name") {
-                    self.player_names.insert(pid, name.clone());
-                }
-                if let Some((_, EventData::Int(t))) = data.iter().find(|(k, _)| k == "team") {
-                    let team = match t {
-                        2 => Team::Terrorist,
-                        3 => Team::CounterTerrorist,
-                        _ => Team::Unassigned,
-                    };
-                    self.player_teams.insert(pid, team);
-                }
+        if event.name() == "player_spawn"
+            && let Some((_, EventData::PlayerId(id))) = data.iter().find(|(k, _)| k == "userid")
+        {
+            let pid = *id;
+            if let Some((_, EventData::String(name))) = data.iter().find(|(k, _)| k == "name") {
+                self.player_names.insert(pid, name.clone());
+            }
+            if let Some((_, EventData::Int(t))) = data.iter().find(|(k, _)| k == "team") {
+                let team = match t {
+                    2 => Team::Terrorist,
+                    3 => Team::CounterTerrorist,
+                    _ => Team::Unassigned,
+                };
+                self.player_teams.insert(pid, team);
             }
         }
 
@@ -147,31 +147,30 @@ impl DemoCollector {
         let tick = Tick(self.current_tick);
 
         // Player controller - extract name and team
-        if class_name == "CCSPlayerController" {
-            if let Ok(val) = entity.get_property("m_steamID") {
-                if let Ok(steam_id) = val.try_into() {
-                    let player_id = PlayerId::new(steam_id);
-                    self.entity_to_player.insert(entity.index(), player_id);
+        if class_name == "CCSPlayerController"
+            && let Ok(val) = entity.get_property("m_steamID")
+            && let Ok(steam_id) = val.try_into()
+        {
+            let player_id = PlayerId::new(steam_id);
+            self.entity_to_player.insert(entity.index(), player_id);
 
-                    // Get player name
-                    if let Ok(name_val) = entity.get_property("m_iszPlayerName") {
-                        let name: String = name_val.try_into().unwrap_or_default();
-                        if !name.is_empty() {
-                            self.player_names.insert(player_id, name);
-                        }
-                    }
-
-                    // Get team
-                    if let Ok(team_val) = entity.get_property("m_iTeamNum") {
-                        let team_num: i32 = team_val.try_into().unwrap_or(0);
-                        let team = match team_num {
-                            2 => Team::Terrorist,
-                            3 => Team::CounterTerrorist,
-                            _ => Team::Unassigned,
-                        };
-                        self.player_teams.insert(player_id, team);
-                    }
+            // Get player name
+            if let Ok(name_val) = entity.get_property("m_iszPlayerName") {
+                let name: String = name_val.try_into().unwrap_or_default();
+                if !name.is_empty() {
+                    self.player_names.insert(player_id, name);
                 }
+            }
+
+            // Get team
+            if let Ok(team_val) = entity.get_property("m_iTeamNum") {
+                let team_num: i32 = team_val.try_into().unwrap_or(0);
+                let team = match team_num {
+                    2 => Team::Terrorist,
+                    3 => Team::CounterTerrorist,
+                    _ => Team::Unassigned,
+                };
+                self.player_teams.insert(player_id, team);
             }
         }
 
@@ -269,6 +268,7 @@ impl DemoCollector {
     }
 
     /// Safely get a String property from an entity
+    #[expect(dead_code, reason = "helper for future String property extraction")]
     fn get_string(&self, entity: &Entity, name: &str) -> Option<String> {
         entity.get_property(name).ok()?.try_into().ok()
     }
@@ -319,10 +319,11 @@ impl Source2Adapter {
                 if let EventData::PlayerId(id) = value {
                     player_ids.insert(*id);
                 }
-                if let EventData::Int(id) = value {
-                    if *id > 0 && *id < 1000 {
-                        player_ids.insert(PlayerId::new(*id as u64));
-                    }
+                if let EventData::Int(id) = value
+                    && *id > 0
+                    && *id < 1000
+                {
+                    player_ids.insert(PlayerId::new(*id as u64));
                 }
             }
         }

@@ -2,7 +2,6 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Read;
 
 use sentinel_common::error::{Result, SentinelError};
-use sentinel_core::Tick;
 
 use crate::header::DemHeader;
 use crate::reader::{DemFrame, FrameType};

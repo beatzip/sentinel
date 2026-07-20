@@ -1,5 +1,4 @@
 use crate::traits::FeatureExt;
-use sentinel_core::source::WeaponKind;
 use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use sentinel_visibility::VisibilityEngine;
 
@@ -153,26 +152,26 @@ impl FeatureExt for PrefireRate {
         let mut total_shots = 0;
 
         for state in &states[start_idx..end_idx] {
-            if let Some(obs) = state.players.iter().find(|p| p.id == player) {
-                if obs.weapon.is_gun() {
-                    total_shots += 1;
+            if let Some(obs) = state.players.iter().find(|p| p.id == player)
+                && obs.weapon.is_gun()
+            {
+                total_shots += 1;
 
-                    // Check if any enemy was visible at this tick
-                    let target_team = match obs.team {
-                        sentinel_core::Team::Terrorist => sentinel_core::Team::CounterTerrorist,
-                        sentinel_core::Team::CounterTerrorist => sentinel_core::Team::Terrorist,
-                        _ => continue,
-                    };
+                // Check if any enemy was visible at this tick
+                let target_team = match obs.team {
+                    sentinel_core::Team::Terrorist => sentinel_core::Team::CounterTerrorist,
+                    sentinel_core::Team::CounterTerrorist => sentinel_core::Team::Terrorist,
+                    _ => continue,
+                };
 
-                    let any_visible = state
-                        .players
-                        .iter()
-                        .filter(|p| p.team == target_team && p.alive)
-                        .any(|enemy| VisibilityEngine::can_see(state, obs.id, enemy.id).visible);
+                let any_visible = state
+                    .players
+                    .iter()
+                    .filter(|p| p.team == target_team && p.alive)
+                    .any(|enemy| VisibilityEngine::can_see(state, obs.id, enemy.id).visible);
 
-                    if !any_visible {
-                        prefire_shots += 1;
-                    }
+                if !any_visible {
+                    prefire_shots += 1;
                 }
             }
         }
