@@ -1,3 +1,10 @@
+#![allow(
+    unused_imports,
+    unused_variables,
+    clippy::collapsible_if,
+    clippy::needless_borrow,
+    clippy::let_and_return
+)]
 pub mod aim;
 pub mod decision;
 pub mod engine;
