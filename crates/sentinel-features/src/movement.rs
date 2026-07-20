@@ -1,11 +1,15 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use crate::traits::FeatureExt;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 
 pub struct MovementSmoothness;
 
 impl FeatureExt for MovementSmoothness {
-    fn name(&self) -> &str { "movement_smoothness" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Movement }
+    fn name(&self) -> &str {
+        "movement_smoothness"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Movement
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let window = 32u32;
@@ -38,8 +42,12 @@ impl FeatureExt for MovementSmoothness {
 pub struct CounterStrafeAccuracy;
 
 impl FeatureExt for CounterStrafeAccuracy {
-    fn name(&self) -> &str { "counter_strafe_accuracy" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Movement }
+    fn name(&self) -> &str {
+        "counter_strafe_accuracy"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Movement
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -65,17 +73,23 @@ impl FeatureExt for CounterStrafeAccuracy {
 pub struct PathEfficiency;
 
 impl FeatureExt for PathEfficiency {
-    fn name(&self) -> &str { "path_efficiency" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Movement }
+    fn name(&self) -> &str {
+        "path_efficiency"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Movement
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let window = 64u32;
         let start = tick.0.saturating_sub(window);
 
-        let pos_start = ctx.state_at(Tick(start))
+        let pos_start = ctx
+            .state_at(Tick(start))
             .and_then(|s| s.players.iter().find(|p| p.id == player))
             .map(|p| p.position);
-        let pos_end = ctx.state_at(tick)
+        let pos_end = ctx
+            .state_at(tick)
             .and_then(|s| s.players.iter().find(|p| p.id == player))
             .map(|p| p.position);
 

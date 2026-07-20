@@ -1,4 +1,4 @@
-use sentinel_core::{PlayerId, PlayerState, GrenadeType, Tick, TickState, Vec3, Weapon};
+use sentinel_core::{GrenadeType, PlayerId, PlayerState, Tick, TickState, Vec3, Weapon};
 
 /// Result of a visibility check
 #[derive(Debug, Clone, PartialEq)]
@@ -213,7 +213,10 @@ impl VisibilityEngine {
         AudioResult {
             audible: volume > 0.05, // Threshold for audible sound
             volume,
-            reason: format!("Distance: {:.0}, Wall attenuation: {:.1}", distance, wall_attenuation),
+            reason: format!(
+                "Distance: {:.0}, Wall attenuation: {:.1}",
+                distance, wall_attenuation
+            ),
             attenuation: wall_attenuation,
         }
     }
@@ -241,11 +244,13 @@ impl VisibilityEngine {
         let _target_team = match player_state.team {
             sentinel_core::Team::Terrorist => sentinel_core::Team::CounterTerrorist,
             sentinel_core::Team::CounterTerrorist => sentinel_core::Team::Terrorist,
-            sentinel_core::Team::Unassigned => return RadarInfo {
-                visible: false,
-                reason: "No team".to_string(),
-                spotted_by: Vec::new(),
-            },
+            sentinel_core::Team::Unassigned => {
+                return RadarInfo {
+                    visible: false,
+                    reason: "No team".to_string(),
+                    spotted_by: Vec::new(),
+                };
+            }
         };
 
         // Check if any teammate has spotted enemies
@@ -271,13 +276,21 @@ impl VisibilityEngine {
     }
 
     /// Get comprehensive visibility state for a player
-    pub fn get_visibility_state(state: &TickState, player: PlayerId, tick: Tick) -> PlayerVisibilityState {
+    pub fn get_visibility_state(
+        state: &TickState,
+        player: PlayerId,
+        tick: Tick,
+    ) -> PlayerVisibilityState {
         let mut visible_enemies = Vec::new();
         let mut audible_enemies = Vec::new();
         let mut radar_visible = Vec::new();
         let mut spotted_by = Vec::new();
 
-        let player_team = state.players.iter().find(|p| p.id == player).map(|p| p.team);
+        let player_team = state
+            .players
+            .iter()
+            .find(|p| p.id == player)
+            .map(|p| p.team);
 
         for other in &state.players {
             if other.id == player || !other.alive {
@@ -306,16 +319,25 @@ impl VisibilityEngine {
         }
 
         // Check if player is behind smoke
-        let behind_smoke = state.players.iter().find(|p| p.id == player)
+        let behind_smoke = state
+            .players
+            .iter()
+            .find(|p| p.id == player)
             .map(|p| Self::is_behind_smoke(p, state))
             .unwrap_or(false);
 
         // Check if player is flashed
-        let is_flashed = state.players.iter().find(|p| p.id == player)
+        let is_flashed = state
+            .players
+            .iter()
+            .find(|p| p.id == player)
             .map(|p| p.flash_duration > 0.0)
             .unwrap_or(false);
 
-        let flash_duration = state.players.iter().find(|p| p.id == player)
+        let flash_duration = state
+            .players
+            .iter()
+            .find(|p| p.id == player)
             .map(|p| p.flash_duration)
             .unwrap_or(0.0);
 
@@ -415,11 +437,11 @@ impl VisibilityEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sentinel_core::{Angles, Tick, TickState, Vec3, Weapon};
     use sentinel_core::GrenadeType;
-    use sentinel_core::grenade::GrenadeState;
     use sentinel_core::bomb::BombState;
+    use sentinel_core::grenade::GrenadeState;
     use sentinel_core::round::RoundState;
+    use sentinel_core::{Angles, Tick, TickState, Vec3, Weapon};
 
     fn create_test_state() -> TickState {
         let player1 = PlayerState {
@@ -428,7 +450,11 @@ mod tests {
             team: sentinel_core::Team::Terrorist,
             position: Vec3::new(0.0, 0.0, 0.0),
             velocity: Vec3::default(),
-            view_angles: Angles { pitch: 0.0, yaw: 0.0, roll: 0.0 },
+            view_angles: Angles {
+                pitch: 0.0,
+                yaw: 0.0,
+                roll: 0.0,
+            },
             weapon: Weapon::Rifle,
             health: 100,
             armor: 100,
@@ -445,7 +471,11 @@ mod tests {
             team: sentinel_core::Team::CounterTerrorist,
             position: Vec3::new(500.0, 0.0, 0.0),
             velocity: Vec3::default(),
-            view_angles: Angles { pitch: 0.0, yaw: 180.0, roll: 0.0 },
+            view_angles: Angles {
+                pitch: 0.0,
+                yaw: 180.0,
+                roll: 0.0,
+            },
             weapon: Weapon::Rifle,
             health: 100,
             armor: 100,
@@ -460,7 +490,9 @@ mod tests {
             tick: Tick(100),
             players: vec![player1, player2],
             grenades: Vec::new(),
-            bomb: BombState::Carried { carrier: PlayerId::new(0) },
+            bomb: BombState::Carried {
+                carrier: PlayerId::new(0),
+            },
             round: RoundState {
                 round_number: 1,
                 phase: sentinel_core::RoundPhase::Live,
@@ -491,7 +523,12 @@ mod tests {
     #[test]
     fn test_dead_target() {
         let mut state = create_test_state();
-        state.players.iter_mut().find(|p| p.id == PlayerId::new(2)).unwrap().alive = false;
+        state
+            .players
+            .iter_mut()
+            .find(|p| p.id == PlayerId::new(2))
+            .unwrap()
+            .alive = false;
 
         let result = VisibilityEngine::can_see(&state, PlayerId::new(1), PlayerId::new(2));
         assert!(!result.visible);
@@ -501,7 +538,12 @@ mod tests {
     #[test]
     fn test_flashed_observer() {
         let mut state = create_test_state();
-        state.players.iter_mut().find(|p| p.id == PlayerId::new(1)).unwrap().flash_duration = 2.0;
+        state
+            .players
+            .iter_mut()
+            .find(|p| p.id == PlayerId::new(1))
+            .unwrap()
+            .flash_duration = 2.0;
 
         let result = VisibilityEngine::can_see(&state, PlayerId::new(1), PlayerId::new(2));
         assert!(!result.visible);

@@ -1,11 +1,11 @@
-use std::path::Path;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
+use std::rc::Rc;
 
 use sentinel_core::source::{
-    DemoEvent, DemoSource, EventData, EventKind, MatchMetadata, PlayerSnapshot, RoundInfo,
-    Team, WeaponKind,
+    DemoEvent, DemoSource, EventData, EventKind, MatchMetadata, PlayerSnapshot, RoundInfo, Team,
+    WeaponKind,
 };
 use sentinel_core::{PlayerId, Tick};
 use source2_demo::prelude::*;
@@ -20,18 +20,39 @@ pub struct Source2Adapter {
 }
 
 #[derive(Debug, Clone)]
-pub struct Source2Event { tick: Tick, kind: EventKind, data: Vec<(String, EventData)> }
-
-#[derive(Debug, Clone)]
-pub struct Source2PlayerSnapshot {
-    player_id: PlayerId, tick: Tick,
-    x: f32, y: f32, z: f32, vx: f32, vy: f32, vz: f32,
-    pitch: f32, yaw: f32, roll: f32,
-    health: i32, armor: i32, weapon: WeaponKind, alive: bool, scoped: bool,
+pub struct Source2Event {
+    tick: Tick,
+    kind: EventKind,
+    data: Vec<(String, EventData)>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Source2Round { number: u32, winner: Option<Team>, start_tick: Tick, end_tick: Tick }
+pub struct Source2PlayerSnapshot {
+    player_id: PlayerId,
+    tick: Tick,
+    x: f32,
+    y: f32,
+    z: f32,
+    vx: f32,
+    vy: f32,
+    vz: f32,
+    pitch: f32,
+    yaw: f32,
+    roll: f32,
+    health: i32,
+    armor: i32,
+    weapon: WeaponKind,
+    alive: bool,
+    scoped: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Source2Round {
+    number: u32,
+    winner: Option<Team>,
+    start_tick: Tick,
+    end_tick: Tick,
+}
 
 #[derive(Default)]
 struct DemoCollector {
@@ -96,7 +117,11 @@ impl DemoCollector {
                     self.player_names.insert(pid, name.clone());
                 }
                 if let Some((_, EventData::Int(t))) = data.iter().find(|(k, _)| k == "team") {
-                    let team = match t { 2 => Team::Terrorist, 3 => Team::CounterTerrorist, _ => Team::Unassigned };
+                    let team = match t {
+                        2 => Team::Terrorist,
+                        3 => Team::CounterTerrorist,
+                        _ => Team::Unassigned,
+                    };
                     self.player_teams.insert(pid, team);
                 }
             }
@@ -107,7 +132,12 @@ impl DemoCollector {
     }
 
     #[on_entity]
-    fn handle_entity(&mut self, _ctx: &Context, event: EntityEvents, entity: &Entity) -> ObserverResult {
+    fn handle_entity(
+        &mut self,
+        _ctx: &Context,
+        event: EntityEvents,
+        entity: &Entity,
+    ) -> ObserverResult {
         // Only process entity updates
         if event != EntityEvents::Updated {
             return Ok(());
@@ -161,13 +191,16 @@ impl DemoCollector {
             };
 
             // Extract position (try multiple property paths)
-            let x = self.get_f32(entity, "CBodyComponent.m_vecAbsOrigin.x")
+            let x = self
+                .get_f32(entity, "CBodyComponent.m_vecAbsOrigin.x")
                 .or_else(|| self.get_f32(entity, "m_vecAbsOrigin.x"))
                 .unwrap_or(0.0);
-            let y = self.get_f32(entity, "CBodyComponent.m_vecAbsOrigin.y")
+            let y = self
+                .get_f32(entity, "CBodyComponent.m_vecAbsOrigin.y")
                 .or_else(|| self.get_f32(entity, "m_vecAbsOrigin.y"))
                 .unwrap_or(0.0);
-            let z = self.get_f32(entity, "CBodyComponent.m_vecAbsOrigin.z")
+            let z = self
+                .get_f32(entity, "CBodyComponent.m_vecAbsOrigin.z")
                 .or_else(|| self.get_f32(entity, "m_vecAbsOrigin.z"))
                 .unwrap_or(0.0);
 
@@ -191,15 +224,24 @@ impl DemoCollector {
             let scoped = self.get_bool(entity, "m_bIsScoped").unwrap_or(false);
 
             // Extract alive state (m_lifeState: 0 = alive, others = dead)
-            let alive = self.get_i32(entity, "m_lifeState").map(|v| v == 0).unwrap_or(true);
+            let alive = self
+                .get_i32(entity, "m_lifeState")
+                .map(|v| v == 0)
+                .unwrap_or(true);
 
             // Create snapshot
             self.player_snapshots.push(Source2PlayerSnapshot {
                 player_id,
                 tick,
-                x, y, z,
-                vx, vy, vz,
-                pitch, yaw, roll,
+                x,
+                y,
+                z,
+                vx,
+                vy,
+                vz,
+                pitch,
+                yaw,
+                roll,
                 health,
                 armor,
                 weapon: WeaponKind::Unknown,
@@ -241,7 +283,9 @@ impl Source2Adapter {
     pub fn from_bytes(bytes: &[u8], path: &Path) -> Result<Self, String> {
         let mut parser = Parser::new(bytes).map_err(|e| format!("Parser error: {}", e))?;
         let rc: Rc<RefCell<DemoCollector>> = parser.register_observer();
-        parser.run_to_end().map_err(|e| format!("Parse error: {}", e))?;
+        parser
+            .run_to_end()
+            .map_err(|e| format!("Parse error: {}", e))?;
 
         let c = rc.borrow();
 
@@ -288,74 +332,169 @@ impl Source2Adapter {
         let mut player_names = c.player_names.clone();
         let mut player_teams = c.player_teams.clone();
         for &id in &player_ids {
-            player_names.entry(id).or_insert_with(|| format!("Player_{}", id.as_u64()));
+            player_names
+                .entry(id)
+                .or_insert_with(|| format!("Player_{}", id.as_u64()));
             player_teams.entry(id).or_insert(Team::Unassigned);
         }
-        eprintln!("Player names: {:?}", c.player_names.keys().collect::<Vec<_>>());
+        eprintln!(
+            "Player names: {:?}",
+            c.player_names.keys().collect::<Vec<_>>()
+        );
 
         let metadata = MatchMetadata {
             demo_path: path.to_string_lossy().to_string(),
-            map_name: String::new(), server_name: String::new(),
-            total_ticks: c.current_tick, tick_rate: 64,
+            map_name: String::new(),
+            server_name: String::new(),
+            total_ticks: c.current_tick,
+            tick_rate: 64,
             duration_seconds: c.current_tick as f64 / 64.0,
         };
 
         let mut rounds = Vec::new();
-        let starts: Vec<_> = c.events.iter().filter(|e| e.kind == EventKind::RoundStart).collect();
-        let ends: Vec<_> = c.events.iter().filter(|e| e.kind == EventKind::RoundEnd).collect();
+        let starts: Vec<_> = c
+            .events
+            .iter()
+            .filter(|e| e.kind == EventKind::RoundStart)
+            .collect();
+        let ends: Vec<_> = c
+            .events
+            .iter()
+            .filter(|e| e.kind == EventKind::RoundEnd)
+            .collect();
         for (i, s) in starts.iter().enumerate() {
-            let end = ends.get(i).map(|e| e.tick).unwrap_or(Tick(metadata.total_ticks));
-            let winner = ends.get(i).and_then(|e| e.data.iter().find_map(|(k, v)|
-                if k == "winner" { if let EventData::Int(t) = v { match t { 2 => Some(Team::Terrorist), 3 => Some(Team::CounterTerrorist), _ => None } } else { None } } else { None }
-            ));
-            rounds.push(Source2Round { number: i as u32 + 1, winner, start_tick: s.tick, end_tick: end });
+            let end = ends
+                .get(i)
+                .map(|e| e.tick)
+                .unwrap_or(Tick(metadata.total_ticks));
+            let winner = ends.get(i).and_then(|e| {
+                e.data.iter().find_map(|(k, v)| {
+                    if k == "winner" {
+                        if let EventData::Int(t) = v {
+                            match t {
+                                2 => Some(Team::Terrorist),
+                                3 => Some(Team::CounterTerrorist),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+            });
+            rounds.push(Source2Round {
+                number: i as u32 + 1,
+                winner,
+                start_tick: s.tick,
+                end_tick: end,
+            });
         }
 
-        Ok(Self { metadata, events: c.events.clone(), player_snapshots: c.player_snapshots.clone(),
-            rounds, player_names, player_teams })
+        Ok(Self {
+            metadata,
+            events: c.events.clone(),
+            player_snapshots: c.player_snapshots.clone(),
+            rounds,
+            player_names,
+            player_teams,
+        })
     }
 }
 
 impl DemoEvent for Source2Event {
-    fn tick(&self) -> Tick { self.tick }
-    fn kind(&self) -> EventKind { self.kind.clone() }
-    fn data(&self) -> &[(String, EventData)] { &self.data }
+    fn tick(&self) -> Tick {
+        self.tick
+    }
+    fn kind(&self) -> EventKind {
+        self.kind.clone()
+    }
+    fn data(&self) -> &[(String, EventData)] {
+        &self.data
+    }
 }
 
 impl PlayerSnapshot for Source2PlayerSnapshot {
-    fn id(&self) -> PlayerId { self.player_id }
-    fn position(&self) -> (f32, f32, f32) { (self.x, self.y, self.z) }
-    fn velocity(&self) -> (f32, f32, f32) { (self.vx, self.vy, self.vz) }
-    fn view_angles(&self) -> (f32, f32, f32) { (self.pitch, self.yaw, self.roll) }
-    fn health(&self) -> i32 { self.health }
-    fn armor(&self) -> i32 { self.armor }
-    fn weapon(&self) -> WeaponKind { self.weapon }
-    fn alive(&self) -> bool { self.alive }
-    fn scoped(&self) -> bool { self.scoped }
+    fn id(&self) -> PlayerId {
+        self.player_id
+    }
+    fn position(&self) -> (f32, f32, f32) {
+        (self.x, self.y, self.z)
+    }
+    fn velocity(&self) -> (f32, f32, f32) {
+        (self.vx, self.vy, self.vz)
+    }
+    fn view_angles(&self) -> (f32, f32, f32) {
+        (self.pitch, self.yaw, self.roll)
+    }
+    fn health(&self) -> i32 {
+        self.health
+    }
+    fn armor(&self) -> i32 {
+        self.armor
+    }
+    fn weapon(&self) -> WeaponKind {
+        self.weapon
+    }
+    fn alive(&self) -> bool {
+        self.alive
+    }
+    fn scoped(&self) -> bool {
+        self.scoped
+    }
 }
 
 impl RoundInfo for Source2Round {
-    fn number(&self) -> u32 { self.number }
-    fn winner(&self) -> Option<Team> { self.winner }
-    fn start_tick(&self) -> Tick { self.start_tick }
-    fn end_tick(&self) -> Tick { self.end_tick }
+    fn number(&self) -> u32 {
+        self.number
+    }
+    fn winner(&self) -> Option<Team> {
+        self.winner
+    }
+    fn start_tick(&self) -> Tick {
+        self.start_tick
+    }
+    fn end_tick(&self) -> Tick {
+        self.end_tick
+    }
 }
 
 impl DemoSource for Source2Adapter {
     type Event = Source2Event;
     type PlayerSnapshot = Source2PlayerSnapshot;
     type RoundInfo = Source2Round;
-    fn metadata(&self) -> MatchMetadata { self.metadata.clone() }
-    fn events(&self) -> impl Iterator<Item = Self::Event> { self.events.iter().cloned() }
-    fn players_at_tick(&self, tick: Tick) -> Vec<Self::PlayerSnapshot> {
-        self.player_snapshots.iter().filter(|s| s.tick == tick).cloned().collect()
+    fn metadata(&self) -> MatchMetadata {
+        self.metadata.clone()
     }
-    fn rounds(&self) -> &[Self::RoundInfo] { &self.rounds }
-    fn tick_count(&self) -> u32 { self.metadata.total_ticks }
-    fn tick_rate(&self) -> u32 { self.metadata.tick_rate }
-    fn player_ids(&self) -> Vec<PlayerId> { self.player_names.keys().cloned().collect() }
-    fn player_name(&self, id: PlayerId) -> Option<String> { self.player_names.get(&id).cloned() }
-    fn player_team(&self, id: PlayerId) -> Option<Team> { self.player_teams.get(&id).cloned() }
+    fn events(&self) -> impl Iterator<Item = Self::Event> {
+        self.events.iter().cloned()
+    }
+    fn players_at_tick(&self, tick: Tick) -> Vec<Self::PlayerSnapshot> {
+        self.player_snapshots
+            .iter()
+            .filter(|s| s.tick == tick)
+            .cloned()
+            .collect()
+    }
+    fn rounds(&self) -> &[Self::RoundInfo] {
+        &self.rounds
+    }
+    fn tick_count(&self) -> u32 {
+        self.metadata.total_ticks
+    }
+    fn tick_rate(&self) -> u32 {
+        self.metadata.tick_rate
+    }
+    fn player_ids(&self) -> Vec<PlayerId> {
+        self.player_names.keys().cloned().collect()
+    }
+    fn player_name(&self, id: PlayerId) -> Option<String> {
+        self.player_names.get(&id).cloned()
+    }
+    fn player_team(&self, id: PlayerId) -> Option<Team> {
+        self.player_teams.get(&id).cloned()
+    }
 }
 
 #[cfg(test)]
@@ -363,8 +502,21 @@ mod tests {
     use super::*;
     #[test]
     fn test_source2_adapter_compiles() {
-        let a = Source2Adapter { metadata: MatchMetadata { demo_path: "test.dem".into(), map_name: "de_dust2".into(), server_name: "Test".into(), total_ticks: 6400, tick_rate: 64, duration_seconds: 100.0 },
-            events: vec![], player_snapshots: vec![], rounds: vec![], player_names: HashMap::new(), player_teams: HashMap::new() };
+        let a = Source2Adapter {
+            metadata: MatchMetadata {
+                demo_path: "test.dem".into(),
+                map_name: "de_dust2".into(),
+                server_name: "Test".into(),
+                total_ticks: 6400,
+                tick_rate: 64,
+                duration_seconds: 100.0,
+            },
+            events: vec![],
+            player_snapshots: vec![],
+            rounds: vec![],
+            player_names: HashMap::new(),
+            player_teams: HashMap::new(),
+        };
         assert_eq!(a.tick_count(), 6400);
     }
 }

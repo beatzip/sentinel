@@ -1,14 +1,18 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
-use sentinel_core::source::WeaponKind;
-use sentinel_visibility::VisibilityEngine;
 use crate::traits::FeatureExt;
+use sentinel_core::source::WeaponKind;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
+use sentinel_visibility::VisibilityEngine;
 
 /// Hidden tracking duration: time player tracks unseen enemy
 pub struct HiddenTrackingDuration;
 
 impl FeatureExt for HiddenTrackingDuration {
-    fn name(&self) -> &str { "hidden_tracking_duration" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Wall }
+    fn name(&self) -> &str {
+        "hidden_tracking_duration"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Wall
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -29,13 +33,21 @@ impl FeatureExt for HiddenTrackingDuration {
         let mut hidden_tracking = 0.0f64;
 
         // Check each enemy
-        for enemy in state.players.iter().filter(|p| p.team == target_team && p.alive) {
+        for enemy in state
+            .players
+            .iter()
+            .filter(|p| p.team == target_team && p.alive)
+        {
             // Check if crosshair is tracking this enemy
             let dx = enemy.position.x - observer.position.x;
             let dy = enemy.position.y - observer.position.y;
             let angle_to_enemy = dy.atan2(dx).to_degrees();
             let angle_diff = (angle_to_enemy - observer.view_angles.yaw).abs();
-            let angle_diff = if angle_diff > 180.0 { 360.0 - angle_diff } else { angle_diff };
+            let angle_diff = if angle_diff > 180.0 {
+                360.0 - angle_diff
+            } else {
+                angle_diff
+            };
 
             // If aiming within 15 degrees of enemy
             if angle_diff < 15.0 {
@@ -62,8 +74,12 @@ impl FeatureExt for HiddenTrackingDuration {
 pub struct InformationAvailability;
 
 impl FeatureExt for InformationAvailability {
-    fn name(&self) -> &str { "information_availability" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Wall }
+    fn name(&self) -> &str {
+        "information_availability"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Wall
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -85,7 +101,9 @@ impl FeatureExt for InformationAvailability {
         let spotted_count = vis_state.spotted_by.len() as f64;
 
         // Weighted information score
-        let info_score = (visible_count * 1.0 + audible_count * 0.5 + radar_count * 0.3 + spotted_count * 0.7) / 10.0;
+        let info_score =
+            (visible_count * 1.0 + audible_count * 0.5 + radar_count * 0.3 + spotted_count * 0.7)
+                / 10.0;
 
         FeatureResult::new(info_score.min(1.0))
             .with_metadata("visible".to_string(), visible_count.to_string())
@@ -98,8 +116,12 @@ impl FeatureExt for InformationAvailability {
 pub struct PrefireRate;
 
 impl FeatureExt for PrefireRate {
-    fn name(&self) -> &str { "prefire_rate" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Wall }
+    fn name(&self) -> &str {
+        "prefire_rate"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Wall
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -142,11 +164,11 @@ impl FeatureExt for PrefireRate {
                         _ => continue,
                     };
 
-                    let any_visible = state.players.iter()
+                    let any_visible = state
+                        .players
+                        .iter()
                         .filter(|p| p.team == target_team && p.alive)
-                        .any(|enemy| {
-                            VisibilityEngine::can_see(state, obs.id, enemy.id).visible
-                        });
+                        .any(|enemy| VisibilityEngine::can_see(state, obs.id, enemy.id).visible);
 
                     if !any_visible {
                         prefire_shots += 1;
@@ -172,8 +194,12 @@ impl FeatureExt for PrefireRate {
 pub struct RotationJustification;
 
 impl FeatureExt for RotationJustification {
-    fn name(&self) -> &str { "rotation_justification" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Wall }
+    fn name(&self) -> &str {
+        "rotation_justification"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Wall
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -207,9 +233,7 @@ impl FeatureExt for RotationJustification {
         // Count teammate deaths in window
         let teammate_deaths: usize = states[start_idx..end_idx]
             .iter()
-            .filter(|s| {
-                s.players.iter().any(|p| p.team == my_team && !p.alive)
-            })
+            .filter(|s| s.players.iter().any(|p| p.team == my_team && !p.alive))
             .count();
 
         // Step 3: Calculate base rotation justification
@@ -233,7 +257,10 @@ impl FeatureExt for RotationJustification {
         FeatureResult::new(adjusted_justification)
             .with_metadata("teammate_deaths".to_string(), teammate_deaths.to_string())
             .with_metadata("solo_score".to_string(), format!("{:.2}", solo_score))
-            .with_metadata("base_justification".to_string(), format!("{:.2}", base_justification))
+            .with_metadata(
+                "base_justification".to_string(),
+                format!("{:.2}", base_justification),
+            )
     }
 }
 
@@ -244,7 +271,9 @@ impl RotationJustification {
         state: &sentinel_core::TickState,
         my_team: sentinel_core::Team,
     ) -> f64 {
-        let teammates: Vec<_> = state.players.iter()
+        let teammates: Vec<_> = state
+            .players
+            .iter()
             .filter(|p| p.team == my_team && p.id != observer.id && p.alive)
             .collect();
 
@@ -253,27 +282,32 @@ impl RotationJustification {
         }
 
         // Calculate average distance to teammates
-        let avg_distance: f64 = teammates.iter()
+        let avg_distance: f64 = teammates
+            .iter()
             .map(|t| observer.position.distance_to(&t.position) as f64)
-            .sum::<f64>() / teammates.len() as f64;
+            .sum::<f64>()
+            / teammates.len() as f64;
 
         // Check how many teammates are nearby (< 1000 units)
-        let near_teammate_count = teammates.iter()
+        let near_teammate_count = teammates
+            .iter()
             .filter(|t| observer.position.distance_to(&t.position) < 1000.0)
             .count();
 
         let isolation_ratio = 1.0 - (near_teammate_count as f64 / teammates.len() as f64);
 
         // Check if player is the only one alive
-        let alive_teammates = state.players.iter()
+        let alive_teammates = state
+            .players
+            .iter()
             .filter(|p| p.team == my_team && p.id != observer.id && p.alive)
             .count();
         let solo_alive = if alive_teammates == 0 { 1.0 } else { 0.0 };
 
         // Combine metrics
-        let solo_score = (isolation_ratio * 0.5 + 
-                         (avg_distance / 3000.0).min(1.0) * 0.3 + 
-                         solo_alive * 0.2).min(1.0);
+        let solo_score =
+            (isolation_ratio * 0.5 + (avg_distance / 3000.0).min(1.0) * 0.3 + solo_alive * 0.2)
+                .min(1.0);
 
         solo_score
     }
