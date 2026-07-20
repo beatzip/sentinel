@@ -1,0 +1,79 @@
+{
+  "version": "1.0.0",
+  "algorithm_version": "1.0.0",
+  "metadata": {
+    "demo_path": "de_dust2_match.dem",
+    "map_name": "de_dust2",
+    "server_name": " FACEIT Level 10",
+    "total_rounds": 30,
+    "duration_seconds": 2400.0,
+    "tick_rate": 64
+  },
+  "overall_anomaly": 0.18,
+  "players": [
+    {
+      "steam_id": 76561198012345678,
+      "name": "ProPlayer1",
+      "team": "Terrorist",
+      "scores": {
+        "categories": {
+          "aim": 0.15,
+          "wall": 0.12,
+          "movement": 0.18,
+          "decision": 0.14,
+          "utility": 0.11
+        },
+        "overall": 0.14,
+        "evidence_count": 2
+      },
+      "evidence": [
+        {
+          "tick": 15420,
+          "round": 8,
+          "player": 76561198012345678,
+          "feature": "aim_velocity",
+          "score": 0.65,
+          "confidence": 0.85,
+          "reason": "Aim velocity 180 deg/s is 1.5σ from mean",
+          "metadata": {
+            "distance_to_target": "1250",
+            "weapon": "ak47"
+          }
+        }
+      ],
+      "summary": "Clean player with minor aim anomalies"
+    },
+    {
+      "steam_id": 76561198087654321,
+      "name": "RegularPlayer2",
+      "team": "CounterTerrorist",
+      "scores": {
+        "categories": {
+          "aim": 0.22,
+          "wall": 0.18,
+          "movement": 0.20,
+          "decision": 0.16,
+          "utility": 0.15
+        },
+        "overall": 0.19,
+        "evidence_count": 5
+      },
+      "evidence": [
+        {
+          "tick": 8450,
+          "round": 5,
+          "player": 76561198087654321,
+          "feature": "rotation_justification",
+          "score": 0.58,
+          "confidence": 0.70,
+          "reason": "Slow rotation to help teammate (4.2s vs 2.8s average)",
+          "metadata": {
+            "teammate_death_tick": "8320",
+            "rotation_start_tick": "8450"
+          }
+        }
+      ],
+      "summary": "Normal play with some decision delays"
+    }
+  ]
+}

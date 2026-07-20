@@ -1,0 +1,13 @@
+﻿[package]
+name = "sentinel-map"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Map geometry, spawn points, and navigation data"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+sentinel-core = { path = "../sentinel-core" }
+sentinel-common = { path = "../sentinel-common" }

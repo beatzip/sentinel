@@ -1,0 +1,13 @@
+﻿[package]
+name = "sentinel-report"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Report generation in JSON, HTML, and Markdown"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+sentinel-core = { path = "../sentinel-core" }
+sentinel-common = { path = "../sentinel-common" }

@@ -1,0 +1,14 @@
+[package]
+name = "sentinel-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Demo file parser for Source 2 .dem files"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+byteorder = "1"
+sentinel-core = { path = "../sentinel-core" }
+sentinel-common = { path = "../sentinel-common" }

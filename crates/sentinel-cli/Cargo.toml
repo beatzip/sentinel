@@ -1,0 +1,30 @@
+[package]
+name = "sentinel-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command-line interface for Sentinel AI"
+
+[[bin]]
+name = "sentinel"
+path = "src/main.rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+sentinel-core = { path = "../sentinel-core" }
+sentinel-common = { path = "../sentinel-common" }
+sentinel-demo = { path = "../sentinel-demo" }
+sentinel-events = { path = "../sentinel-events" }
+sentinel-world = { path = "../sentinel-world" }
+sentinel-features = { path = "../sentinel-features" }
+sentinel-analysis = { path = "../sentinel-analysis" }
+sentinel-evidence = { path = "../sentinel-evidence" }
+sentinel-report = { path = "../sentinel-report" }
+sentinel-datasets = { path = "../sentinel-datasets" }
+sentinel-source2 = { path = "../sentinel-source2" }
+sentinel-validation = { path = "../sentinel-validation" }

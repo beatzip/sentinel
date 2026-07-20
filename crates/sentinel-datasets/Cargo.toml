@@ -1,0 +1,15 @@
+[package]
+name = "sentinel-datasets"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dataset management, calibration data, and golden tests"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+sentinel-core = { path = "../sentinel-core" }
+sentinel-common = { path = "../sentinel-common" }
+sentinel-analysis = { path = "../sentinel-analysis" }
