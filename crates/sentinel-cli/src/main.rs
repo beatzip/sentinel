@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use sentinel_analysis::Scorer;
 use sentinel_core::source::{DemoSource, EventData, EventKind};
-use sentinel_core::{FeatureVector, MatchContext, PlayerId, Tick};
+use sentinel_core::{FeatureVector, MatchContext, Tick};
 use sentinel_features::FeatureEngine;
 use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
@@ -354,7 +354,10 @@ fn run_validation(dir: &PathBuf) {
 }
 
 /// Silent analysis that returns results without printing
-fn run_analysis_silent(path: &PathBuf) -> Result<(String, Vec<(String, f64, usize)>), String> {
+type PlayerScore = (String, f64, usize);
+type AnalysisResult = Result<(String, Vec<PlayerScore>), String>;
+use std::path::Path;
+fn run_analysis_silent(path: &Path) -> AnalysisResult {
     let adapter = sentinel_source2::Source2Adapter::from_file(path)
         .map_err(|e| format!("Parse error: {}", e))?;
 

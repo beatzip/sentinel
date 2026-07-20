@@ -385,7 +385,7 @@ mod tests {
 
         let test = make_feature_vector(25.0);
         let score = model.predict(&test).unwrap();
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     #[test]
@@ -400,6 +400,6 @@ mod tests {
 
         let test = make_feature_vector(25.0);
         let score = ensemble.predict(&test).unwrap();
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 }
