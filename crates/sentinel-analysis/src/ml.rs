@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::collections::BTreeMap;
 
 use sentinel_core::FeatureVector;
@@ -52,6 +51,12 @@ pub struct IsolationForest {
     trained: bool,
 }
 
+/// A single isolation tree node.
+///
+/// Scaffold for the tree-walking implementation; the current scoring path uses
+/// a simplified heuristic while the recursive structure below is wired up so
+/// the public API and on-disk model shape stay stable as the algorithm lands.
+#[expect(dead_code, reason = "scaffold for the recursive isolation-tree walker")]
 struct IsolationTree {
     feature_index: usize,
     split_value: f64,
@@ -59,6 +64,7 @@ struct IsolationTree {
     right: Option<Box<IsolationNode>>,
 }
 
+#[expect(dead_code, reason = "scaffold for the recursive isolation-tree walker")]
 enum IsolationNode {
     Branch {
         feature_index: usize,

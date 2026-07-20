@@ -12,7 +12,7 @@ impl FeatureExt for FlashAssistRate {
         FeatureCategory::Utility
     }
 
-    fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
+    fn compute(&self, ctx: &MatchContext, tick: Tick, _player: PlayerId) -> FeatureResult {
         // Count flash detonations near this player followed by kills
         let state = match ctx.state_at(tick) {
             Some(s) => s,
@@ -39,7 +39,7 @@ impl FeatureExt for NadeUsageRate {
         FeatureCategory::Utility
     }
 
-    fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
+    fn compute(&self, ctx: &MatchContext, tick: Tick, _player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
             Some(s) => s,
             None => return FeatureResult::new(0.3),

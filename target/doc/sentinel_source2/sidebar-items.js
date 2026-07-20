@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Source2Adapter","Source2Event","Source2PlayerSnapshot","Source2Round"]};

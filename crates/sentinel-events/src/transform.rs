@@ -1,4 +1,4 @@
-use byteorder::ReadBytesExt;
+use byteorder::{LittleEndian, ReadBytesExt};
 use sentinel_core::Tick;
 use std::io::Read;
 
@@ -67,8 +67,6 @@ impl EventTransformer {
 
     /// Decode a single game event from binary
     fn decode_game_event(tick: Tick, cursor: &mut std::io::Cursor<&[u8]>) -> Option<GameEvent> {
-        use byteorder::{LittleEndian, ReadBytesExt};
-
         let event_type = cursor.read_u16::<LittleEndian>().ok()?;
         let field_count = cursor.read_u8().ok()? as usize;
 
@@ -207,8 +205,6 @@ impl EventTransformer {
 
     /// Skip an entity update block in the binary stream
     fn skip_entity_update(cursor: &mut std::io::Cursor<&[u8]>) -> Option<()> {
-        use byteorder::{LittleEndian, ReadBytesExt};
-
         let entity_count = cursor.read_u16::<LittleEndian>().ok()?;
         for _ in 0..entity_count {
             let _ = cursor.read_u32::<LittleEndian>().ok()?; // entity_id

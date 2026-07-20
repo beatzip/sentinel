@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["bomb","evidence","feature","grenade","player","round","score","source","tick","world"]};

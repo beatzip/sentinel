@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["html","json","markdown"],"struct":["MatchMetadata","MatchReport","PlayerReport"]};

@@ -1,11 +1,5 @@
-#![allow(unused_imports, dead_code, clippy::for_kv_map)]
-#![allow(unused_imports, dead_code, clippy::for_kv_map)]
-
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::path::Path;
-
-use sentinel_core::PlayerId;
 
 /// Label for a player in validation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -78,6 +72,11 @@ pub struct ScoreDistribution {
 /// Validation harness for running evaluations
 pub struct ValidationHarness {
     demos: Vec<DemoValidation>,
+    /// Score cutoff used to classify a player as a cheater. Currently the
+    /// harness reports metrics over the full score distribution; this is kept
+    /// so the threshold-gated classification path can be wired in without
+    /// breaking the public constructor.
+    #[expect(dead_code, reason = "preserved for threshold-gated classification")]
     threshold: f64,
 }
 
@@ -227,7 +226,7 @@ impl ValidationHarness {
 
         for demo in &self.demos {
             for player in &demo.players {
-                for (cat, _) in &player.category_scores {
+                for cat in player.category_scores.keys() {
                     *importance.entry(cat.clone()).or_insert(0.0) += 1.0;
                 }
             }

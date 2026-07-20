@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EventData","EventKind","Team","WeaponKind"],"fn":["load_demo"],"struct":["MatchMetadata","MockEvent","MockPlayer","MockRound","MockSnapshot","MockSource"],"trait":["DemoEvent","DemoSource","PlayerSnapshot","RoundInfo"]};

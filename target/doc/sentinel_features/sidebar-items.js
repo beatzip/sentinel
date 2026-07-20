@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["aim","decision","engine","general","movement","rotation","traits","utility","wall"]};

@@ -1,0 +1,2 @@
+window.ALL_CRATES = ["sentinel","sentinel_analysis","sentinel_common","sentinel_core","sentinel_datasets","sentinel_demo","sentinel_events","sentinel_evidence","sentinel_features","sentinel_map","sentinel_report","sentinel_source2","sentinel_validation","sentinel_visibility","sentinel_world"];
+//{"start":21,"fragment_lengths":[10,20,18,16,20,16,18,20,20,15,18,19,22,22,17]}

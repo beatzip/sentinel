@@ -17,13 +17,12 @@ impl FeatureExt for MovementSmoothness {
         let mut angles = Vec::new();
 
         for t in start..=tick.0 {
-            if let Some(state) = ctx.state_at(Tick(t)) {
-                if let Some(p) = state.players.iter().find(|p| p.id == player) {
-                    if p.velocity.length() > 10.0 {
-                        let angle = p.velocity.y.atan2(p.velocity.x) as f64;
-                        angles.push(angle);
-                    }
-                }
+            if let Some(state) = ctx.state_at(Tick(t))
+                && let Some(p) = state.players.iter().find(|p| p.id == player)
+                && p.velocity.length() > 10.0
+            {
+                let angle = p.velocity.y.atan2(p.velocity.x) as f64;
+                angles.push(angle);
             }
         }
 
@@ -98,10 +97,10 @@ impl FeatureExt for PathEfficiency {
                 let displacement = start_pos.distance_to(&end_pos) as f64;
                 let mut path_len = 0.0f64;
                 for t in start..=tick.0 {
-                    if let Some(state) = ctx.state_at(Tick(t)) {
-                        if let Some(p) = state.players.iter().find(|p| p.id == player) {
-                            path_len += p.velocity.length() as f64 / 64.0;
-                        }
+                    if let Some(state) = ctx.state_at(Tick(t))
+                        && let Some(p) = state.players.iter().find(|p| p.id == player)
+                    {
+                        path_len += p.velocity.length() as f64 / 64.0;
                     }
                 }
                 if path_len > 0.0 {
