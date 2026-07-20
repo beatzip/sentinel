@@ -304,8 +304,7 @@ impl RotationJustification {
         let solo_alive = if alive_teammates == 0 { 1.0 } else { 0.0 };
 
         // Combine metrics
-            (isolation_ratio * 0.5 + (avg_distance / 3000.0).min(1.0) * 0.3 + solo_alive * 0.2)
-                .min(1.0)
+        (isolation_ratio * 0.5 + (avg_distance / 3000.0).min(1.0) * 0.3 + solo_alive * 0.2).min(1.0)
     }
 }
 
