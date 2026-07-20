@@ -1,3 +1,4 @@
+#![allow(unused_mut, clippy::collapsible_if)]
 use sentinel_core::{GrenadeType, PlayerId, PlayerState, Tick, TickState, Vec3, Weapon};
 
 /// Result of a visibility check
