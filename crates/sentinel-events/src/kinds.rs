@@ -185,8 +185,8 @@ mod tests {
         assert_eq!(int_val.as_i64(), Some(42));
         assert_eq!(int_val.as_f64(), Some(42.0));
 
-        let float_val = EventValue::Float(3.14);
-        assert_eq!(float_val.as_f64(), Some(3.14));
+        let float_val = EventValue::Float(42.42);
+        assert_eq!(float_val.as_f64(), Some(42.42));
 
         let str_val = EventValue::String("test".to_string());
         assert_eq!(str_val.as_str(), Some("test"));
