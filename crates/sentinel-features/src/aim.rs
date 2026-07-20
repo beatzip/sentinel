@@ -1,11 +1,15 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use crate::traits::FeatureExt;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 
 pub struct ReactionTime;
 
 impl FeatureExt for ReactionTime {
-    fn name(&self) -> &str { "reaction_time" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Aim }
+    fn name(&self) -> &str {
+        "reaction_time"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Aim
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -21,7 +25,9 @@ impl FeatureExt for ReactionTime {
             sentinel_core::Team::CounterTerrorist => sentinel_core::Team::Terrorist,
             _ => return FeatureResult::new(0.25),
         };
-        let closest = state.players.iter()
+        let closest = state
+            .players
+            .iter()
             .filter(|p| p.team == target_team && p.alive)
             .min_by(|a, b| {
                 let da = observer.position.distance_to(&a.position);
@@ -37,10 +43,18 @@ impl FeatureExt for ReactionTime {
         let dy = closest.position.y - observer.position.y;
         let angle_to_target = (dy as f64).atan2(dx as f64).to_degrees();
         let angle_diff = (angle_to_target - observer.view_angles.yaw as f64).abs();
-        let angle_diff = if angle_diff > 180.0 { 360.0 - angle_diff } else { angle_diff };
+        let angle_diff = if angle_diff > 180.0 {
+            360.0 - angle_diff
+        } else {
+            angle_diff
+        };
         let base = 0.35;
         let distance_bonus = (distance / 4000.0).min(0.15);
-        let angle_penalty = if angle_diff < 30.0 { 0.0 } else { angle_diff / 180.0 * 0.1 };
+        let angle_penalty = if angle_diff < 30.0 {
+            0.0
+        } else {
+            angle_diff / 180.0 * 0.1
+        };
         let reaction = (base - distance_bonus + angle_penalty).clamp(0.08, 0.5);
         FeatureResult::new(reaction)
             .with_metadata("distance".to_string(), format!("{:.0}", distance))
@@ -51,8 +65,12 @@ impl FeatureExt for ReactionTime {
 pub struct CrosshairPlacementError;
 
 impl FeatureExt for CrosshairPlacementError {
-    fn name(&self) -> &str { "crosshair_placement_error" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Aim }
+    fn name(&self) -> &str {
+        "crosshair_placement_error"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Aim
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -72,13 +90,21 @@ impl FeatureExt for CrosshairPlacementError {
 pub struct AimVelocity;
 
 impl FeatureExt for AimVelocity {
-    fn name(&self) -> &str { "aim_velocity" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Aim }
+    fn name(&self) -> &str {
+        "aim_velocity"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Aim
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let prev_tick = Tick(tick.0.saturating_sub(1));
-        let current = ctx.state_at(tick).and_then(|s| s.players.iter().find(|p| p.id == player));
-        let previous = ctx.state_at(prev_tick).and_then(|s| s.players.iter().find(|p| p.id == player));
+        let current = ctx
+            .state_at(tick)
+            .and_then(|s| s.players.iter().find(|p| p.id == player));
+        let previous = ctx
+            .state_at(prev_tick)
+            .and_then(|s| s.players.iter().find(|p| p.id == player));
 
         let velocity = match (current, previous) {
             (Some(curr), Some(prev)) => {
@@ -95,8 +121,12 @@ impl FeatureExt for AimVelocity {
 pub struct TrackingSmoothness;
 
 impl FeatureExt for TrackingSmoothness {
-    fn name(&self) -> &str { "tracking_smoothness" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Aim }
+    fn name(&self) -> &str {
+        "tracking_smoothness"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Aim
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let window = 64u32;
@@ -104,8 +134,12 @@ impl FeatureExt for TrackingSmoothness {
         let mut velocities = Vec::new();
 
         for t in start_tick..tick.0 {
-            let curr = ctx.state_at(Tick(t)).and_then(|s| s.players.iter().find(|p| p.id == player));
-            let prev = ctx.state_at(Tick(t.saturating_sub(1))).and_then(|s| s.players.iter().find(|p| p.id == player));
+            let curr = ctx
+                .state_at(Tick(t))
+                .and_then(|s| s.players.iter().find(|p| p.id == player));
+            let prev = ctx
+                .state_at(Tick(t.saturating_sub(1)))
+                .and_then(|s| s.players.iter().find(|p| p.id == player));
             if let (Some(c), Some(p)) = (curr, prev) {
                 let yaw_diff = (c.view_angles.yaw - p.view_angles.yaw).abs() as f64;
                 let pitch_diff = (c.view_angles.pitch - p.view_angles.pitch).abs() as f64;
@@ -118,7 +152,8 @@ impl FeatureExt for TrackingSmoothness {
         }
 
         let mean = velocities.iter().sum::<f64>() / velocities.len() as f64;
-        let variance = velocities.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / velocities.len() as f64;
+        let variance =
+            velocities.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / velocities.len() as f64;
         let stddev = variance.sqrt();
         let smoothness = (1.0 - (stddev / 5.0)).clamp(0.0, 1.0);
         FeatureResult::new(smoothness)
@@ -128,8 +163,12 @@ impl FeatureExt for TrackingSmoothness {
 pub struct TargetSwitchSpeed;
 
 impl FeatureExt for TargetSwitchSpeed {
-    fn name(&self) -> &str { "target_switch_speed" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Aim }
+    fn name(&self) -> &str {
+        "target_switch_speed"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Aim
+    }
 
     fn compute(&self, _ctx: &MatchContext, _tick: Tick, _player: PlayerId) -> FeatureResult {
         FeatureResult::new(0.3)

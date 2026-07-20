@@ -1,13 +1,13 @@
-use std::path::PathBuf;
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
-use sentinel_core::{MatchContext, Tick, PlayerId, FeatureVector};
-use sentinel_core::source::{DemoSource, EventKind, EventData};
-use sentinel_world::WorldRebuilder;
-use sentinel_features::FeatureEngine;
 use sentinel_analysis::Scorer;
-use sentinel_report::{MatchReport, MatchMetadata, PlayerReport};
-use sentinel_validation::{ValidationHarness, DemoValidation, PlayerEvaluation, PlayerLabel};
+use sentinel_core::source::{DemoSource, EventData, EventKind};
+use sentinel_core::{FeatureVector, MatchContext, PlayerId, Tick};
+use sentinel_features::FeatureEngine;
+use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
+use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
+use sentinel_world::WorldRebuilder;
 
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
@@ -106,8 +106,10 @@ fn run_analysis(path: &PathBuf) {
     let meta = adapter.metadata();
     println!("  Map: {}", meta.map_name);
     println!("  Server: {}", meta.server_name);
-    println!("  Ticks: {} ({}s @ {} tick/s)", meta.total_ticks,
-        meta.duration_seconds, meta.tick_rate);
+    println!(
+        "  Ticks: {} ({}s @ {} tick/s)",
+        meta.total_ticks, meta.duration_seconds, meta.tick_rate
+    );
 
     // Step 2: Collect game events from adapter
     println!("[2/7] Collecting events...");
@@ -152,7 +154,8 @@ fn run_analysis(path: &PathBuf) {
     let mut player_results = Vec::new();
 
     for &player in &players {
-        let fvs: Vec<&FeatureVector> = all_feature_vectors.iter()
+        let fvs: Vec<&FeatureVector> = all_feature_vectors
+            .iter()
             .filter(|fv| fv.player == player)
             .collect();
         if !fvs.is_empty() {
@@ -177,9 +180,11 @@ fn run_analysis(path: &PathBuf) {
     let mut report = MatchReport::new(report_meta);
 
     for result in &player_results {
-        let name = adapter.player_name(result.player)
+        let name = adapter
+            .player_name(result.player)
             .unwrap_or_else(|| format!("Player_{}", result.player.as_u64()));
-        let team = adapter.player_team(result.player)
+        let team = adapter
+            .player_team(result.player)
             .map(|t| format!("{:?}", t))
             .unwrap_or_else(|| "Unknown".to_string());
 
@@ -189,8 +194,11 @@ fn run_analysis(path: &PathBuf) {
             team,
             scores: result.overall_score.clone(),
             evidence: result.evidence.clone(),
-            summary: format!("Overall: {:.2}, Evidence: {}",
-                result.overall_score.overall, result.evidence.len()),
+            summary: format!(
+                "Overall: {:.2}, Evidence: {}",
+                result.overall_score.overall,
+                result.evidence.len()
+            ),
         });
     }
 
@@ -231,7 +239,9 @@ fn run_analysis(path: &PathBuf) {
 }
 
 /// Convert a DemoSource event to a sentinel GameEvent
-fn convert_demo_event(event: &impl sentinel_core::source::DemoEvent) -> Option<sentinel_events::kinds::GameEvent> {
+fn convert_demo_event(
+    event: &impl sentinel_core::source::DemoEvent,
+) -> Option<sentinel_events::kinds::GameEvent> {
     use sentinel_events::kinds::{EventKind as SentinelKind, EventValue, GameEvent};
 
     let tick = Tick(event.tick().0);
@@ -291,7 +301,12 @@ fn run_validation(dir: &PathBuf) {
 
     for (i, entry) in demos.iter().enumerate() {
         let path = entry.path();
-        println!("[{}/{}] Processing: {:?}", i + 1, demos.len(), path.file_name().unwrap());
+        println!(
+            "[{}/{}] Processing: {:?}",
+            i + 1,
+            demos.len(),
+            path.file_name().unwrap()
+        );
 
         // Run analysis on this demo
         match run_analysis_silent(&path) {
@@ -303,8 +318,10 @@ fn run_validation(dir: &PathBuf) {
                 let demo_validation = DemoValidation {
                     demo_path: path.to_string_lossy().to_string(),
                     map: map_name,
-                    players: result.1.into_iter().map(|(name, score, evidence)| {
-                        PlayerEvaluation {
+                    players: result
+                        .1
+                        .into_iter()
+                        .map(|(name, score, evidence)| PlayerEvaluation {
                             steam_id: 0,
                             name,
                             team: "Unknown".to_string(),
@@ -316,8 +333,8 @@ fn run_validation(dir: &PathBuf) {
                             is_false_positive: false,
                             is_true_negative: false,
                             is_false_negative: false,
-                        }
-                    }).collect(),
+                        })
+                        .collect(),
                     true_positives: 0,
                     false_positives: 0,
                     true_negatives: 0,
@@ -374,12 +391,15 @@ fn run_analysis_silent(path: &PathBuf) -> Result<(String, Vec<(String, f64, usiz
     let mut results = Vec::new();
 
     for &player in &players {
-        let fvs: Vec<&FeatureVector> = all_feature_vectors.iter()
+        let fvs: Vec<&FeatureVector> = all_feature_vectors
+            .iter()
             .filter(|fv| fv.player == player)
             .collect();
         if !fvs.is_empty() {
             let result = scorer.score_player(player, &fvs);
-            let name = adapter.player_name(player).unwrap_or_else(|| format!("Player_{}", player.as_u64()));
+            let name = adapter
+                .player_name(player)
+                .unwrap_or_else(|| format!("Player_{}", player.as_u64()));
             results.push((name, result.overall_score.overall, result.evidence.len()));
         }
     }

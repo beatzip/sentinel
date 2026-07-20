@@ -1,12 +1,16 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use crate::traits::FeatureExt;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 
 /// Flash assist rate: percentage of kills with flash assists
 pub struct FlashAssistRate;
 
 impl FeatureExt for FlashAssistRate {
-    fn name(&self) -> &str { "flash_assist_rate" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Utility }
+    fn name(&self) -> &str {
+        "flash_assist_rate"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Utility
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         // Count flash detonations near this player followed by kills
@@ -14,7 +18,9 @@ impl FeatureExt for FlashAssistRate {
             Some(s) => s,
             None => return FeatureResult::new(0.15),
         };
-        let grenades: Vec<_> = state.grenades.iter()
+        let grenades: Vec<_> = state
+            .grenades
+            .iter()
             .filter(|g| g.grenade_type == sentinel_core::GrenadeType::Flash && g.detonated)
             .collect();
         let flash_rate = (grenades.len() as f64 * 0.05).clamp(0.0, 1.0);
@@ -26,8 +32,12 @@ impl FeatureExt for FlashAssistRate {
 pub struct NadeUsageRate;
 
 impl FeatureExt for NadeUsageRate {
-    fn name(&self) -> &str { "nade_usage_rate" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Utility }
+    fn name(&self) -> &str {
+        "nade_usage_rate"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Utility
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {

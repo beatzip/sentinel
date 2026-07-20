@@ -1,12 +1,16 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use crate::traits::FeatureExt;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 
 /// Trade kill timing: time between teammate death and trade kill
 pub struct TradeKillTiming;
 
 impl FeatureExt for TradeKillTiming {
-    fn name(&self) -> &str { "trade_kill_timing" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Decision }
+    fn name(&self) -> &str {
+        "trade_kill_timing"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Decision
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, _player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -42,18 +46,32 @@ impl FeatureExt for TradeKillTiming {
 pub struct RotationSpeed;
 
 impl FeatureExt for RotationSpeed {
-    fn name(&self) -> &str { "rotation_speed" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Decision }
+    fn name(&self) -> &str {
+        "rotation_speed"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Decision
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let lookback = tick.0.saturating_sub(2 * 64);
-        let curr = ctx.state_at(tick).and_then(|s| s.players.iter().find(|p| p.id == player));
-        let prev = ctx.state_at(Tick(lookback)).and_then(|s| s.players.iter().find(|p| p.id == player));
+        let curr = ctx
+            .state_at(tick)
+            .and_then(|s| s.players.iter().find(|p| p.id == player));
+        let prev = ctx
+            .state_at(Tick(lookback))
+            .and_then(|s| s.players.iter().find(|p| p.id == player));
 
         if let (Some(c), Some(p)) = (curr, prev) {
             let distance_moved = p.position.distance_to(&c.position) as f64;
             let speed = distance_moved / 2.0;
-            let rotation_time = if speed > 200.0 { 2.0 } else if speed > 100.0 { 4.0 } else { 6.0 };
+            let rotation_time = if speed > 200.0 {
+                2.0
+            } else if speed > 100.0 {
+                4.0
+            } else {
+                6.0
+            };
             FeatureResult::new(rotation_time)
         } else {
             FeatureResult::new(5.0)
@@ -67,8 +85,12 @@ impl FeatureExt for RotationSpeed {
 pub struct SoloPlaystyleIndex;
 
 impl FeatureExt for SoloPlaystyleIndex {
-    fn name(&self) -> &str { "solo_playstyle_index" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Decision }
+    fn name(&self) -> &str {
+        "solo_playstyle_index"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Decision
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -86,7 +108,9 @@ impl FeatureExt for SoloPlaystyleIndex {
             return FeatureResult::new(0.5);
         }
 
-        let teammates: Vec<_> = state.players.iter()
+        let teammates: Vec<_> = state
+            .players
+            .iter()
             .filter(|p| p.team == my_team && p.id != player && p.alive)
             .collect();
 
@@ -94,28 +118,36 @@ impl FeatureExt for SoloPlaystyleIndex {
             return FeatureResult::new(1.0);
         }
 
-        let avg_distance: f64 = teammates.iter()
+        let avg_distance: f64 = teammates
+            .iter()
             .map(|t| observer.position.distance_to(&t.position) as f64)
-            .sum::<f64>() / teammates.len() as f64;
+            .sum::<f64>()
+            / teammates.len() as f64;
 
-        let near_teammate_count = teammates.iter()
+        let near_teammate_count = teammates
+            .iter()
             .filter(|t| observer.position.distance_to(&t.position) < 1000.0)
             .count();
 
         let isolation_ratio = 1.0 - (near_teammate_count as f64 / teammates.len() as f64);
 
-        let alive_teammates = state.players.iter()
+        let alive_teammates = state
+            .players
+            .iter()
             .filter(|p| p.team == my_team && p.id != player && p.alive)
             .count();
         let solo_alive = if alive_teammates == 0 { 1.0 } else { 0.0 };
 
-        let solo_score = (isolation_ratio * 0.5 + 
-                         (avg_distance / 3000.0).min(1.0) * 0.3 + 
-                         solo_alive * 0.2).min(1.0);
+        let solo_score =
+            (isolation_ratio * 0.5 + (avg_distance / 3000.0).min(1.0) * 0.3 + solo_alive * 0.2)
+                .min(1.0);
 
         FeatureResult::new(solo_score)
             .with_metadata("avg_distance".to_string(), format!("{:.0}", avg_distance))
-            .with_metadata("isolation_ratio".to_string(), format!("{:.2}", isolation_ratio))
+            .with_metadata(
+                "isolation_ratio".to_string(),
+                format!("{:.2}", isolation_ratio),
+            )
             .with_metadata("alive_teammates".to_string(), alive_teammates.to_string())
     }
 }
@@ -124,8 +156,12 @@ impl FeatureExt for SoloPlaystyleIndex {
 pub struct TeamProximityScore;
 
 impl FeatureExt for TeamProximityScore {
-    fn name(&self) -> &str { "team_proximity_score" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Decision }
+    fn name(&self) -> &str {
+        "team_proximity_score"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Decision
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -143,7 +179,9 @@ impl FeatureExt for TeamProximityScore {
             return FeatureResult::new(0.5);
         }
 
-        let teammates: Vec<_> = state.players.iter()
+        let teammates: Vec<_> = state
+            .players
+            .iter()
             .filter(|p| p.team == my_team && p.id != player && p.alive)
             .collect();
 
@@ -151,9 +189,11 @@ impl FeatureExt for TeamProximityScore {
             return FeatureResult::new(0.5);
         }
 
-        let avg_distance: f64 = teammates.iter()
+        let avg_distance: f64 = teammates
+            .iter()
             .map(|t| observer.position.distance_to(&t.position) as f64)
-            .sum::<f64>() / teammates.len() as f64;
+            .sum::<f64>()
+            / teammates.len() as f64;
 
         let proximity = (1.0 - (avg_distance / 2000.0).min(1.0)).max(0.0);
 
@@ -167,8 +207,12 @@ impl FeatureExt for TeamProximityScore {
 pub struct TradeKillParticipation;
 
 impl FeatureExt for TradeKillParticipation {
-    fn name(&self) -> &str { "trade_kill_participation" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Decision }
+    fn name(&self) -> &str {
+        "trade_kill_participation"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Decision
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, _player: PlayerId) -> FeatureResult {
         let window_start = tick.0.saturating_sub(10 * 64);
@@ -210,8 +254,12 @@ impl FeatureExt for TradeKillParticipation {
 pub struct UtilitySupportRate;
 
 impl FeatureExt for UtilitySupportRate {
-    fn name(&self) -> &str { "utility_support_rate" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Utility }
+    fn name(&self) -> &str {
+        "utility_support_rate"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Utility
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, _player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -237,9 +285,9 @@ impl FeatureExt for UtilitySupportRate {
             .iter()
             .filter(|s| {
                 s.grenades.iter().any(|g| {
-                    g.grenade_type == sentinel_core::GrenadeType::Flash &&
-                    g.detonated &&
-                    g.owner == Some(_player)
+                    g.grenade_type == sentinel_core::GrenadeType::Flash
+                        && g.detonated
+                        && g.owner == Some(_player)
                 })
             })
             .count();

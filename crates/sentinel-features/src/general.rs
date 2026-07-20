@@ -1,20 +1,26 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use crate::traits::FeatureExt;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 
 /// Kill/death ratio computed from match state
 pub struct KDRatio;
 
 impl FeatureExt for KDRatio {
-    fn name(&self) -> &str { "kd_ratio" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::General }
+    fn name(&self) -> &str {
+        "kd_ratio"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::General
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         // Count kills and deaths from evidence up to this tick
         let evidence = ctx.evidence();
-        let kills = evidence.iter()
+        let kills = evidence
+            .iter()
             .filter(|e| e.player == player && e.feature == "kill" && e.tick.0 <= tick.0)
             .count();
-        let deaths = evidence.iter()
+        let deaths = evidence
+            .iter()
             .filter(|e| e.player == player && e.feature == "death" && e.tick.0 <= tick.0)
             .count();
         let kd = if deaths == 0 {
@@ -30,15 +36,21 @@ impl FeatureExt for KDRatio {
 pub struct HeadshotPercentage;
 
 impl FeatureExt for HeadshotPercentage {
-    fn name(&self) -> &str { "headshot_percentage" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::General }
+    fn name(&self) -> &str {
+        "headshot_percentage"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::General
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let evidence = ctx.evidence();
-        let total_kills = evidence.iter()
+        let total_kills = evidence
+            .iter()
             .filter(|e| e.player == player && e.feature == "kill" && e.tick.0 <= tick.0)
             .count();
-        let headshots = evidence.iter()
+        let headshots = evidence
+            .iter()
             .filter(|e| e.player == player && e.feature == "headshot" && e.tick.0 <= tick.0)
             .count();
         let percentage = if total_kills == 0 {
@@ -54,8 +66,12 @@ impl FeatureExt for HeadshotPercentage {
 pub struct SurvivalTime;
 
 impl FeatureExt for SurvivalTime {
-    fn name(&self) -> &str { "survival_time" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::General }
+    fn name(&self) -> &str {
+        "survival_time"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::General
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -67,7 +83,9 @@ impl FeatureExt for SurvivalTime {
             None => return FeatureResult::new(60.0),
         };
         // Time since round start
-        let round_start = tick.0.saturating_sub(state.round.clock as u32 * 64 / 115 * 115);
+        let round_start = tick
+            .0
+            .saturating_sub(state.round.clock as u32 * 64 / 115 * 115);
         let survival = (tick.0 - round_start) as f64 / 64.0;
         FeatureResult::new(survival.min(115.0))
             .with_metadata("unit".to_string(), "seconds".to_string())

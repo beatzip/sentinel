@@ -1,6 +1,6 @@
-use byteorder::{LittleEndian, ReadBytesExt};
-use std::io::Read;
+use byteorder::ReadBytesExt;
 use sentinel_core::Tick;
+use std::io::Read;
 
 use crate::kinds::{EventKind, EventValue, GameEvent};
 
@@ -66,10 +66,7 @@ impl EventTransformer {
     }
 
     /// Decode a single game event from binary
-    fn decode_game_event(
-        tick: Tick,
-        cursor: &mut std::io::Cursor<&[u8]>,
-    ) -> Option<GameEvent> {
+    fn decode_game_event(tick: Tick, cursor: &mut std::io::Cursor<&[u8]>) -> Option<GameEvent> {
         use byteorder::{LittleEndian, ReadBytesExt};
 
         let event_type = cursor.read_u16::<LittleEndian>().ok()?;
@@ -112,7 +109,11 @@ impl EventTransformer {
 
         // Map event type ID to EventKind and extract known fields
         let (kind, field_map) = Self::map_event(event_type, fields)?;
-        Some(GameEvent { kind, tick, data: field_map })
+        Some(GameEvent {
+            kind,
+            tick,
+            data: field_map,
+        })
     }
 
     /// Map raw event type ID and fields to a typed GameEvent
@@ -215,14 +216,20 @@ impl EventTransformer {
             for _ in 0..field_count {
                 let type_tag = cursor.read_u8().ok()?;
                 match type_tag {
-                    0 => { let _ = cursor.read_i64::<LittleEndian>().ok()?; }
-                    1 => { let _ = cursor.read_f64::<LittleEndian>().ok()?; }
+                    0 => {
+                        let _ = cursor.read_i64::<LittleEndian>().ok()?;
+                    }
+                    1 => {
+                        let _ = cursor.read_f64::<LittleEndian>().ok()?;
+                    }
                     2 => {
                         let len = cursor.read_u16::<LittleEndian>().ok()? as usize;
                         let mut buf = vec![0u8; len];
                         cursor.read_exact(&mut buf).ok()?;
                     }
-                    _ => { let _ = cursor.read_u8().ok()?; }
+                    _ => {
+                        let _ = cursor.read_u8().ok()?;
+                    }
                 }
             }
         }
@@ -243,7 +250,10 @@ pub struct EventStream {
 
 impl EventStream {
     pub fn new(events: Vec<GameEvent>) -> Self {
-        Self { events, position: 0 }
+        Self {
+            events,
+            position: 0,
+        }
     }
 
     pub fn advance(&mut self) -> Option<&GameEvent> {
@@ -282,7 +292,10 @@ mod tests {
 
     #[test]
     fn test_transform_empty_packet() {
-        let packet = RawPacketData { tick: 100, data: vec![] };
+        let packet = RawPacketData {
+            tick: 100,
+            data: vec![],
+        };
         let events = EventTransformer::transform_packet(&packet);
         assert!(events.is_empty());
     }

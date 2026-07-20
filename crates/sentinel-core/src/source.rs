@@ -142,7 +142,10 @@ pub enum WeaponKind {
 
 impl WeaponKind {
     pub fn is_gun(&self) -> bool {
-        matches!(self, Self::Pistol | Self::SMG | Self::Rifle | Self::Sniper | Self::Shotgun | Self::MG)
+        matches!(
+            self,
+            Self::Pistol | Self::SMG | Self::Rifle | Self::Sniper | Self::Shotgun | Self::MG
+        )
     }
 }
 
@@ -173,9 +176,15 @@ pub struct MockPlayer {
 pub struct MockSnapshot {
     player_id: PlayerId,
     tick: Tick,
-    x: f32, y: f32, z: f32,
-    vx: f32, vy: f32, vz: f32,
-    pitch: f32, yaw: f32, roll: f32,
+    x: f32,
+    y: f32,
+    z: f32,
+    vx: f32,
+    vy: f32,
+    vz: f32,
+    pitch: f32,
+    yaw: f32,
+    roll: f32,
     health: i32,
     armor: i32,
     weapon: WeaponKind,
@@ -193,33 +202,69 @@ pub struct MockRound {
 
 impl MockEvent {
     pub fn new(tick: u32, kind: EventKind, data: Vec<(String, EventData)>) -> Self {
-        Self { tick: Tick(tick), kind, data }
+        Self {
+            tick: Tick(tick),
+            kind,
+            data,
+        }
     }
 }
 
 impl DemoEvent for MockEvent {
-    fn tick(&self) -> Tick { self.tick }
-    fn kind(&self) -> EventKind { self.kind.clone() }
-    fn data(&self) -> &[(String, EventData)] { &self.data }
+    fn tick(&self) -> Tick {
+        self.tick
+    }
+    fn kind(&self) -> EventKind {
+        self.kind.clone()
+    }
+    fn data(&self) -> &[(String, EventData)] {
+        &self.data
+    }
 }
 
 impl PlayerSnapshot for MockSnapshot {
-    fn id(&self) -> PlayerId { self.player_id }
-    fn position(&self) -> (f32, f32, f32) { (self.x, self.y, self.z) }
-    fn velocity(&self) -> (f32, f32, f32) { (self.vx, self.vy, self.vz) }
-    fn view_angles(&self) -> (f32, f32, f32) { (self.pitch, self.yaw, self.roll) }
-    fn health(&self) -> i32 { self.health }
-    fn armor(&self) -> i32 { self.armor }
-    fn weapon(&self) -> WeaponKind { self.weapon }
-    fn alive(&self) -> bool { self.alive }
-    fn scoped(&self) -> bool { self.scoped }
+    fn id(&self) -> PlayerId {
+        self.player_id
+    }
+    fn position(&self) -> (f32, f32, f32) {
+        (self.x, self.y, self.z)
+    }
+    fn velocity(&self) -> (f32, f32, f32) {
+        (self.vx, self.vy, self.vz)
+    }
+    fn view_angles(&self) -> (f32, f32, f32) {
+        (self.pitch, self.yaw, self.roll)
+    }
+    fn health(&self) -> i32 {
+        self.health
+    }
+    fn armor(&self) -> i32 {
+        self.armor
+    }
+    fn weapon(&self) -> WeaponKind {
+        self.weapon
+    }
+    fn alive(&self) -> bool {
+        self.alive
+    }
+    fn scoped(&self) -> bool {
+        self.scoped
+    }
 }
 
 impl RoundInfo for MockRound {
-    fn number(&self) -> u32 { self.number }
-    fn winner(&self) -> Option<Team> { self.winner }
-    fn start_tick(&self) -> Tick { self.start_tick }
-    fn end_tick(&self) -> Tick { self.end_tick }
+    fn number(&self) -> u32 {
+        self.number
+    }
+    fn winner(&self) -> Option<Team> {
+        self.winner
+    }
+    fn start_tick(&self) -> Tick {
+        self.start_tick
+    }
+    fn end_tick(&self) -> Tick {
+        self.end_tick
+    }
 }
 
 impl MockSource {
@@ -253,7 +298,9 @@ impl MockSource {
 }
 
 impl Default for MockSource {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DemoSource for MockSource {
@@ -261,19 +308,35 @@ impl DemoSource for MockSource {
     type PlayerSnapshot = MockSnapshot;
     type RoundInfo = MockRound;
 
-    fn metadata(&self) -> MatchMetadata { self.metadata.clone() }
-    fn events(&self) -> impl Iterator<Item = Self::Event> { self.events.iter().cloned() }
+    fn metadata(&self) -> MatchMetadata {
+        self.metadata.clone()
+    }
+    fn events(&self) -> impl Iterator<Item = Self::Event> {
+        self.events.iter().cloned()
+    }
     fn players_at_tick(&self, tick: Tick) -> Vec<Self::PlayerSnapshot> {
-        self.players.iter()
+        self.players
+            .iter()
             .flat_map(|p| p.snapshots.iter().filter(move |s| s.tick == tick).cloned())
             .collect()
     }
-    fn rounds(&self) -> &[Self::RoundInfo] { &self.rounds }
-    fn tick_count(&self) -> u32 { self.metadata.total_ticks }
-    fn tick_rate(&self) -> u32 { self.metadata.tick_rate }
-    fn player_ids(&self) -> Vec<PlayerId> { self.players.iter().map(|p| p.id).collect() }
+    fn rounds(&self) -> &[Self::RoundInfo] {
+        &self.rounds
+    }
+    fn tick_count(&self) -> u32 {
+        self.metadata.total_ticks
+    }
+    fn tick_rate(&self) -> u32 {
+        self.metadata.tick_rate
+    }
+    fn player_ids(&self) -> Vec<PlayerId> {
+        self.players.iter().map(|p| p.id).collect()
+    }
     fn player_name(&self, id: PlayerId) -> Option<String> {
-        self.players.iter().find(|p| p.id == id).map(|p| p.name.clone())
+        self.players
+            .iter()
+            .find(|p| p.id == id)
+            .map(|p| p.name.clone())
     }
     fn player_team(&self, id: PlayerId) -> Option<Team> {
         self.players.iter().find(|p| p.id == id).map(|p| p.team)
@@ -300,17 +363,28 @@ mod tests {
             snapshots: vec![MockSnapshot {
                 player_id: PlayerId::new(1),
                 tick: Tick(100),
-                x: 0.0, y: 0.0, z: 0.0,
-                vx: 0.0, vy: 0.0, vz: 0.0,
-                pitch: 0.0, yaw: 0.0, roll: 0.0,
-                health: 100, armor: 100,
+                x: 0.0,
+                y: 0.0,
+                z: 0.0,
+                vx: 0.0,
+                vy: 0.0,
+                vz: 0.0,
+                pitch: 0.0,
+                yaw: 0.0,
+                roll: 0.0,
+                health: 100,
+                armor: 100,
                 weapon: WeaponKind::Rifle,
-                alive: true, scoped: false,
+                alive: true,
+                scoped: false,
             }],
         });
 
         assert_eq!(src.player_ids().len(), 1);
-        assert_eq!(src.player_name(PlayerId::new(1)), Some("Player1".to_string()));
+        assert_eq!(
+            src.player_name(PlayerId::new(1)),
+            Some("Player1".to_string())
+        );
         assert_eq!(src.players_at_tick(Tick(100)).len(), 1);
     }
 }

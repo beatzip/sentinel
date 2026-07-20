@@ -1,11 +1,15 @@
-use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 use crate::traits::FeatureExt;
+use sentinel_core::{FeatureCategory, FeatureResult, MatchContext, PlayerId, Tick};
 
 pub struct RotationReactionTime;
 
 impl FeatureExt for RotationReactionTime {
-    fn name(&self) -> &str { "rotation_reaction_time" }
-    fn category(&self) -> FeatureCategory { FeatureCategory::Rotation }
+    fn name(&self) -> &str {
+        "rotation_reaction_time"
+    }
+    fn category(&self) -> FeatureCategory {
+        FeatureCategory::Rotation
+    }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
         let state = match ctx.state_at(tick) {
@@ -20,7 +24,11 @@ impl FeatureExt for RotationReactionTime {
         if let Some(prev) = ctx.state_at(Tick(lookback)) {
             if let Some(prev_p) = prev.players.iter().find(|pp| pp.id == player) {
                 let yaw_change = (p.view_angles.yaw - prev_p.view_angles.yaw).abs();
-                let yaw_change = if yaw_change > 180.0 { 360.0 - yaw_change } else { yaw_change };
+                let yaw_change = if yaw_change > 180.0 {
+                    360.0 - yaw_change
+                } else {
+                    yaw_change
+                };
                 if yaw_change > 90.0 {
                     let time = 3.0 - (yaw_change as f64 / 180.0);
                     return FeatureResult::new(time.max(0.5));

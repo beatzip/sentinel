@@ -108,20 +108,48 @@ impl ValidationHarness {
                     PlayerLabel::Legit => total_legit += 1,
                     _ => {}
                 }
-                if player.is_true_positive { tp += 1; }
-                if player.is_false_positive { fp += 1; }
-                if player.is_true_negative { tn += 1; }
-                if player.is_false_negative { fn_ += 1; }
+                if player.is_true_positive {
+                    tp += 1;
+                }
+                if player.is_false_positive {
+                    fp += 1;
+                }
+                if player.is_true_negative {
+                    tn += 1;
+                }
+                if player.is_false_negative {
+                    fn_ += 1;
+                }
                 all_scores.push(player.overall_score);
             }
         }
 
-        let precision = if tp + fp > 0 { tp as f64 / (tp + fp) as f64 } else { 0.0 };
-        let recall = if tp + fn_ > 0 { tp as f64 / (tp + fn_) as f64 } else { 0.0 };
-        let f1 = if precision + recall > 0.0 { 2.0 * precision * recall / (precision + recall) } else { 0.0 };
-        let fpr = if fp + tn > 0 { fp as f64 / (fp + tn) as f64 } else { 0.0 };
+        let precision = if tp + fp > 0 {
+            tp as f64 / (tp + fp) as f64
+        } else {
+            0.0
+        };
+        let recall = if tp + fn_ > 0 {
+            tp as f64 / (tp + fn_) as f64
+        } else {
+            0.0
+        };
+        let f1 = if precision + recall > 0.0 {
+            2.0 * precision * recall / (precision + recall)
+        } else {
+            0.0
+        };
+        let fpr = if fp + tn > 0 {
+            fp as f64 / (fp + tn) as f64
+        } else {
+            0.0
+        };
         let tpr = recall;
-        let accuracy = if total_players > 0 { (tp + tn) as f64 / total_players as f64 } else { 0.0 };
+        let accuracy = if total_players > 0 {
+            (tp + tn) as f64 / total_players as f64
+        } else {
+            0.0
+        };
 
         let score_dist = Self::compute_distribution(&all_scores);
         let feature_imp = self.compute_feature_importance();
@@ -168,7 +196,11 @@ impl ValidationHarness {
         let bin_count = 20;
         let min = sorted[0];
         let max = sorted[sorted.len() - 1];
-        let bin_width = if max > min { (max - min) / bin_count as f64 } else { 0.01 };
+        let bin_width = if max > min {
+            (max - min) / bin_count as f64
+        } else {
+            0.01
+        };
 
         let mut bins = Vec::new();
         for i in 0..bin_count {
@@ -234,13 +266,24 @@ impl ValidationHarness {
              Min:    {:.3}\n\
              Max:    {:.3}",
             metrics.total_demos,
-            metrics.total_players, metrics.total_cheaters, metrics.total_legit,
-            metrics.true_positives, metrics.false_positives,
-            metrics.true_negatives, metrics.false_negatives,
-            metrics.precision, metrics.recall, metrics.f1_score,
-            metrics.false_positive_rate, metrics.true_positive_rate, metrics.accuracy,
-            metrics.score_distribution.mean, metrics.score_distribution.median,
-            metrics.score_distribution.std_dev, metrics.score_distribution.min, metrics.score_distribution.max
+            metrics.total_players,
+            metrics.total_cheaters,
+            metrics.total_legit,
+            metrics.true_positives,
+            metrics.false_positives,
+            metrics.true_negatives,
+            metrics.false_negatives,
+            metrics.precision,
+            metrics.recall,
+            metrics.f1_score,
+            metrics.false_positive_rate,
+            metrics.true_positive_rate,
+            metrics.accuracy,
+            metrics.score_distribution.mean,
+            metrics.score_distribution.median,
+            metrics.score_distribution.std_dev,
+            metrics.score_distribution.min,
+            metrics.score_distribution.max
         )
     }
 }

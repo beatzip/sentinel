@@ -34,7 +34,11 @@ impl ParsedDemo {
             let frame_size = cursor.read_u32::<LittleEndian>()? as usize;
             let mut data = vec![0u8; frame_size];
             cursor.read_exact(&mut data)?;
-            frames.push(DemFrame { frame_type, tick, data });
+            frames.push(DemFrame {
+                frame_type,
+                tick,
+                data,
+            });
         }
         Ok(Self { header, frames })
     }
@@ -57,13 +61,19 @@ impl ParsedDemo {
             let frame_size = cursor.read_u32::<LittleEndian>()? as usize;
             let mut data = vec![0u8; frame_size];
             cursor.read_exact(&mut data)?;
-            frames.push(DemFrame { frame_type, tick, data });
+            frames.push(DemFrame {
+                frame_type,
+                tick,
+                data,
+            });
         }
         Ok(Self { header, frames })
     }
 
     pub fn packet_frames(&self) -> impl Iterator<Item = &DemFrame> {
-        self.frames.iter().filter(|f| f.frame_type == FrameType::Packet)
+        self.frames
+            .iter()
+            .filter(|f| f.frame_type == FrameType::Packet)
     }
 
     pub fn tick_count(&self) -> u32 {
@@ -155,7 +165,7 @@ fn decode_game_event(tick: u32, cursor: &mut std::io::Cursor<&[u8]>) -> Result<R
                 return Err(SentinelError::Parse(format!(
                     "Unknown event field type: {}",
                     type_tag
-                )))
+                )));
             }
         };
         fields.push(field);
@@ -169,7 +179,10 @@ fn decode_game_event(tick: u32, cursor: &mut std::io::Cursor<&[u8]>) -> Result<R
 }
 
 /// Decode entity update commands
-fn decode_entity_update(tick: u32, cursor: &mut std::io::Cursor<&[u8]>) -> Result<Vec<RawGameEvent>> {
+fn decode_entity_update(
+    tick: u32,
+    cursor: &mut std::io::Cursor<&[u8]>,
+) -> Result<Vec<RawGameEvent>> {
     let mut events = Vec::new();
     let entity_count = cursor.read_u16::<LittleEndian>()?;
 
