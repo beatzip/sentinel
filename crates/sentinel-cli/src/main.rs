@@ -448,3 +448,4 @@ fn print_usage() {
     println!("  stats <vectors.json>          Show dataset statistics");
     println!("  verify                        Run verification checks");
 }
+

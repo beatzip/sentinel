@@ -1,0 +1,10 @@
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\source2_demo_protobufs-1cc662cb851b66f5.d: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\common.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\cs2.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\README.md
+
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\libsource2_demo_protobufs-1cc662cb851b66f5.rlib: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\common.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\cs2.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\README.md
+
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\libsource2_demo_protobufs-1cc662cb851b66f5.rmeta: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\common.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\cs2.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\README.md
+
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\lib.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\common.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\cs2.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\source2-demo-protobufs-0.5.8\README.md:

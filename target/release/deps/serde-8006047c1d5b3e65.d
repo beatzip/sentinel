@@ -1,0 +1,14 @@
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\serde-8006047c1d5b3e65.d: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\build\serde-45ce9a9451367cdc\out/private.rs
+
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\libserde-8006047c1d5b3e65.rlib: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\build\serde-45ce9a9451367cdc\out/private.rs
+
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\libserde-8006047c1d5b3e65.rmeta: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\build\serde-45ce9a9451367cdc\out/private.rs
+
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\lib.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\integer128.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\mod.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\de.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde-1.0.228\src\private\ser.rs:
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\build\serde-45ce9a9451367cdc\out/private.rs:
+
+# env-dep:OUT_DIR=C:\\Users\\User\\copilot-worktrees\\sentinel\\beatzip-redesigned-disco\\target\\release\\build\\serde-45ce9a9451367cdc\\out
