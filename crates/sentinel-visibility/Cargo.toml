@@ -12,3 +12,4 @@ thiserror.workspace = true
 sentinel-core = { path = "../sentinel-core" }
 sentinel-common = { path = "../sentinel-common" }
 sentinel-world = { path = "../sentinel-world" }
+sentinel-map = { path = "../sentinel-map" }

@@ -8,3 +8,4 @@ description = "Core types and data model for Sentinel AI"
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
+sentinel-map = { path = "../sentinel-map" }

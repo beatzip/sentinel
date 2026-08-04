@@ -31,6 +31,9 @@ pub trait DemoSource {
     /// Player snapshots at a specific tick
     fn players_at_tick(&self, tick: Tick) -> Vec<Self::PlayerSnapshot>;
 
+    /// All player snapshots across all ticks (for bulk processing)
+    fn player_snapshots(&self) -> Vec<Self::PlayerSnapshot>;
+
     /// All rounds in the match
     fn rounds(&self) -> &[Self::RoundInfo];
 
@@ -82,15 +85,19 @@ pub enum EventKind {
     PlayerSpawn,
     PlayerDeath,
     PlayerHurt,
+    PlayerSound,
     WeaponFire,
     RoundStart,
     RoundEnd,
     BombPlant,
     BombDefuse,
     SmokeDetonate,
+    SmokeExpired,
     FlashDetonate,
     HEDetonate,
     MolotovDetonate,
+    InfernoStart,
+    InfernoExpire,
 }
 
 /// Event data values
@@ -106,6 +113,7 @@ pub enum EventData {
 /// A player snapshot at a specific tick
 pub trait PlayerSnapshot {
     fn id(&self) -> PlayerId;
+    fn tick(&self) -> Tick;
     fn position(&self) -> (f32, f32, f32);
     fn velocity(&self) -> (f32, f32, f32);
     fn view_angles(&self) -> (f32, f32, f32);
@@ -226,6 +234,9 @@ impl PlayerSnapshot for MockSnapshot {
     fn id(&self) -> PlayerId {
         self.player_id
     }
+    fn tick(&self) -> Tick {
+        self.tick
+    }
     fn position(&self) -> (f32, f32, f32) {
         (self.x, self.y, self.z)
     }
@@ -318,6 +329,12 @@ impl DemoSource for MockSource {
         self.players
             .iter()
             .flat_map(|p| p.snapshots.iter().filter(move |s| s.tick == tick).cloned())
+            .collect()
+    }
+    fn player_snapshots(&self) -> Vec<Self::PlayerSnapshot> {
+        self.players
+            .iter()
+            .flat_map(|p| p.snapshots.iter().cloned())
             .collect()
     }
     fn rounds(&self) -> &[Self::RoundInfo] {

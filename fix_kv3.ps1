@@ -1,0 +1,1 @@
+$c = Get-Content "C:\Users\User\Desktop\sental\crates\sentinel-map\src\kv3_parser.rs"\n$firstLine = "use std::fmt;" + $c[0]\n$c[0] = $firstLine\n$c | Set-Content "C:\Users\User\Desktop\sental\crates\sentinel-map\src\kv3_parser.rs"\nWrite-Host "Fixed"

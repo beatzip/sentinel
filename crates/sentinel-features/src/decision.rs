@@ -216,18 +216,16 @@ impl FeatureExt for TradeKillParticipation {
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, _player: PlayerId) -> FeatureResult {
         let window_start = tick.0.saturating_sub(10 * 64);
-        let states = ctx.states();
-        let start_idx = (window_start as usize).min(states.len());
-        let end_idx = (tick.0 as usize).min(states.len());
+        let window_states = ctx.states_in_range(Tick(window_start), tick);
 
-        if start_idx >= end_idx {
+        if window_states.is_empty() {
             return FeatureResult::new(0.5);
         }
 
         let mut teammate_deaths = 0;
         let trades = 0;
 
-        for state in &states[start_idx..end_idx] {
+        for state in window_states {
             for p in &state.players {
                 if p.team == sentinel_core::Team::Unassigned || p.id == _player {
                     continue;
@@ -273,20 +271,18 @@ impl FeatureExt for UtilitySupportRate {
         };
 
         let window_start = tick.0.saturating_sub(30 * 64);
-        let states = ctx.states();
-        let start_idx = (window_start as usize).min(states.len());
-        let end_idx = (tick.0 as usize).min(states.len());
+        let window_states = ctx.states_in_range(Tick(window_start), tick);
 
-        if start_idx >= end_idx {
+        if window_states.is_empty() {
             return FeatureResult::new(0.3);
         }
 
-        let flash_assists: usize = states[start_idx..end_idx]
+        let flash_assists: usize = window_states
             .iter()
             .filter(|s| {
                 s.grenades.iter().any(|g| {
                     g.grenade_type == sentinel_core::GrenadeType::Flash
-                        && g.detonated
+                        && g.detonated_tick.is_some()
                         && g.owner == Some(_player)
                 })
             })

@@ -8,6 +8,7 @@ use sentinel_features::FeatureEngine;
 use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
+use sentinel_map::loader;
 
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
@@ -126,15 +127,30 @@ fn run_analysis(path: &PathBuf) {
     }
     println!("  Game events: {}", game_events.len());
 
-    // Step 4: Reconstruct world state
+    // Step 4: Reconstruct world state with real telemetry data
     println!("[4/7] Reconstructing world state...");
     let mut rebuilder = WorldRebuilder::new();
-    let tick_states = rebuilder.process_events(&game_events);
+    let snapshots: Vec<_> = adapter.player_snapshots();
+    let tick_states = rebuilder.process_events_with_snapshots(&game_events, &snapshots);
+    let kills = rebuilder.take_kills();
     println!("  Tick states: {}", tick_states.len());
+    println!("  Kills recorded: {}", kills.len());
 
-    let ctx = MatchContext::new(tick_states);
+    let mut ctx = MatchContext::new(tick_states);
+    ctx.set_kills(kills);
     let player_count = adapter.player_ids().len();
     println!("  Players found: {}", player_count);
+
+    // Load map data for visibility calculations
+    match loader::load_map_by_name(&meta.map_name) {
+        Some(map) => {
+            println!("  Map loaded: {} ({} walls, {} nav nodes)", map.name, map.walls.len(), map.nav_nodes.len());
+            ctx.set_map(map);
+        }
+        None => {
+            println!("  Warning: Map '{}' not found, using default dust2", meta.map_name);
+        }
+    }
 
     // Step 5: Compute features
     println!("[5/7] Computing features...");
@@ -251,15 +267,19 @@ fn convert_demo_event(
         EventKind::PlayerDeath => SentinelKind::PlayerDeath,
         EventKind::PlayerSpawn => SentinelKind::PlayerSpawn,
         EventKind::PlayerHurt => SentinelKind::PlayerHurt,
+        EventKind::PlayerSound => SentinelKind::PlayerSound,
         EventKind::WeaponFire => SentinelKind::WeaponFire,
         EventKind::RoundStart => SentinelKind::RoundStart,
         EventKind::RoundEnd => SentinelKind::RoundEnd,
         EventKind::BombPlant => SentinelKind::BombPlant,
         EventKind::BombDefuse => SentinelKind::BombDefuse,
         EventKind::SmokeDetonate => SentinelKind::SmokeGrenadeDetonate,
+        EventKind::SmokeExpired => SentinelKind::SmokeGrenadeExpired,
         EventKind::FlashDetonate => SentinelKind::FlashGrenadeDetonate,
         EventKind::HEDetonate => SentinelKind::HEGrenadeDetonate,
         EventKind::MolotovDetonate => SentinelKind::MolotovDetonate,
+        EventKind::InfernoStart => SentinelKind::InfernoStart,
+        EventKind::InfernoExpire => SentinelKind::InfernoExpire,
     };
 
     // Convert event data
@@ -374,10 +394,18 @@ fn run_analysis_silent(path: &Path) -> AnalysisResult {
         }
     }
 
-    // Reconstruct world state
+    // Reconstruct world state with real telemetry data
     let mut rebuilder = WorldRebuilder::new();
-    let tick_states = rebuilder.process_events(&game_events);
-    let ctx = MatchContext::new(tick_states);
+    let snapshots: Vec<_> = adapter.player_snapshots();
+    let tick_states = rebuilder.process_events_with_snapshots(&game_events, &snapshots);
+    let kills = rebuilder.take_kills();
+    let mut ctx = MatchContext::new(tick_states);
+    ctx.set_kills(kills);
+
+    // Load map data for visibility calculations
+    if let Some(map) = loader::load_map_by_name(&meta.map_name) {
+        ctx.set_map(map);
+    }
 
     // Compute features
     let feature_engine = FeatureEngine::new();

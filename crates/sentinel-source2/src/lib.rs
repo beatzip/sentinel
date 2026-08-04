@@ -79,15 +79,19 @@ impl DemoCollector {
             "player_death" => EventKind::PlayerDeath,
             "player_spawn" => EventKind::PlayerSpawn,
             "player_hurt" => EventKind::PlayerHurt,
+            "player_sound" => EventKind::PlayerSound,
             "weapon_fire" => EventKind::WeaponFire,
             "round_start" => EventKind::RoundStart,
             "round_end" => EventKind::RoundEnd,
             "bomb_plant" => EventKind::BombPlant,
             "bomb_defuse" => EventKind::BombDefuse,
             "smokegrenade_detonate" => EventKind::SmokeDetonate,
+            "smokegrenade_expired" => EventKind::SmokeExpired,
             "flashbang_detonate" => EventKind::FlashDetonate,
             "hegrenade_detonate" => EventKind::HEDetonate,
             "molotov_detonate" => EventKind::MolotovDetonate,
+            "inferno_startburn" => EventKind::InfernoStart,
+            "inferno_expire" => EventKind::InfernoExpire,
             _ => return Ok(()),
         };
 
@@ -106,6 +110,47 @@ impl DemoCollector {
                     EventValue::Byte(v) => EventData::Int(*v as i64),
                 };
                 data.push((key.to_string(), event_val));
+            }
+        }
+
+        // Also extract grenade-specific fields
+        for key in &["entityid", "x", "y", "z"] {
+            if let Ok(val) = event.get_value(key) {
+                let event_val = match val {
+                    EventValue::Int(v) => EventData::Int(*v as i64),
+                    EventValue::U64(v) => EventData::Int(*v as i64),
+                    EventValue::Float(v) => EventData::Float(*v as f64),
+                    _ => continue,
+                };
+                data.push((key.to_string(), event_val));
+            }
+        }
+
+        // Extract player_hurt specific fields
+        if event.name() == "player_hurt" {
+            for key in &["dmg_health", "dmg_armor", "hitgroup", "victim_health", "victim_armor"] {
+                if let Ok(val) = event.get_value(key) {
+                    let event_val = match val {
+                        EventValue::Int(v) => EventData::Int(*v as i64),
+                        EventValue::Float(v) => EventData::Float(*v as f64),
+                        _ => continue,
+                    };
+                    data.push((key.to_string(), event_val));
+                }
+            }
+        }
+
+        // Extract weapon_fire specific fields
+        if event.name() == "weapon_fire" {
+            for key in &["penetrated", "is_alt_fire"] {
+                if let Ok(val) = event.get_value(key) {
+                    let event_val = match val {
+                        EventValue::Int(v) => EventData::Int(*v as i64),
+                        EventValue::Bool(v) => EventData::Bool(*v),
+                        _ => continue,
+                    };
+                    data.push((key.to_string(), event_val));
+                }
             }
         }
 
@@ -420,6 +465,9 @@ impl PlayerSnapshot for Source2PlayerSnapshot {
     fn id(&self) -> PlayerId {
         self.player_id
     }
+    fn tick(&self) -> Tick {
+        self.tick
+    }
     fn position(&self) -> (f32, f32, f32) {
         (self.x, self.y, self.z)
     }
@@ -477,6 +525,9 @@ impl DemoSource for Source2Adapter {
             .filter(|s| s.tick == tick)
             .cloned()
             .collect()
+    }
+    fn player_snapshots(&self) -> Vec<Self::PlayerSnapshot> {
+        self.player_snapshots.clone()
     }
     fn rounds(&self) -> &[Self::RoundInfo] {
         &self.rounds

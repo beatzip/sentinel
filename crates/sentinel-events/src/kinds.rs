@@ -24,12 +24,16 @@ pub enum EventKind {
     Land,
     CrouchToggle,
     Duck,
+    PlayerSound,
 
     // Grenade events
     SmokeGrenadeDetonate,
+    SmokeGrenadeExpired,
     FlashGrenadeDetonate,
     HEGrenadeDetonate,
     MolotovDetonate,
+    InfernoStart,
+    InfernoExpire,
     DecoyStart,
     DecoyExpire,
 
@@ -142,6 +146,29 @@ pub fn weapon_fire(tick: Tick, shooter: u64, weapon: &str) -> GameEvent {
     )
 }
 
+pub fn player_hurt(
+    tick: Tick,
+    victim: u64,
+    attacker: u64,
+    weapon: &str,
+    dmg_health: i64,
+    hitgroup: i64,
+    victim_health: i64,
+) -> GameEvent {
+    make_event(
+        EventKind::PlayerHurt,
+        tick,
+        vec![
+            ("userid", EventValue::PlayerId(victim)),
+            ("attacker", EventValue::PlayerId(attacker)),
+            ("weapon", EventValue::String(weapon.to_string())),
+            ("dmg_health", EventValue::Integer(dmg_health)),
+            ("hitgroup", EventValue::Integer(hitgroup)),
+            ("victim_health", EventValue::Integer(victim_health)),
+        ],
+    )
+}
+
 pub fn smoke_detonate(tick: Tick, thrower: u64, position: (f32, f32, f32)) -> GameEvent {
     make_event(
         EventKind::SmokeGrenadeDetonate,
@@ -153,6 +180,42 @@ pub fn smoke_detonate(tick: Tick, thrower: u64, position: (f32, f32, f32)) -> Ga
                 EventValue::Vector(position.0, position.1, position.2),
             ),
         ],
+    )
+}
+
+pub fn smoke_expired(tick: Tick, entity_id: u64, position: (f32, f32, f32)) -> GameEvent {
+    make_event(
+        EventKind::SmokeGrenadeExpired,
+        tick,
+        vec![
+            ("entityid", EventValue::Integer(entity_id as i64)),
+            (
+                "position",
+                EventValue::Vector(position.0, position.1, position.2),
+            ),
+        ],
+    )
+}
+
+pub fn inferno_start(tick: Tick, owner: u64, position: (f32, f32, f32)) -> GameEvent {
+    make_event(
+        EventKind::InfernoStart,
+        tick,
+        vec![
+            ("userid", EventValue::PlayerId(owner)),
+            (
+                "position",
+                EventValue::Vector(position.0, position.1, position.2),
+            ),
+        ],
+    )
+}
+
+pub fn inferno_expire(tick: Tick, entity_id: u64) -> GameEvent {
+    make_event(
+        EventKind::InfernoExpire,
+        tick,
+        vec![("entityid", EventValue::Integer(entity_id as i64))],
     )
 }
 
