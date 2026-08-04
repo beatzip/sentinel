@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Team","Weapon"],"struct":["Angles","PlayerId","PlayerState","Vec3"]};

@@ -9,5 +9,7 @@ description = "Map geometry, spawn points, and navigation data"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-sentinel-core = { path = "../sentinel-core" }
 sentinel-common = { path = "../sentinel-common" }
+
+[dev-dependencies]
+tempfile = "3"

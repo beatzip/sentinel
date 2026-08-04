@@ -1,5 +1,6 @@
 use sentinel_core::{
-    BombState, GrenadeState, GrenadeType, PlayerId, PlayerState, RoundPhase, RoundState, Tick,
+    BombState, GrenadeState, GrenadeType, KillEvent, PlayerId, PlayerState, RoundPhase, RoundState,
+    Tick,
 };
 use std::collections::BTreeMap;
 
@@ -20,18 +21,6 @@ pub struct WorldState {
     pub kill_feed: Vec<KillEvent>,
 }
 
-/// Kill event for tracking
-#[derive(Debug, Clone)]
-pub struct KillEvent {
-    pub tick: Tick,
-    pub attacker: PlayerId,
-    pub victim: PlayerId,
-    pub weapon: String,
-    pub headshot: bool,
-    pub assisted: bool,
-    pub assist_player: Option<PlayerId>,
-}
-
 impl WorldState {
     /// Create a new empty world state
     pub fn new(tick: Tick) -> Self {
@@ -49,6 +38,7 @@ impl WorldState {
                 t_score: 0,
                 ct_score: 0,
                 winner: None,
+                start_tick: 0,
             },
             kill_feed: Vec::new(),
         }

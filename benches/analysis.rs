@@ -43,6 +43,7 @@ fn create_test_state(num_players: usize) -> TickState {
             t_score: 0,
             ct_score: 0,
             winner: None,
+            start_tick: 0,
         },
     }
 }

@@ -19,6 +19,7 @@ pub struct RoundState {
     pub t_score: u32,
     pub ct_score: u32,
     pub winner: Option<Team>,
+    pub start_tick: u32,
 }
 
 impl RoundState {

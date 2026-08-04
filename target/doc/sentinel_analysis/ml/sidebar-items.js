@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ModelError"],"struct":["EnsembleModel","IsolationForest","StatisticalModel"],"trait":["AnomalyModel"]};

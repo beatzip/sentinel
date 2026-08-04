@@ -21,7 +21,7 @@ impl FeatureExt for FlashAssistRate {
         let grenades: Vec<_> = state
             .grenades
             .iter()
-            .filter(|g| g.grenade_type == sentinel_core::GrenadeType::Flash && g.detonated)
+            .filter(|g| g.grenade_type == sentinel_core::GrenadeType::Flash && g.detonated_tick.is_some())
             .collect();
         let flash_rate = (grenades.len() as f64 * 0.05).clamp(0.0, 1.0);
         FeatureResult::new(flash_rate)

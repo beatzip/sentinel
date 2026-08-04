@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["FeatureCategory"],"struct":["FeatureRegistry","FeatureResult","FeatureVector"],"trait":["Feature"]};

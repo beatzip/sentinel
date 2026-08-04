@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Material","SpawnTeam"],"struct":["Bombsite","MapData","NavNode","SpawnPoint","Vec2","WallSegment"]};

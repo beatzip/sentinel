@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["RotationSpeed","SoloPlaystyleIndex","TeamProximityScore","TradeKillParticipation","TradeKillTiming","UtilitySupportRate"]};

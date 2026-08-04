@@ -50,8 +50,8 @@ impl FeatureExt for HiddenTrackingDuration {
 
             // If aiming within 15 degrees of enemy
             if angle_diff < 15.0 {
-                // Check if enemy is visible using visibility engine
-                let vis = VisibilityEngine::can_see(state, observer.id, enemy.id);
+                // Check if enemy is visible using visibility engine with real map
+                let vis = VisibilityEngine::can_see_with_map(state, observer.id, enemy.id, ctx.map());
 
                 // If enemy is NOT visible but player is tracking them
                 if !vis.visible {
@@ -86,7 +86,7 @@ impl FeatureExt for InformationAvailability {
             None => return FeatureResult::new(0.0),
         };
 
-        let vis_state = VisibilityEngine::get_visibility_state(state, player, tick);
+        let vis_state = VisibilityEngine::get_visibility_state(state, player, tick, ctx.map());
 
         // Calculate information score based on:
         // - Visible enemies (direct sight)
@@ -139,11 +139,9 @@ impl FeatureExt for PrefireRate {
 
         // Look back 5 seconds for recent kills/shots
         let window_start = tick.0.saturating_sub(5 * 64);
-        let states = ctx.states();
-        let start_idx = (window_start as usize).min(states.len());
-        let end_idx = (tick.0 as usize).min(states.len());
+        let window_states = ctx.states_in_range(Tick(window_start), tick);
 
-        if start_idx >= end_idx {
+        if window_states.is_empty() {
             return FeatureResult::new(0.0);
         }
 
@@ -151,7 +149,7 @@ impl FeatureExt for PrefireRate {
         let mut prefire_shots = 0;
         let mut total_shots = 0;
 
-        for state in &states[start_idx..end_idx] {
+        for state in window_states {
             if let Some(obs) = state.players.iter().find(|p| p.id == player)
                 && obs.weapon.is_gun()
             {
@@ -168,7 +166,7 @@ impl FeatureExt for PrefireRate {
                     .players
                     .iter()
                     .filter(|p| p.team == target_team && p.alive)
-                    .any(|enemy| VisibilityEngine::can_see(state, obs.id, enemy.id).visible);
+                    .any(|enemy| VisibilityEngine::can_see_with_map(state, obs.id, enemy.id, ctx.map()).visible);
 
                 if !any_visible {
                     prefire_shots += 1;
@@ -221,16 +219,14 @@ impl FeatureExt for RotationJustification {
 
         // Step 2: Look back 10 seconds for teammate deaths
         let window_start = tick.0.saturating_sub(10 * 64);
-        let states = ctx.states();
-        let start_idx = (window_start as usize).min(states.len());
-        let end_idx = (tick.0 as usize).min(states.len());
+        let window_states = ctx.states_in_range(Tick(window_start), tick);
 
-        if start_idx >= end_idx {
+        if window_states.is_empty() {
             return FeatureResult::new(0.5);
         }
 
         // Count teammate deaths in window
-        let teammate_deaths: usize = states[start_idx..end_idx]
+        let teammate_deaths: usize = window_states
             .iter()
             .filter(|s| s.players.iter().any(|p| p.team == my_team && !p.alive))
             .count();

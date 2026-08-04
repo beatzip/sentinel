@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["VisibilityReason"],"struct":["AudioResult","PlayerVisibilityState","RadarInfo","VisibilityEngine","VisibilityResult"]};

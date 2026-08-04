@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["FeatureScore","PlayerScoreResult","Scorer","ScorerConfig"]};

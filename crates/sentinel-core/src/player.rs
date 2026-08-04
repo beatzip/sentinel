@@ -70,6 +70,39 @@ impl Vec3 {
     pub fn length(&self) -> f32 {
         (self.x * self.x + self.y * self.y + self.z * self.z).sqrt()
     }
+
+    pub fn normalize(&self) -> Self {
+        let len = self.length();
+        if len > 0.0 {
+            Self {
+                x: self.x / len,
+                y: self.y / len,
+                z: self.z / len,
+            }
+        } else {
+            *self
+        }
+    }
+}
+
+impl std::ops::Sub for Vec3 {
+    type Output = Vec3;
+
+    fn sub(self, other: Vec3) -> Vec3 {
+        Vec3::new(self.x - other.x, self.y - other.y, self.z - other.z)
+    }
+}
+
+impl From<Vec3> for sentinel_map::Vec3 {
+    fn from(v: Vec3) -> Self {
+        Self::new(v.x, v.y, v.z)
+    }
+}
+
+impl From<sentinel_map::Vec3> for Vec3 {
+    fn from(v: sentinel_map::Vec3) -> Self {
+        Self::new(v.x, v.y, v.z)
+    }
 }
 
 /// View angles (pitch, yaw, roll)

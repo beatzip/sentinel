@@ -5,7 +5,7 @@ All notable changes to Sentinel AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [Unreleased](https://github.com/user/sentinel-ai/compare/v0.1.0...HEAD)
 
 ### Added
 - Validation harness for evaluation metrics
@@ -24,12 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feature computation using actual world state
 - Evidence generation with proper thresholds
 
-## [0.1.0] - 2026-07-20
+## [0.1.0](https://github.com/user/sentinel-ai/releases/tag/v0.1.0) - 2026-07-20
 
 ### Added
 
 #### Core Platform
-- Sentinel workspace with 14 crates
+- Sentinel workspace with 15 crates
 - Core types: Tick, PlayerState, FeatureVector, Evidence, BehaviorScore
 - DemoSource trait for adapter pattern
 - MockSource for testing
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Source 2 demo adapter (sentinel-source2)
 - Entity tracking for player names, teams, positions
 - Game event extraction (25+ event types)
-- Zstd decompression support
+- Snappy decompression support
 
 #### Feature Engine
 - 17+ features across 7 categories
@@ -93,14 +93,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feature computation bounds checking
 - Evidence generation thresholds
 
-## [0.0.1] - 2026-07-15
+## [0.0.1](https://github.com/user/sentinel-ai/releases/tag/v0.0.1) - 2026-07-15
 
 ### Added
 - Initial project structure
 - Core type definitions
 - Basic feature engine
 - Simplified visibility checks
-
-[Unreleased]: https://github.com/user/sentinel-ai/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/user/sentinel-ai/releases/tag/v0.1.0
-[0.0.1]: https://github.com/user/sentinel-ai/releases/tag/v0.0.1
