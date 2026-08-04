@@ -886,3 +886,4 @@ mod tests {
         assert!(blocked, "Line should cross inferno mid wall");
     }
 }
+
