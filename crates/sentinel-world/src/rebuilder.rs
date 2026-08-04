@@ -1,4 +1,4 @@
-use sentinel_core::{
+﻿use sentinel_core::{
     Angles, KillEvent, PlayerId, PlayerState, RoundPhase, Tick, TickState, Vec3, Weapon,
 };
 use sentinel_core::source::PlayerSnapshot;
@@ -558,3 +558,5 @@ mod tests {
         assert_eq!(kills.len(), 2);
     }
 }
+
+
