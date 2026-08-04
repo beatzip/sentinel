@@ -1,33 +1,142 @@
 {
-  "name": "cs2_default",
-  "version": "1.0.0",
-  "match_count": 1000,
-  "player_count": 10000,
-  "baselines": {
-    "baselines": {
-      "aim_velocity": { "name": "aim_velocity", "mean": 120.0, "stddev": 40.0, "p95": 185.8, "p99": 213.04, "sample_count": 0 },
-      "counter_strafe_accuracy": { "name": "counter_strafe_accuracy", "mean": 0.7, "stddev": 0.15, "p95": 0.94675, "p99": 1.0, "sample_count": 0 },
-      "crosshair_placement_error": { "name": "crosshair_placement_error", "mean": 15.0, "stddev": 8.0, "p95": 28.16, "p99": 33.608, "sample_count": 0 },
-      "flick_distance": { "name": "flick_distance", "mean": 25.0, "stddev": 15.0, "p95": 49.675, "p99": 59.89, "sample_count": 0 },
-      "hidden_tracking_duration": { "name": "hidden_tracking_duration", "mean": 0.5, "stddev": 0.3, "p95": 0.9935, "p99": 1.1978, "sample_count": 0 },
-      "info_kills_ratio": { "name": "info_kills_ratio", "mean": 0.3, "stddev": 0.15, "p95": 0.54675, "p99": 0.6489, "sample_count": 0 },
-      "movement_smoothness": { "name": "movement_smoothness", "mean": 0.8, "stddev": 0.12, "p95": 0.9974, "p99": 1.0, "sample_count": 0 },
-      "path_efficiency": { "name": "path_efficiency", "mean": 0.75, "stddev": 0.1, "p95": 0.9145, "p99": 0.9826, "sample_count": 0 },
-      "prefire_rate": { "name": "prefire_rate", "mean": 0.1, "stddev": 0.08, "p95": 0.2316, "p99": 0.28608, "sample_count": 0 },
-      "reaction_time": { "name": "reaction_time", "mean": 0.25, "stddev": 0.08, "p95": 0.3816, "p99": 0.43608, "sample_count": 0 },
-      "rotation_speed": { "name": "rotation_speed", "mean": 5.0, "stddev": 2.0, "p95": 8.29, "p99": 9.652, "sample_count": 0 },
-      "target_switch_speed": { "name": "target_switch_speed", "mean": 0.3, "stddev": 0.1, "p95": 0.4645, "p99": 0.5326, "sample_count": 0 },
-      "tracking_smoothness": { "name": "tracking_smoothness", "mean": 0.85, "stddev": 0.1, "p95": 1.0, "p99": 1.0, "sample_count": 0 },
-      "trade_kill_timing": { "name": "trade_kill_timing", "mean": 3.0, "stddev": 1.5, "p95": 5.4675, "p99": 6.489, "sample_count": 0 },
-      "wallbang_accuracy": { "name": "wallbang_accuracy", "mean": 0.15, "stddev": 0.1, "p95": 0.3145, "p99": 0.3826, "sample_count": 0 }
-    },
-    "version": "1.0.0"
-  },
-  "metadata": {
-    "created_at": "2026-07-17T09:21:18.382208600+00:00",
-    "source": "synthetic",
-    "game_version": "cs2",
-    "tick_rate": 64,
-    "maps": ["de_dust2", "de_mirage", "de_inferno"]
-  }
+    "name":  "cs2_default",
+    "version":  "1.0.0",
+    "match_count":  1000,
+    "player_count":  10000,
+    "baselines":  {
+                      "baselines":  {
+                                        "aim_velocity":  {
+                                                             "name":  "aim_velocity",
+                                                             "mean":  120.0,
+                                                             "stddev":  40.0,
+                                                             "p95":  185.8,
+                                                             "p99":  213.04,
+                                                             "sample_count":  1000
+                                                         },
+                                        "counter_strafe_accuracy":  {
+                                                                        "name":  "counter_strafe_accuracy",
+                                                                        "mean":  0.7,
+                                                                        "stddev":  0.15,
+                                                                        "p95":  0.94675,
+                                                                        "p99":  1,
+                                                                        "sample_count":  1000
+                                                                    },
+                                        "crosshair_placement_error":  {
+                                                                          "name":  "crosshair_placement_error",
+                                                                          "mean":  15.0,
+                                                                          "stddev":  8.0,
+                                                                          "p95":  28.16,
+                                                                          "p99":  33.608,
+                                                                          "sample_count":  1000
+                                                                      },
+                                        "flick_distance":  {
+                                                               "name":  "flick_distance",
+                                                               "mean":  25.0,
+                                                               "stddev":  15.0,
+                                                               "p95":  49.675,
+                                                               "p99":  59.89,
+                                                               "sample_count":  1000
+                                                           },
+                                        "hidden_tracking_duration":  {
+                                                                         "name":  "hidden_tracking_duration",
+                                                                         "mean":  0.5,
+                                                                         "stddev":  0.3,
+                                                                         "p95":  0.9935,
+                                                                         "p99":  1,
+                                                                         "sample_count":  1000
+                                                                     },
+                                        "info_kills_ratio":  {
+                                                                 "name":  "info_kills_ratio",
+                                                                 "mean":  0.3,
+                                                                 "stddev":  0.15,
+                                                                 "p95":  0.54675,
+                                                                 "p99":  0.6489,
+                                                                 "sample_count":  1000
+                                                             },
+                                        "movement_smoothness":  {
+                                                                    "name":  "movement_smoothness",
+                                                                    "mean":  0.8,
+                                                                    "stddev":  0.12,
+                                                                    "p95":  0.9974,
+                                                                    "p99":  1,
+                                                                    "sample_count":  1000
+                                                                },
+                                        "path_efficiency":  {
+                                                                "name":  "path_efficiency",
+                                                                "mean":  0.75,
+                                                                "stddev":  0.1,
+                                                                "p95":  0.9145,
+                                                                "p99":  0.9826,
+                                                                "sample_count":  1000
+                                                            },
+                                        "prefire_rate":  {
+                                                             "name":  "prefire_rate",
+                                                             "mean":  0.1,
+                                                             "stddev":  0.08,
+                                                             "p95":  0.2316,
+                                                             "p99":  0.28608,
+                                                             "sample_count":  1000
+                                                         },
+                                        "reaction_time":  {
+                                                              "name":  "reaction_time",
+                                                              "mean":  0.25,
+                                                              "stddev":  0.08,
+                                                              "p95":  0.3816,
+                                                              "p99":  0.43608,
+                                                              "sample_count":  1000
+                                                          },
+                                        "rotation_speed":  {
+                                                               "name":  "rotation_speed",
+                                                               "mean":  5.0,
+                                                               "stddev":  2.0,
+                                                               "p95":  8.29,
+                                                               "p99":  9.652,
+                                                               "sample_count":  1000
+                                                           },
+                                        "target_switch_speed":  {
+                                                                    "name":  "target_switch_speed",
+                                                                    "mean":  0.3,
+                                                                    "stddev":  0.1,
+                                                                    "p95":  0.4645,
+                                                                    "p99":  0.5326,
+                                                                    "sample_count":  1000
+                                                                },
+                                        "tracking_smoothness":  {
+                                                                    "name":  "tracking_smoothness",
+                                                                    "mean":  0.85,
+                                                                    "stddev":  0.1,
+                                                                    "p95":  1.0,
+                                                                    "p99":  1,
+                                                                    "sample_count":  1000
+                                                                },
+                                        "trade_kill_timing":  {
+                                                                  "name":  "trade_kill_timing",
+                                                                  "mean":  3.0,
+                                                                  "stddev":  1.5,
+                                                                  "p95":  5.4675,
+                                                                  "p99":  6.489,
+                                                                  "sample_count":  1000
+                                                              },
+                                        "wallbang_accuracy":  {
+                                                                  "name":  "wallbang_accuracy",
+                                                                  "mean":  0.15,
+                                                                  "stddev":  0.1,
+                                                                  "p95":  0.3145,
+                                                                  "p99":  0.3826,
+                                                                  "sample_count":  1000
+                                                              }
+                                    },
+                      "version":  "1.0.0"
+                  },
+    "metadata":  {
+                     "created_at":  "2026-07-17T09:21:18.382208600+00:00",
+                     "source":  "synthetic",
+                     "game_version":  "cs2",
+                     "tick_rate":  64,
+                     "maps":  [
+                                  "de_dust2",
+                                  "de_mirage",
+                                  "de_inferno"
+                              ]
+                 }
 }
