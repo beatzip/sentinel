@@ -558,3 +558,4 @@ mod tests {
         assert_eq!(kills.len(), 2);
     }
 }
+

@@ -1391,3 +1391,5 @@ mod nav_tests {
             "No nav areas should fall back to wall checking");
     }
 }
+
+
