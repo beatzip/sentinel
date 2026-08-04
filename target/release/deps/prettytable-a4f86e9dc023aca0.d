@@ -1,0 +1,11 @@
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\prettytable-a4f86e9dc023aca0.d: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\cell.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\format.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\row.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\utils.rs
+
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\libprettytable-a4f86e9dc023aca0.rlib: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\cell.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\format.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\row.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\utils.rs
+
+C:\Users\User\copilot-worktrees\sentinel\beatzip-redesigned-disco\target\release\deps\libprettytable-a4f86e9dc023aca0.rmeta: C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\lib.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\cell.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\format.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\row.rs C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\utils.rs
+
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\lib.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\cell.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\format.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\row.rs:
+C:\Users\User\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\prettytable-0.10.0\src\utils.rs:

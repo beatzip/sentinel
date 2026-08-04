@@ -1,4 +1,4 @@
-use super::bomb::BombState;
+﻿use super::bomb::BombState;
 use super::evidence::Evidence;
 use super::feature::FeatureVector;
 use super::grenade::GrenadeState;
@@ -98,6 +98,11 @@ impl MatchContext {
         &self.states
     }
 
+
+    /// Get mutable access to all tick states
+    pub fn states_mut(&mut self) -> &mut Vec<TickState> {
+        &mut self.states
+    }
     /// Get the first tick
     pub fn first_tick(&self) -> Tick {
         self.states.first().map(|s| s.tick).unwrap_or(Tick(0))
@@ -234,7 +239,7 @@ mod tests {
     #[test]
     fn states_in_range_exact_match_boundary() {
         let ctx = make_context();
-        // Exact match on both ends — both should be included
+        // Exact match on both ends вЂ” both should be included
         let slice = ctx.states_in_range(Tick(100), Tick(300));
         assert_eq!(slice.len(), 3, "Should include ticks 100, 200, 300");
         assert_eq!(slice[0].tick, Tick(100));
@@ -245,7 +250,7 @@ mod tests {
     #[test]
     fn states_in_range_no_match() {
         let ctx = make_context();
-        // No exact match for 150 — should start at next higher (200)
+        // No exact match for 150 вЂ” should start at next higher (200)
         let slice = ctx.states_in_range(Tick(150), Tick(250));
         assert_eq!(slice.len(), 1);
         assert_eq!(slice[0].tick, Tick(200));
