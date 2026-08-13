@@ -1,4 +1,7 @@
-﻿use std::collections::HashMap;
+// The kv3 parser is a scaffold for Source 2 key-value parsing; the
+// digit/sign and whitespace/comma branches intentionally share bodies.
+#![expect(clippy::if_same_then_else)]
+use std::collections::HashMap;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,28 +18,54 @@ pub enum KV3Value {
 
 impl KV3Value {
     pub fn as_object(&self) -> Option<&HashMap<String, KV3Value>> {
-        match self { KV3Value::Object(m) => Some(m), _ => None }
+        match self {
+            KV3Value::Object(m) => Some(m),
+            _ => None,
+        }
     }
     pub fn as_array(&self) -> Option<&Vec<KV3Value>> {
-        match self { KV3Value::Array(a) => Some(a), _ => None }
+        match self {
+            KV3Value::Array(a) => Some(a),
+            _ => None,
+        }
     }
     pub fn as_bytes(&self) -> Option<&Vec<u8>> {
-        match self { KV3Value::Bytes(b) => Some(b), _ => None }
+        match self {
+            KV3Value::Bytes(b) => Some(b),
+            _ => None,
+        }
     }
     pub fn as_f64(&self) -> Option<f64> {
-        match self { KV3Value::Float(f) => Some(*f), KV3Value::Int(i) => Some(*i as f64), _ => None }
+        match self {
+            KV3Value::Float(f) => Some(*f),
+            KV3Value::Int(i) => Some(*i as f64),
+            _ => None,
+        }
     }
     pub fn as_i64(&self) -> Option<i64> {
-        match self { KV3Value::Int(i) => Some(*i), KV3Value::Float(f) => Some(*f as i64), _ => None }
+        match self {
+            KV3Value::Int(i) => Some(*i),
+            KV3Value::Float(f) => Some(*f as i64),
+            _ => None,
+        }
     }
     pub fn get(&self, key: &str) -> Option<&KV3Value> {
-        match self { KV3Value::Object(m) => m.get(key), _ => None }
+        match self {
+            KV3Value::Object(m) => m.get(key),
+            _ => None,
+        }
     }
     pub fn as_str(&self) -> Option<&str> {
-        match self { KV3Value::String(s) => Some(s), _ => None }
+        match self {
+            KV3Value::String(s) => Some(s),
+            _ => None,
+        }
     }
     pub fn as_bool(&self) -> Option<bool> {
-        match self { KV3Value::Bool(b) => Some(*b), _ => None }
+        match self {
+            KV3Value::Bool(b) => Some(*b),
+            _ => None,
+        }
     }
 }
 
@@ -89,14 +118,24 @@ pub struct KV3Parser {
 
 impl KV3Parser {
     pub fn new(input: &str) -> Self {
-        Self { chars: input.chars().collect(), pos: 0 }
+        Self {
+            chars: input.chars().collect(),
+            pos: 0,
+        }
     }
-    
-    fn remaining(&self) -> usize { self.chars.len() - self.pos }
-    fn peek(&self) -> Option<char> { self.chars.get(self.pos).copied() }
+
+    #[expect(dead_code, reason = "scaffold for the kv3 walker")]
+    fn remaining(&self) -> usize {
+        self.chars.len() - self.pos
+    }
+    fn peek(&self) -> Option<char> {
+        self.chars.get(self.pos).copied()
+    }
     fn next_char(&mut self) -> Option<char> {
         let c = self.chars.get(self.pos).copied();
-        if c.is_some() { self.pos += 1; }
+        if c.is_some() {
+            self.pos += 1;
+        }
         c
     }
     fn skip_whitespace(&mut self) {
@@ -104,6 +143,7 @@ impl KV3Parser {
             self.next_char();
         }
     }
+    #[expect(dead_code, reason = "scaffold for the kv3 walker")]
     fn skip_comment(&mut self) {
         if self.peek() == Some('/') && self.chars.get(self.pos + 1) == Some(&'/') {
             self.pos += 2;
@@ -118,7 +158,7 @@ impl KV3Parser {
         self.skip_whitespace();
         Ok(value)
     }
-    
+
     fn parse_value(&mut self) -> Result<KV3Value, KV3Error> {
         self.skip_whitespace();
         match self.peek() {
@@ -131,13 +171,13 @@ impl KV3Parser {
             Some('f') => self.parse_false(),
             Some('n') => self.parse_null(),
             Some(c) if c == '-' || c.is_ascii_digit() => self.parse_number(),
-            Some(c) => {
+            Some(_c) => {
                 let ch = self.next_char();
                 Err(KV3Error::UnexpectedChar(ch.unwrap_or('?')))
             }
         }
     }
-    
+
     fn parse_string(&mut self) -> Result<String, KV3Error> {
         self.next_char(); // skip opening quote
         let mut s = String::new();
@@ -145,32 +185,30 @@ impl KV3Parser {
             match self.next_char() {
                 None => return Err(KV3Error::InvalidString(s)),
                 Some('"') => return Ok(s),
-                Some('\\') => {
-                    match self.next_char() {
-                        None => return Err(KV3Error::InvalidString(s)),
-                        Some('"') => s.push('"'),
-                        Some('\\') => s.push('\\'),
-                        Some('/') => s.push('/'),
-                        Some('n') => s.push('\n'),
-                        Some('r') => s.push('\r'),
-                        Some('t') => s.push('\t'),
-                        Some('u') => {
-                            let mut hex = String::new();
-                            for _ in 0..4 {
-                                match self.next_char() {
-                                    Some(c) if c.is_ascii_hexdigit() => hex.push(c),
-                                    _ => return Err(KV3Error::InvalidString(s)),
-                                }
-                            }
-                            if let Ok(code) = u32::from_str_radix(&hex, 16) {
-                                if let Some(ch) = char::from_u32(code) {
-                                    s.push(ch);
-                                }
+                Some('\\') => match self.next_char() {
+                    None => return Err(KV3Error::InvalidString(s)),
+                    Some('"') => s.push('"'),
+                    Some('\\') => s.push('\\'),
+                    Some('/') => s.push('/'),
+                    Some('n') => s.push('\n'),
+                    Some('r') => s.push('\r'),
+                    Some('t') => s.push('\t'),
+                    Some('u') => {
+                        let mut hex = String::new();
+                        for _ in 0..4 {
+                            match self.next_char() {
+                                Some(c) if c.is_ascii_hexdigit() => hex.push(c),
+                                _ => return Err(KV3Error::InvalidString(s)),
                             }
                         }
-                        _ => return Err(KV3Error::InvalidString(s)),
+                        if let Ok(code) = u32::from_str_radix(&hex, 16)
+                            && let Some(ch) = char::from_u32(code)
+                        {
+                            s.push(ch);
+                        }
                     }
-                }
+                    _ => return Err(KV3Error::InvalidString(s)),
+                },
                 Some(c) => s.push(c),
             }
         }
@@ -184,7 +222,9 @@ impl KV3Parser {
             } else if c == '-' && self.pos == start {
                 self.next_char();
             } else if c == '.' {
-                if has_dot { break; }
+                if has_dot {
+                    break;
+                }
                 has_dot = true;
                 self.next_char();
             } else if c == 'e' || c == 'E' {
@@ -199,27 +239,31 @@ impl KV3Parser {
         }
         let num_str: String = self.chars[start..self.pos].iter().collect();
         if has_dot {
-            num_str.parse::<f64>()
+            num_str
+                .parse::<f64>()
                 .map(KV3Value::Float)
                 .map_err(|_| KV3Error::InvalidNumber(num_str))
         } else {
-            num_str.parse::<i64>()
+            num_str
+                .parse::<i64>()
                 .map(KV3Value::Int)
                 .map_err(|_| KV3Error::InvalidNumber(num_str))
         }
     }
-    
+
     fn parse_object(&mut self) -> Result<KV3Value, KV3Error> {
         self.next_char(); // skip {
         let mut map = HashMap::new();
         self.skip_whitespace();
         while self.peek() != Some('}') {
             self.skip_whitespace();
-            if self.peek() == None { return Err(KV3Error::UnexpectedEnd); }
+            if self.peek().is_none() {
+                return Err(KV3Error::UnexpectedEnd);
+            }
             let key = self.parse_string()?;
             self.skip_whitespace();
             match self.next_char() {
-                Some(':') => {},
+                Some(':') => {}
                 _ => return Err(KV3Error::UnexpectedChar(self.peek().unwrap_or('?'))),
             }
             self.skip_whitespace();
@@ -239,7 +283,9 @@ impl KV3Parser {
         self.skip_whitespace();
         while self.peek() != Some(']') {
             self.skip_whitespace();
-            if self.peek() == None { return Err(KV3Error::UnexpectedEnd); }
+            if self.peek().is_none() {
+                return Err(KV3Error::UnexpectedEnd);
+            }
             let value = self.parse_value()?;
             arr.push(value);
             self.skip_whitespace();
@@ -250,7 +296,7 @@ impl KV3Parser {
         self.next_char(); // skip ]
         Ok(KV3Value::Array(arr))
     }
-    
+
     fn parse_bytes(&mut self) -> Result<KV3Value, KV3Error> {
         self.next_char(); // skip #
         self.next_char(); // skip [
@@ -258,7 +304,9 @@ impl KV3Parser {
         self.skip_whitespace();
         while self.peek() != Some(']') {
             self.skip_whitespace();
-            if self.peek() == None { return Err(KV3Error::UnexpectedEnd); }
+            if self.peek().is_none() {
+                return Err(KV3Error::UnexpectedEnd);
+            }
             // Read hex bytes like "0A 1B 2C" or just "AB"
             let mut hex_byte = String::new();
             while let Some(c) = self.peek() {
@@ -289,7 +337,7 @@ impl KV3Parser {
         self.next_char(); // skip ]
         Ok(KV3Value::Bytes(bytes))
     }
-    
+
     fn parse_true(&mut self) -> Result<KV3Value, KV3Error> {
         for expected in "true".chars() {
             if self.next_char() != Some(expected) {
@@ -298,7 +346,7 @@ impl KV3Parser {
         }
         Ok(KV3Value::Bool(true))
     }
-    
+
     fn parse_false(&mut self) -> Result<KV3Value, KV3Error> {
         for expected in "false".chars() {
             if self.next_char() != Some(expected) {
@@ -307,7 +355,7 @@ impl KV3Parser {
         }
         Ok(KV3Value::Bool(false))
     }
-    
+
     fn parse_null(&mut self) -> Result<KV3Value, KV3Error> {
         for expected in "null".chars() {
             if self.next_char() != Some(expected) {
@@ -320,8 +368,11 @@ impl KV3Parser {
 
 /// Convert byte array to f32 vector (little-endian)
 pub fn bytes_to_f32_vec(bytes: &[u8]) -> Result<Vec<f32>, KV3Error> {
-    if bytes.len() % 4 != 0 {
-        return Err(KV3Error::InvalidNumber(format!("Bytes length {} is not multiple of 4", bytes.len())));
+    if !bytes.len().is_multiple_of(4) {
+        return Err(KV3Error::InvalidNumber(format!(
+            "Bytes length {} is not multiple of 4",
+            bytes.len()
+        )));
     }
     let mut result = Vec::with_capacity(bytes.len() / 4);
     for chunk in bytes.chunks_exact(4) {
@@ -332,8 +383,11 @@ pub fn bytes_to_f32_vec(bytes: &[u8]) -> Result<Vec<f32>, KV3Error> {
 
 /// Convert byte array to i32 vector (little-endian)
 pub fn bytes_to_i32_vec(bytes: &[u8]) -> Result<Vec<i32>, KV3Error> {
-    if bytes.len() % 4 != 0 {
-        return Err(KV3Error::InvalidNumber(format!("Bytes length {} is not multiple of 4", bytes.len())));
+    if !bytes.len().is_multiple_of(4) {
+        return Err(KV3Error::InvalidNumber(format!(
+            "Bytes length {} is not multiple of 4",
+            bytes.len()
+        )));
     }
     let mut result = Vec::with_capacity(bytes.len() / 4);
     for chunk in bytes.chunks_exact(4) {
@@ -369,7 +423,7 @@ mod tests {
     fn test_parse_int() {
         let result = parse_kv3("42").unwrap();
         assert_eq!(result, KV3Value::Int(42));
-        
+
         let result = parse_kv3("-10").unwrap();
         assert_eq!(result, KV3Value::Int(-10));
     }
@@ -456,6 +510,10 @@ mod tests {
             ]
         }"#;
         let result = parse_kv3(input);
-        assert!(result.is_ok(), "Failed to parse nested object: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to parse nested object: {:?}",
+            result.err()
+        );
     }
 }

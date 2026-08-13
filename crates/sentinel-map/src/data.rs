@@ -37,8 +37,10 @@ pub struct WallSegment {
 pub fn compute_bbox2d(points: &[Vec2]) -> AABB2D {
     if points.is_empty() {
         return AABB2D {
-            min_x: 0.0, min_y: 0.0,
-            max_x: 0.0, max_y: 0.0,
+            min_x: 0.0,
+            min_y: 0.0,
+            max_x: 0.0,
+            max_y: 0.0,
         };
     }
     let mut min_x = f32::MAX;
@@ -51,7 +53,12 @@ pub fn compute_bbox2d(points: &[Vec2]) -> AABB2D {
         max_x = max_x.max(p.x);
         max_y = max_y.max(p.y);
     }
-    AABB2D { min_x, min_y, max_x, max_y }
+    AABB2D {
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+    }
 }
 
 /// 2D point for geometry
@@ -147,8 +154,16 @@ impl Triangle3D {
     /// Returns distance to intersection if hit, None otherwise
     pub fn ray_intersect(&self, origin: Vec3, direction: Vec3) -> Option<f32> {
         // Möller–Trumbore ray-triangle intersection algorithm
-        let edge1 = Vec3::new(self.v2.x - self.v1.x, self.v2.y - self.v1.y, self.v2.z - self.v1.z);
-        let edge2 = Vec3::new(self.v3.x - self.v1.x, self.v3.y - self.v1.y, self.v3.z - self.v1.z);
+        let edge1 = Vec3::new(
+            self.v2.x - self.v1.x,
+            self.v2.y - self.v1.y,
+            self.v2.z - self.v1.z,
+        );
+        let edge2 = Vec3::new(
+            self.v3.x - self.v1.x,
+            self.v3.y - self.v1.y,
+            self.v3.z - self.v1.z,
+        );
 
         let h = cross_product(direction, edge2);
         let a = dot_product(edge1, h);
@@ -158,10 +173,14 @@ impl Triangle3D {
         }
 
         let f = 1.0 / a;
-        let s = Vec3::new(origin.x - self.v1.x, origin.y - self.v1.y, origin.z - self.v1.z);
+        let s = Vec3::new(
+            origin.x - self.v1.x,
+            origin.y - self.v1.y,
+            origin.z - self.v1.z,
+        );
         let u = f * dot_product(s, h);
 
-        if u < 0.0 || u > 1.0 {
+        if !(0.0..=1.0).contains(&u) {
             return None;
         }
 
@@ -300,7 +319,7 @@ impl BVHNode3D {
             right: None,
         }
     }
-    
+
     pub fn is_leaf(&self) -> bool {
         self.left.is_none() && self.right.is_none()
     }
@@ -319,13 +338,10 @@ impl TrianglesBVH {
         let aabb = Self::compute_bounding_box(&triangles);
         Self::build_node(triangles, &aabb)
     }
-    
-    fn build_node(
-        mut triangles: Vec<Triangle3D>,
-        aabb: &AABB3D,
-    ) -> BVHNode3D {
+
+    fn build_node(mut triangles: Vec<Triangle3D>, aabb: &AABB3D) -> BVHNode3D {
         let mut node = BVHNode3D::new(*aabb);
-        
+
         // Leaf node criteria - store up to 2 triangles directly
         if triangles.len() <= 2 {
             for triangle in triangles {
@@ -337,10 +353,10 @@ impl TrianglesBVH {
             }
             return node;
         }
-        
+
         // Find longest axis
         let axis = Self::choose_axis(aabb);
-        
+
         // Sort triangles by centroid
         triangles.sort_by(|a, b| {
             let c1 = Self::triangle_centroid(a);
@@ -351,33 +367,57 @@ impl TrianglesBVH {
                 _ => c1.z.partial_cmp(&c2.z).unwrap_or(std::cmp::Ordering::Equal),
             }
         });
-        
+
         // Split at median
         let mid = triangles.len() / 2;
         let left_triangles: Vec<Triangle3D> = triangles.drain(..mid).collect();
         let right_triangles: Vec<Triangle3D> = triangles;
-        
+
         let left_aabb = Self::compute_bounding_box(&left_triangles);
         let right_aabb = Self::compute_bounding_box(&right_triangles);
-        
+
         node.left = Some(Box::new(Self::build_node(left_triangles, &left_aabb)));
         node.right = Some(Box::new(Self::build_node(right_triangles, &right_aabb)));
-        
+
         node
     }
-    
+
     fn compute_bounding_box(triangles: &[Triangle3D]) -> AABB3D {
         let mut min = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
         let mut max = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
         for triangle in triangles {
-            min.x = min.x.min(triangle.v1.x).min(triangle.v2.x).min(triangle.v3.x);
-            min.y = min.y.min(triangle.v1.y).min(triangle.v2.y).min(triangle.v3.y);
-            min.z = min.z.min(triangle.v1.z).min(triangle.v2.z).min(triangle.v3.z);
-            
-            max.x = max.x.max(triangle.v1.x).max(triangle.v2.x).max(triangle.v3.x);
-            max.y = max.y.max(triangle.v1.y).max(triangle.v2.y).max(triangle.v3.y);
-            max.z = max.z.max(triangle.v1.z).max(triangle.v2.z).max(triangle.v3.z);
+            min.x = min
+                .x
+                .min(triangle.v1.x)
+                .min(triangle.v2.x)
+                .min(triangle.v3.x);
+            min.y = min
+                .y
+                .min(triangle.v1.y)
+                .min(triangle.v2.y)
+                .min(triangle.v3.y);
+            min.z = min
+                .z
+                .min(triangle.v1.z)
+                .min(triangle.v2.z)
+                .min(triangle.v3.z);
+
+            max.x = max
+                .x
+                .max(triangle.v1.x)
+                .max(triangle.v2.x)
+                .max(triangle.v3.x);
+            max.y = max
+                .y
+                .max(triangle.v1.y)
+                .max(triangle.v2.y)
+                .max(triangle.v3.y);
+            max.z = max
+                .z
+                .max(triangle.v1.z)
+                .max(triangle.v2.z)
+                .max(triangle.v3.z);
         }
 
         AABB3D::new(min, max)
@@ -388,9 +428,13 @@ impl TrianglesBVH {
         let extent_y = aabb.max.y - aabb.min.y;
         let extent_z = aabb.max.z - aabb.min.z;
 
-        if extent_x >= extent_y && extent_x >= extent_z { 0 }
-        else if extent_y >= extent_z { 1 }
-        else { 2 }
+        if extent_x >= extent_y && extent_x >= extent_z {
+            0
+        } else if extent_y >= extent_z {
+            1
+        } else {
+            2
+        }
     }
 
     fn triangle_centroid(triangle: &Triangle3D) -> Vec3 {
@@ -446,12 +490,7 @@ impl MapData {
     }
 
     /// Ray-triangle intersection using BVH (returns hit distance if intersection)
-    fn ray_intersect_bvh(
-        &self,
-        origin: Vec3,
-        direction: Vec3,
-        node: &BVHNode3D,
-    ) -> Option<f32> {
+    fn ray_intersect_bvh(&self, origin: Vec3, direction: Vec3, node: &BVHNode3D) -> Option<f32> {
         // Check if ray misses AABB
         if !node.aabb.intersects_ray(origin, direction) {
             return None;
@@ -460,19 +499,19 @@ impl MapData {
         // If it's a leaf node, check all triangles
         if node.is_leaf() {
             // Check legacy single triangle
-            if let Some(ref triangle) = node.triangle {
-                if let Some(t) = self.ray_intersect_triangle(origin, direction, triangle) {
-                    return Some(t);
-                }
+            if let Some(ref triangle) = node.triangle
+                && let Some(t) = self.ray_intersect_triangle(origin, direction, triangle)
+            {
+                return Some(t);
             }
-            
+
             // Check multiple triangles in leaf
             for triangle in &node.triangles {
                 if let Some(t) = self.ray_intersect_triangle(origin, direction, triangle) {
                     return Some(t);
                 }
             }
-            
+
             return None;
         }
 
@@ -483,19 +522,19 @@ impl MapData {
 
         // Recursively check children
         let mut closest_hit = f32::MAX;
-        
-        if let Some(ref left) = node.left {
-            if let Some(t) = self.ray_intersect_bvh(origin, direction, left) {
-                closest_hit = closest_hit.min(t);
-            }
+
+        if let Some(ref left) = node.left
+            && let Some(t) = self.ray_intersect_bvh(origin, direction, left)
+        {
+            closest_hit = closest_hit.min(t);
         }
-        
-        if let Some(ref right) = node.right {
-            if let Some(t) = self.ray_intersect_bvh(origin, direction, right) {
-                closest_hit = closest_hit.min(t);
-            }
+
+        if let Some(ref right) = node.right
+            && let Some(t) = self.ray_intersect_bvh(origin, direction, right)
+        {
+            closest_hit = closest_hit.min(t);
         }
-        
+
         if closest_hit.is_finite() {
             Some(closest_hit)
         } else {
@@ -524,7 +563,7 @@ impl MapData {
 
         let h = cross_product(direction, edge2);
         let a = dot_product(edge1, h);
-        
+
         if a > -0.0001 && a < 0.0001 {
             return None; // Ray parallel to triangle
         }
@@ -536,25 +575,21 @@ impl MapData {
             origin.z - triangle.v1.z,
         );
         let u = f * dot_product(s, h);
-        
-        if u < 0.0 || u > 1.0 {
+
+        if !(0.0..=1.0).contains(&u) {
             return None;
         }
 
         let q = cross_product(s, edge1);
         let v = f * dot_product(direction, q);
-        
+
         if v < 0.0 || u + v > 1.0 {
             return None;
         }
 
         let t = f * dot_product(edge2, q);
-        
-        if t > 0.0001 {
-            Some(t)
-        } else {
-            None
-        }
+
+        if t > 0.0001 { Some(t) } else { None }
     }
 
     /// Build BVH from walls for 3D raycasting
@@ -564,21 +599,25 @@ impl MapData {
         }
 
         // Convert wall segments to triangles for raycasting
-        let triangles: Vec<Triangle3D> = self.walls.iter().flat_map(|wall| {
-            let z = 100.0; // Wall height
-            vec![
-                Triangle3D::new(
-                    Vec3::new(wall.start.x, wall.start.y, 0.0),
-                    Vec3::new(wall.end.x, wall.end.y, 0.0),
-                    Vec3::new(wall.start.x, wall.start.y, z),
-                ),
-                Triangle3D::new(
-                    Vec3::new(wall.end.x, wall.end.y, 0.0),
-                    Vec3::new(wall.end.x, wall.end.y, z),
-                    Vec3::new(wall.start.x, wall.start.y, z),
-                ),
-            ]
-        }).collect();
+        let triangles: Vec<Triangle3D> = self
+            .walls
+            .iter()
+            .flat_map(|wall| {
+                let z = 100.0; // Wall height
+                vec![
+                    Triangle3D::new(
+                        Vec3::new(wall.start.x, wall.start.y, 0.0),
+                        Vec3::new(wall.end.x, wall.end.y, 0.0),
+                        Vec3::new(wall.start.x, wall.start.y, z),
+                    ),
+                    Triangle3D::new(
+                        Vec3::new(wall.end.x, wall.end.y, 0.0),
+                        Vec3::new(wall.end.x, wall.end.y, z),
+                        Vec3::new(wall.start.x, wall.start.y, z),
+                    ),
+                ]
+            })
+            .collect();
 
         self.bvh = Some(TrianglesBVH::build(triangles));
     }
@@ -586,78 +625,140 @@ impl MapData {
     /// Load map from .tri file (CS2 physics collision data)
     pub fn load_from_tri(path: &std::path::Path) -> Result<Self, String> {
         use std::io::Read;
-        
-        let mut file = std::fs::File::open(path)
-            .map_err(|e| format!("Failed to open tri file: {}", e))?;
-        
+
+        let mut file =
+            std::fs::File::open(path).map_err(|e| format!("Failed to open tri file: {}", e))?;
+
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)
             .map_err(|e| format!("Failed to read tri file: {}", e))?;
-        
+
         // Parse triangles (each is 9 f32 values = 36 bytes)
         let triangle_count = buffer.len() / 36;
         let mut triangles: Vec<Triangle3D> = Vec::new();
-        
+
         for i in 0..triangle_count {
             let offset = i * 36;
             if offset + 36 > buffer.len() {
                 break;
             }
-            
-            let p1_x = f32::from_le_bytes([buffer[offset], buffer[offset+1], buffer[offset+2], buffer[offset+3]]);
-            let p1_y = f32::from_le_bytes([buffer[offset+4], buffer[offset+5], buffer[offset+6], buffer[offset+7]]);
-            let p1_z = f32::from_le_bytes([buffer[offset+8], buffer[offset+9], buffer[offset+10], buffer[offset+11]]);
-            
-            let p2_x = f32::from_le_bytes([buffer[offset+12], buffer[offset+13], buffer[offset+14], buffer[offset+15]]);
-            let p2_y = f32::from_le_bytes([buffer[offset+16], buffer[offset+17], buffer[offset+18], buffer[offset+19]]);
-            let p2_z = f32::from_le_bytes([buffer[offset+20], buffer[offset+21], buffer[offset+22], buffer[offset+23]]);
-            
-            let p3_x = f32::from_le_bytes([buffer[offset+24], buffer[offset+25], buffer[offset+26], buffer[offset+27]]);
-            let p3_y = f32::from_le_bytes([buffer[offset+28], buffer[offset+29], buffer[offset+30], buffer[offset+31]]);
-            let p3_z = f32::from_le_bytes([buffer[offset+32], buffer[offset+33], buffer[offset+34], buffer[offset+35]]);
-            
+
+            let p1_x = f32::from_le_bytes([
+                buffer[offset],
+                buffer[offset + 1],
+                buffer[offset + 2],
+                buffer[offset + 3],
+            ]);
+            let p1_y = f32::from_le_bytes([
+                buffer[offset + 4],
+                buffer[offset + 5],
+                buffer[offset + 6],
+                buffer[offset + 7],
+            ]);
+            let p1_z = f32::from_le_bytes([
+                buffer[offset + 8],
+                buffer[offset + 9],
+                buffer[offset + 10],
+                buffer[offset + 11],
+            ]);
+
+            let p2_x = f32::from_le_bytes([
+                buffer[offset + 12],
+                buffer[offset + 13],
+                buffer[offset + 14],
+                buffer[offset + 15],
+            ]);
+            let p2_y = f32::from_le_bytes([
+                buffer[offset + 16],
+                buffer[offset + 17],
+                buffer[offset + 18],
+                buffer[offset + 19],
+            ]);
+            let p2_z = f32::from_le_bytes([
+                buffer[offset + 20],
+                buffer[offset + 21],
+                buffer[offset + 22],
+                buffer[offset + 23],
+            ]);
+
+            let p3_x = f32::from_le_bytes([
+                buffer[offset + 24],
+                buffer[offset + 25],
+                buffer[offset + 26],
+                buffer[offset + 27],
+            ]);
+            let p3_y = f32::from_le_bytes([
+                buffer[offset + 28],
+                buffer[offset + 29],
+                buffer[offset + 30],
+                buffer[offset + 31],
+            ]);
+            let p3_z = f32::from_le_bytes([
+                buffer[offset + 32],
+                buffer[offset + 33],
+                buffer[offset + 34],
+                buffer[offset + 35],
+            ]);
+
             triangles.push(Triangle3D::new(
                 Vec3::new(p1_x, p1_y, p1_z),
                 Vec3::new(p2_x, p2_y, p2_z),
                 Vec3::new(p3_x, p3_y, p3_z),
             ));
         }
-        
-        let map_name = path.file_stem()
+
+        let map_name = path
+            .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .to_string();
-        
+
         // Build walls from triangles (project to 2D)
-        let walls: Vec<WallSegment> = triangles.iter().filter_map(|triangle| {
-            // Check if triangle has significant height (z difference)
-            let z_min = triangle.v1.z.min(triangle.v2.z).min(triangle.v3.z);
-            let z_max = triangle.v1.z.max(triangle.v2.z).max(triangle.v3.z);
-            let z_diff = z_max - z_min;
-            
-            // Only include walls with significant height difference
-            if z_diff < 50.0 {
-                return None;
-            }
-            
-            // Project 3D triangle edges to 2D walls
-            let v1 = Vec2::new(triangle.v1.x, triangle.v1.y);
-            let v2 = Vec2::new(triangle.v2.x, triangle.v2.y);
-            let v3 = Vec2::new(triangle.v3.x, triangle.v3.y);
-            
-            Some(vec![
-                WallSegment { start: v1, end: v2, material: Material::Solid },
-                WallSegment { start: v2, end: v3, material: Material::Solid },
-                WallSegment { start: v3, end: v1, material: Material::Solid },
-            ])
-        }).flatten().collect();
-        
+        let walls: Vec<WallSegment> = triangles
+            .iter()
+            .filter_map(|triangle| {
+                // Check if triangle has significant height (z difference)
+                let z_min = triangle.v1.z.min(triangle.v2.z).min(triangle.v3.z);
+                let z_max = triangle.v1.z.max(triangle.v2.z).max(triangle.v3.z);
+                let z_diff = z_max - z_min;
+
+                // Only include walls with significant height difference
+                if z_diff < 50.0 {
+                    return None;
+                }
+
+                // Project 3D triangle edges to 2D walls
+                let v1 = Vec2::new(triangle.v1.x, triangle.v1.y);
+                let v2 = Vec2::new(triangle.v2.x, triangle.v2.y);
+                let v3 = Vec2::new(triangle.v3.x, triangle.v3.y);
+
+                Some(vec![
+                    WallSegment {
+                        start: v1,
+                        end: v2,
+                        material: Material::Solid,
+                    },
+                    WallSegment {
+                        start: v2,
+                        end: v3,
+                        material: Material::Solid,
+                    },
+                    WallSegment {
+                        start: v3,
+                        end: v1,
+                        material: Material::Solid,
+                    },
+                ])
+            })
+            .flatten()
+            .collect();
+
         // Simplify walls
         let walls = crate::loader::simplify_walls(walls);
-        
+
         // Build BVH
         let bvh = TrianglesBVH::build(triangles);
-        
+
         Ok(MapData {
             name: map_name,
             bounds: (-5000.0, -5000.0, 5000.0, 5000.0),
@@ -729,11 +830,15 @@ impl MapData {
     /// Returns the NavNode ID if found.
     pub fn find_area_2d(&self, pos: Vec2) -> Option<u32> {
         // Fast path: bounding box test
-        let mut candidates: Vec<&NavNode> = self.nav_nodes.iter()
+        let mut candidates: Vec<&NavNode> = self
+            .nav_nodes
+            .iter()
             .filter(|node| {
                 if let Some(ref bbox) = node.bbox {
-                    pos.x >= bbox.min_x && pos.x <= bbox.max_x
-                        && pos.y >= bbox.min_y && pos.y <= bbox.max_y
+                    pos.x >= bbox.min_x
+                        && pos.x <= bbox.max_x
+                        && pos.y >= bbox.min_y
+                        && pos.y <= bbox.max_y
                 } else {
                     false
                 }
@@ -1167,31 +1272,46 @@ mod nav_tests {
     /// Area 1 and Area 2 are NOT connected to each other (separated by a wall)
     fn create_nav_test_map() -> MapData {
         let mut areas = Vec::new();
-        
+
         // Area 0: center room at (0, 0), size ~100x100
         areas.push(NavNode {
             id: 0,
             center: Vec3::new(0.0, 0.0, 64.0),
             connections: vec![1, 2],
-            bbox: Some(AABB2D { min_x: -50.0, min_y: -50.0, max_x: 50.0, max_y: 50.0 }),
+            bbox: Some(AABB2D {
+                min_x: -50.0,
+                min_y: -50.0,
+                max_x: 50.0,
+                max_y: 50.0,
+            }),
         });
-        
+
         // Area 1: left room at (-200, 0), connected to Area 0
         areas.push(NavNode {
             id: 1,
             center: Vec3::new(-200.0, 0.0, 64.0),
             connections: vec![0],
-            bbox: Some(AABB2D { min_x: -250.0, min_y: -50.0, max_x: -150.0, max_y: 50.0 }),
+            bbox: Some(AABB2D {
+                min_x: -250.0,
+                min_y: -50.0,
+                max_x: -150.0,
+                max_y: 50.0,
+            }),
         });
-        
+
         // Area 2: right room at (200, 0), connected to Area 0
         areas.push(NavNode {
             id: 2,
             center: Vec3::new(200.0, 0.0, 64.0),
             connections: vec![0],
-            bbox: Some(AABB2D { min_x: 150.0, min_y: -50.0, max_x: 250.0, max_y: 50.0 }),
+            bbox: Some(AABB2D {
+                min_x: 150.0,
+                min_y: -50.0,
+                max_x: 250.0,
+                max_y: 50.0,
+            }),
         });
-        
+
         MapData {
             name: "nav_test".to_string(),
             bounds: (-300.0, -100.0, 300.0, 100.0),
@@ -1215,17 +1335,17 @@ mod nav_tests {
     #[test]
     fn test_find_area_2d_same_area() {
         let map = create_nav_test_map();
-        
+
         // Position inside Area 0's bbox
         let pos = Vec2::new(10.0, 10.0);
         let area_id = map.find_area_2d(pos);
         assert_eq!(area_id, Some(0), "Should find Area 0");
-        
+
         // Position inside Area 1's bbox
         let pos1 = Vec2::new(-200.0, 0.0);
         let area_id1 = map.find_area_2d(pos1);
         assert_eq!(area_id1, Some(1), "Should find Area 1");
-        
+
         // Position inside Area 2's bbox
         let pos2 = Vec2::new(200.0, 0.0);
         let area_id2 = map.find_area_2d(pos2);
@@ -1235,11 +1355,14 @@ mod nav_tests {
     #[test]
     fn test_find_area_2d_outside_all_areas() {
         let map = create_nav_test_map();
-        
+
         // Position outside all nav area bboxes
         let pos = Vec2::new(500.0, 500.0);
         let area_id = map.find_area_2d(pos);
-        assert_eq!(area_id, None, "Should return None for position outside all areas");
+        assert_eq!(
+            area_id, None,
+            "Should return None for position outside all areas"
+        );
     }
 
     // ==================== can_walk_between Tests ====================
@@ -1247,7 +1370,7 @@ mod nav_tests {
     #[test]
     fn test_can_walk_between_same_area() {
         let map = create_nav_test_map();
-        
+
         // Same area should always return true
         assert!(map.can_walk_between(0, 0));
         assert!(map.can_walk_between(1, 1));
@@ -1257,11 +1380,11 @@ mod nav_tests {
     #[test]
     fn test_can_walk_between_directly_connected() {
         let map = create_nav_test_map();
-        
+
         // Area 0 <-> Area 1 (direct connection)
         assert!(map.can_walk_between(0, 1));
         assert!(map.can_walk_between(1, 0));
-        
+
         // Area 0 <-> Area 2 (direct connection)
         assert!(map.can_walk_between(0, 2));
         assert!(map.can_walk_between(2, 0));
@@ -1270,33 +1393,49 @@ mod nav_tests {
     #[test]
     fn test_can_walk_between_transitive() {
         let map = create_nav_test_map();
-        
+
         // Area 1 -> Area 0 -> Area 2 (transitive connection through Area 0)
-        assert!(map.can_walk_between(1, 2), "Area 1 should reach Area 2 via Area 0");
-        assert!(map.can_walk_between(2, 1), "Area 2 should reach Area 1 via Area 0");
+        assert!(
+            map.can_walk_between(1, 2),
+            "Area 1 should reach Area 2 via Area 0"
+        );
+        assert!(
+            map.can_walk_between(2, 1),
+            "Area 2 should reach Area 1 via Area 0"
+        );
     }
 
     #[test]
     fn test_can_walk_between_unreachable() {
         // Test with a map where some areas are truly disconnected
         let mut areas = Vec::new();
-        
+
         // Area A: isolated at (0, 0)
         areas.push(NavNode {
             id: 10,
             center: Vec3::new(0.0, 0.0, 64.0),
             connections: Vec::new(), // No connections
-            bbox: Some(AABB2D { min_x: -50.0, min_y: -50.0, max_x: 50.0, max_y: 50.0 }),
+            bbox: Some(AABB2D {
+                min_x: -50.0,
+                min_y: -50.0,
+                max_x: 50.0,
+                max_y: 50.0,
+            }),
         });
-        
+
         // Area B: isolated at (500, 500)
         areas.push(NavNode {
             id: 11,
             center: Vec3::new(500.0, 500.0, 64.0),
             connections: Vec::new(), // No connections
-            bbox: Some(AABB2D { min_x: 450.0, min_y: 450.0, max_x: 550.0, max_y: 550.0 }),
+            bbox: Some(AABB2D {
+                min_x: 450.0,
+                min_y: 450.0,
+                max_x: 550.0,
+                max_y: 550.0,
+            }),
         });
-        
+
         let map = MapData {
             name: "disconnected".to_string(),
             bounds: (0.0, 0.0, 600.0, 600.0),
@@ -1306,7 +1445,7 @@ mod nav_tests {
             nav_nodes: areas,
             bvh: None,
         };
-        
+
         // Isolated areas should not reach each other
         assert!(!map.can_walk_between(10, 11));
         assert!(!map.can_walk_between(11, 10));
@@ -1317,53 +1456,61 @@ mod nav_tests {
     #[test]
     fn test_line_blocked_via_nav_same_area() {
         let map = create_nav_test_map();
-        
+
         // Both positions inside Area 0 — should NOT be blocked (same nav area)
         let from = Vec2::new(10.0, 10.0);
         let to = Vec2::new(-10.0, -10.0);
-        assert!(!map.line_blocked_via_nav(from, to),
-            "Same nav area should always be visible");
+        assert!(
+            !map.line_blocked_via_nav(from, to),
+            "Same nav area should always be visible"
+        );
     }
 
     #[test]
     fn test_line_blocked_via_nav_connected_clear_line() {
         let map = create_nav_test_map();
-        
+
         // Area 1 to Area 0: connected, clear line (through the doorway)
         // Wall is at y=0 from x=-100 to x=100 — use positions above wall
         let from2 = Vec2::new(-180.0, 10.0);
         let to2 = Vec2::new(-10.0, 10.0);
         // This line does NOT cross the wall at y=0
-        assert!(!map.line_blocked_via_nav(from2, to2),
-            "Connected areas with clear line should be visible");
+        assert!(
+            !map.line_blocked_via_nav(from2, to2),
+            "Connected areas with clear line should be visible"
+        );
     }
 
     #[test]
     fn test_line_blocked_via_nav_connected_blocked_line() {
         let map = create_nav_test_map();
-        
+
         // From Area 1 to Area 2: connected via Area 0, but direct line crosses wall
         // Wall is at y=0 from x=-100 to x=100
         // Line from (-180, -10) to (180, 10) crosses the wall at an angle
-        let from = Vec2::new(-180.0, -10.0);  // Inside Area 1, below wall line
-        let to = Vec2::new(180.0, 10.0);      // Inside Area 2, above wall line
+        let from = Vec2::new(-180.0, -10.0); // Inside Area 1, below wall line
+        let to = Vec2::new(180.0, 10.0); // Inside Area 2, above wall line
         // The wall at y=0 from x=-100 to x=100 blocks the direct diagonal line
         // Since areas are connected but direct line is blocked -> falls back to wall check
-        assert!(map.line_blocked_via_nav(from, to),
-            "Connected areas with blocked direct line should be blocked");
+        assert!(
+            map.line_blocked_via_nav(from, to),
+            "Connected areas with blocked direct line should be blocked"
+        );
     }
 
     #[test]
     fn test_line_blocked_via_nav_outside_nav() {
         let map = create_nav_test_map();
-        
+
         // One position outside nav mesh — falls back to wall checking
-        let from = Vec2::new(500.0, 500.0);  // Outside nav
-        let to = Vec2::new(10.0, 10.0);      // Inside Area 0
-        
+        let from = Vec2::new(500.0, 500.0); // Outside nav
+        let to = Vec2::new(10.0, 10.0); // Inside Area 0
+
         // No wall between these positions (wall is at y=0 from -100 to 100)
-        assert!(!map.line_blocked_via_nav(from, to),
-            "Out-of-nav position should fall back to wall checking");
+        assert!(
+            !map.line_blocked_via_nav(from, to),
+            "Out-of-nav position should fall back to wall checking"
+        );
     }
 
     #[test]
@@ -1371,25 +1518,23 @@ mod nav_tests {
         let map = MapData {
             name: "empty".to_string(),
             bounds: (0.0, 0.0, 100.0, 100.0),
-            walls: vec![
-                WallSegment {
-                    start: Vec2::new(50.0, 0.0),
-                    end: Vec2::new(50.0, 100.0),
-                    material: Material::Solid,
-                },
-            ],
+            walls: vec![WallSegment {
+                start: Vec2::new(50.0, 0.0),
+                end: Vec2::new(50.0, 100.0),
+                material: Material::Solid,
+            }],
             spawns: Vec::new(),
             bombsites: Vec::new(),
-            nav_nodes: Vec::new(),  // No nav areas
+            nav_nodes: Vec::new(), // No nav areas
             bvh: None,
         };
-        
+
         // With no nav areas, should fall back to wall checking
         let from = Vec2::new(10.0, 50.0);
         let to = Vec2::new(90.0, 50.0);
-        assert!(map.line_blocked_via_nav(from, to),
-            "No nav areas should fall back to wall checking");
+        assert!(
+            map.line_blocked_via_nav(from, to),
+            "No nav areas should fall back to wall checking"
+        );
     }
 }
-
-

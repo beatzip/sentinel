@@ -1,4 +1,4 @@
-﻿use super::bomb::BombState;
+use super::bomb::BombState;
 use super::evidence::Evidence;
 use super::feature::FeatureVector;
 use super::grenade::GrenadeState;
@@ -56,9 +56,7 @@ impl MatchContext {
 
     /// Get all kills up to and including a specific tick (O(log n) via binary search)
     pub fn kills_up_to(&self, tick: Tick) -> &[KillEvent] {
-        let idx = self
-            .kills
-            .partition_point(|k| k.tick.0 <= tick.0);
+        let idx = self.kills.partition_point(|k| k.tick.0 <= tick.0);
         &self.kills[..idx]
     }
 
@@ -97,7 +95,6 @@ impl MatchContext {
     pub fn states(&self) -> &[TickState] {
         &self.states
     }
-
 
     /// Get mutable access to all tick states
     pub fn states_mut(&mut self) -> &mut Vec<TickState> {
@@ -212,7 +209,9 @@ mod tests {
             tick: Tick(tick),
             players: vec![],
             grenades: vec![],
-            bomb: BombState::Carried { carrier: PlayerId::new(0) },
+            bomb: BombState::Carried {
+                carrier: PlayerId::new(0),
+            },
             round: RoundState {
                 round_number: 1,
                 phase: RoundPhase::Live,
@@ -271,4 +270,3 @@ mod tests {
         assert!(slice.is_empty());
     }
 }
-

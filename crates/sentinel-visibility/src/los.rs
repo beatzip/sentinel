@@ -338,7 +338,11 @@ impl VisibilityEngine {
         // Also add all alive teammates (always on radar in CS2)
         if let Some(team) = player_team {
             for other in &state.players {
-                if other.team == team && other.id != player && other.alive && !radar_visible.contains(&other.id) {
+                if other.team == team
+                    && other.id != player
+                    && other.alive
+                    && !radar_visible.contains(&other.id)
+                {
                     radar_visible.push(other.id);
                 }
             }
@@ -413,7 +417,7 @@ impl VisibilityEngine {
     }
 
     /// Check if line of sight is blocked by walls (2D raycasting, or 3D BVH if available).
-    /// 
+    ///
     /// Priority order:
     /// 1. If both positions are inside nav mesh areas that are walkable-connected → not blocked
     /// 2. If BVH available (from .tri files), use 3D raycasting for most accurate results
@@ -422,35 +426,36 @@ impl VisibilityEngine {
         // Step 1: Try nav mesh connectivity check (fast + accurate for walkable paths)
         let from_2d = Vec2::new(observer.position.x, observer.position.y);
         let to_2d = Vec2::new(target.position.x, target.position.y);
-        
-        if let Some(from_area) = map.find_area_2d(from_2d) {
-            if let Some(to_area) = map.find_area_2d(to_2d) {
-                // Both inside nav areas — check connectivity
-                if from_area == to_area {
-                    // Same area = definitely visible
+
+        if let Some(from_area) = map.find_area_2d(from_2d)
+            && let Some(to_area) = map.find_area_2d(to_2d)
+        {
+            // Both inside nav areas — check connectivity
+            if from_area == to_area {
+                // Same area = definitely visible
+                return false;
+            }
+            if map.can_walk_between(from_area, to_area) {
+                // Connected areas: do a direct wall check on the XY projection
+                // (connection may go around corners, but a clear direct line is visible)
+                if !map.line_blocked(from_2d, to_2d) {
                     return false;
                 }
-                if map.can_walk_between(from_area, to_area) {
-                    // Connected areas: do a direct wall check on the XY projection
-                    // (connection may go around corners, but a clear direct line is visible)
-                    if !map.line_blocked(from_2d, to_2d) {
-                        return false;
-                    }
-                    // Line is blocked by walls even though areas are connected
-                    // Fall through to BVH/2D checking for more accuracy
-                }
+                // Line is blocked by walls even though areas are connected
+                // Fall through to BVH/2D checking for more accuracy
             }
         }
-        
+
         // Step 2: If we have a BVH (from .tri files), use 3D raycasting for accurate results
         if let Some(ref _bvh) = map.bvh {
             // Use 3D raycasting
             let from_map: sentinel_map::Vec3 = observer.position.into();
-            let direction: sentinel_map::Vec3 = (target.position - observer.position).normalize().into();
-            
+            let direction: sentinel_map::Vec3 =
+                (target.position - observer.position).normalize().into();
+
             return map.line_blocked_3d(from_map, direction);
         }
-        
+
         // Step 3: Fallback to 2D raycasting (ignore Z for wall checking)
         map.line_blocked(from_2d, to_2d)
     }
@@ -645,7 +650,8 @@ mod tests {
     fn test_visibility_state() {
         let state = create_test_state();
         let map = MapData::dust2();
-        let vis_state = VisibilityEngine::get_visibility_state(&state, PlayerId::new(1), Tick(100), &map);
+        let vis_state =
+            VisibilityEngine::get_visibility_state(&state, PlayerId::new(1), Tick(100), &map);
 
         assert_eq!(vis_state.player_id, PlayerId::new(1));
         assert!(!vis_state.visible_enemies.is_empty());
@@ -658,11 +664,12 @@ mod tests {
     fn test_line_blocked_with_wall() {
         let state = create_test_state();
         let map = MapData::dust2();
-        
+
         // Player at (0, 0), target at (500, 0)
         // Dust2 has a wall at x=1400 from y=2500 to y=3200
         // This shouldn't be blocked since we're at lower y values
-        let result = VisibilityEngine::can_see_with_map(&state, PlayerId::new(1), PlayerId::new(2), &map);
+        let result =
+            VisibilityEngine::can_see_with_map(&state, PlayerId::new(1), PlayerId::new(2), &map);
         // The default dust2 walls are at high y values, this line shouldn't be blocked
         // But let's test with a line that crosses a wall
         assert!(result.visible || result.reason != VisibilityReason::ThroughWall);
@@ -732,11 +739,15 @@ mod tests {
         };
 
         let map = MapData::dust2();
-        let result = VisibilityEngine::can_see_with_map(&state, PlayerId::new(1), PlayerId::new(2), &map);
-        
+        let result =
+            VisibilityEngine::can_see_with_map(&state, PlayerId::new(1), PlayerId::new(2), &map);
+
         // The line from (1300, 2800) to (1500, 2800) crosses the wall at x=1400
-        assert!(result.visible == false || result.reason == VisibilityReason::ThroughWall,
-            "Expected ThroughWall but got: {:?}", result.reason);
+        assert!(
+            result.visible == false || result.reason == VisibilityReason::ThroughWall,
+            "Expected ThroughWall but got: {:?}",
+            result.reason
+        );
     }
 
     #[test]
@@ -803,37 +814,48 @@ mod tests {
         };
 
         let map = MapData::dust2();
-        let result = VisibilityEngine::can_see_with_map(&state, PlayerId::new(1), PlayerId::new(2), &map);
-        
+        let result =
+            VisibilityEngine::can_see_with_map(&state, PlayerId::new(1), PlayerId::new(2), &map);
+
         // This line shouldn't cross any walls
-        assert!(result.visible, "Expected visible but got reason: {:?}", result.reason);
+        assert!(
+            result.visible,
+            "Expected visible but got reason: {:?}",
+            result.reason
+        );
     }
 
     #[test]
     fn test_wall_segment_intersection() {
         // Test the line_blocked function directly
         use sentinel_map::MapData;
-        
+
         let map = MapData::dust2();
-        
+
         // Create a line that should cross the mid wall at x=-200
         let from = Vec2::new(-300.0, 1500.0);
         let to = Vec2::new(-100.0, 1500.0);
-        
+
         // This crosses the mid wall but let's check the actual walls
         // The mid wall is from (-200, 1000) to (-200, 2000)
         let blocked = map.line_blocked(from, to);
         // Our line goes from y=1500, crossing x=-200 at y=1500
         // The mid wall is from y=1000 to y=2000 at x=-200
         // So this should be blocked
-        assert!(blocked, "Line from (-300,1500) to (-100,1500) should cross mid wall");
-        
+        assert!(
+            blocked,
+            "Line from (-300,1500) to (-100,1500) should cross mid wall"
+        );
+
         // Create a line that doesn't cross any wall
         let from2 = Vec2::new(-500.0, -500.0);
         let to2 = Vec2::new(-300.0, -500.0);
-        
+
         let blocked2 = map.line_blocked(from2, to2);
-        assert!(!blocked2, "Line from (-500,-500) to (-300,-500) should not cross any wall");
+        assert!(
+            !blocked2,
+            "Line from (-500,-500) to (-300,-500) should not cross any wall"
+        );
     }
 
     #[test]
@@ -843,19 +865,19 @@ mod tests {
         let a2 = Vec2::new(10.0, 0.0);
         let b1 = Vec2::new(5.0, -5.0);
         let b2 = Vec2::new(5.0, 5.0);
-        
+
         // Horizontal segment from (0,0) to (10,0)
         // Vertical segment from (5,-5) to (5,5)
         // These should intersect at (5, 0)
         let blocked = sentinel_map::data::segments_intersect(a1, a2, b1, b2);
         assert!(blocked, "Segments should intersect");
-        
+
         // Non-intersecting segments
         let a3 = Vec2::new(0.0, 0.0);
         let a4 = Vec2::new(5.0, 0.0);
         let c1 = Vec2::new(0.0, 10.0);
         let c2 = Vec2::new(10.0, 10.0);
-        
+
         let blocked2 = sentinel_map::data::segments_intersect(a3, a4, c1, c2);
         assert!(!blocked2, "Segments should not intersect");
     }
@@ -863,11 +885,11 @@ mod tests {
     #[test]
     fn test_mirage_wall_detection() {
         let map = MapData::mirage();
-        
+
         // Check if line_blocked works with mirage map
         let from = Vec2::new(0.0, 2000.0);
         let to = Vec2::new(0.0, 3000.0);
-        
+
         // This is exactly on the mirage wall
         let blocked = map.line_blocked(from, to);
         assert!(blocked, "Line should be on or very close to wall");
@@ -876,14 +898,13 @@ mod tests {
     #[test]
     fn test_inferno_wall_detection() {
         let map = MapData::inferno();
-        
+
         // Check if line_blocked works with inferno map
         let from = Vec2::new(-500.0, 2000.0);
         let to = Vec2::new(500.0, 2000.0);
-        
+
         // This crosses the inferno mid wall at y=2000
         let blocked = map.line_blocked(from, to);
         assert!(blocked, "Line should cross inferno mid wall");
     }
 }
-
