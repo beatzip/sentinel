@@ -1,0 +1,14 @@
+[package]
+name = "sentinel-memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Persistent memory and self-learning baselines for Sentinel AI"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+sentinel-core = { path = "../sentinel-core" }
+sentinel-analysis = { path = "../sentinel-analysis" }

@@ -15,6 +15,7 @@ members = [
     "crates/sentinel-datasets",
     "crates/sentinel-source2",
     "crates/sentinel-validation",
+    "crates/sentinel-memory",
     "crates/sentinel-cli",
 ]
 

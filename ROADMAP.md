@@ -67,11 +67,14 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 
 **Goal:** Add machine learning models
 
+- [x] Self-learning baselines (online Welford accumulators)
+- [x] Persistent memory (`sentinel_memory.json`) + per-player profiles
+- [x] Recidivism-based scoring for marginal-cheater detection
 - [ ] XGBoost for feature combination
-- [ ] Isolation Forest for anomaly detection
+- [x] Isolation Forest anomaly detection (scaffold)
 - [ ] Temporal patterns (Transformer)
-- [ ] Model training pipeline
-- [ ] Model versioning
+- [x] Model training pipeline (`sentinel learn`)
+- [x] Model versioning (memory schema version)
 - [ ] A/B testing framework
 
 ### M8 - Web Interface
