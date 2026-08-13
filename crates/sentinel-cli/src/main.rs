@@ -5,11 +5,11 @@ use sentinel_analysis::Scorer;
 use sentinel_core::source::{DemoSource, EventData, EventKind};
 use sentinel_core::{FeatureVector, MatchContext, Tick};
 use sentinel_features::FeatureEngine;
+use sentinel_map::loader;
+use sentinel_memory::{MatchObservation, Memory};
 use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
-use sentinel_map::loader;
-use sentinel_memory::Memory;
 
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
@@ -167,11 +167,19 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     // Load map data for visibility calculations
     match loader::load_map_by_name(&meta.map_name) {
         Some(map) => {
-            println!("  Map loaded: {} ({} walls, {} nav nodes)", map.name, map.walls.len(), map.nav_nodes.len());
+            println!(
+                "  Map loaded: {} ({} walls, {} nav nodes)",
+                map.name,
+                map.walls.len(),
+                map.nav_nodes.len()
+            );
             ctx.set_map(map);
         }
         None => {
-            println!("  Warning: Map '{}' not found, using default dust2", meta.map_name);
+            println!(
+                "  Warning: Map '{}' not found, using default dust2",
+                meta.map_name
+            );
         }
     }
 
@@ -198,7 +206,10 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         }
     };
     if memory.has_learned() {
-        println!("  Memory: learned baselines active ({} demos seen)", memory.demos_analyzed);
+        println!(
+            "  Memory: learned baselines active ({} demos seen)",
+            memory.demos_analyzed
+        );
     } else {
         println!("  Memory: using default baselines (run `sentinel learn <demo>` to train)");
     }
@@ -227,19 +238,24 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         let mut mem = memory.clone();
         let results_for_memory: Vec<_> = player_results
             .iter()
-            .map(|r| {
-                let averages: BTreeMap<String, f64> = r
+            .map(|r| MatchObservation {
+                player: r.player,
+                overall_score: r.overall_score.overall,
+                evidence_count: r.evidence.len(),
+                feature_averages: r
                     .feature_scores
                     .iter()
                     .map(|(k, v)| (k.clone(), v.value))
-                    .collect();
-                let flagged = r.overall_score.overall >= 0.5;
-                (r.player, r.overall_score.overall, r.evidence.len(), averages, flagged)
+                    .collect(),
+                flagged: r.overall_score.overall >= 0.5,
             })
             .collect();
         mem.observe_match(&all_feature_vectors, &results_for_memory);
         match mem.save(&mem_path) {
-            Ok(()) => println!("  Memory: recorded match ({} demos total)", mem.demos_analyzed),
+            Ok(()) => println!(
+                "  Memory: recorded match ({} demos total)",
+                mem.demos_analyzed
+            ),
             Err(e) => eprintln!("  Memory: failed to save: {}", e),
         }
     }
@@ -524,7 +540,7 @@ fn run_memory_command(args: &[String]) {
                 println!("Memory already empty (no file at {})", path.display());
             }
         }
-        "show" | _ => match Memory::load(&path) {
+        "show" => match Memory::load(&path) {
             Ok(mem) => {
                 if mem.demos_analyzed == 0 {
                     println!(
@@ -541,6 +557,29 @@ fn run_memory_command(args: &[String]) {
                 eprintln!("Error loading memory: {}", e);
             }
         },
+        // Unknown subcommand: treat like "show".
+        _ => {
+            if sub != "show" {
+                eprintln!("Unknown memory subcommand: {} (use 'show' or 'reset')", sub);
+            }
+            match Memory::load(&path) {
+                Ok(mem) => {
+                    if mem.demos_analyzed == 0 {
+                        println!(
+                            "Memory is empty. Run `sentinel learn <match.dem>` to start training."
+                        );
+                        println!("Memory file: {}", path.display());
+                    } else {
+                        println!("Memory file: {}", path.display());
+                        println!();
+                        print!("{}", mem.summary());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error loading memory: {}", e);
+                }
+            }
+        }
     }
 }
 
@@ -556,4 +595,3 @@ fn print_usage() {
     println!("  stats <vectors.json>          Show dataset statistics");
     println!("  verify                        Run verification checks");
 }
-
