@@ -5,6 +5,14 @@ use sentinel_core::{BehaviorScore, FeatureCategory, FeatureVector, Tick};
 use crate::aggregation::BayesianAggregator;
 use crate::baseline::BaselineSet;
 
+/// Optional memory reference used to apply per-player recidivism adjustments.
+/// Kept as a trait object so the analysis crate does not depend on the
+/// `sentinel-memory` crate (avoids a circular dependency).
+pub trait MemoryAdapter: Send + Sync {
+    /// Recidivism-based score adjustment in roughly [-0.1, +0.2].
+    fn recidivism_adjustment(&self, player: sentinel_core::PlayerId) -> f64;
+}
+
 /// Configuration for the behavior scorer
 #[derive(Debug, Clone)]
 pub struct ScorerConfig {
@@ -67,15 +75,27 @@ pub struct PlayerScoreResult {
 /// The behavior scorer analyzes feature vectors and produces behavior scores
 pub struct Scorer {
     config: ScorerConfig,
+    memory: Option<Box<dyn MemoryAdapter>>,
 }
 
 impl Scorer {
     pub fn new(config: ScorerConfig) -> Self {
-        Self { config }
+        Self {
+            config,
+            memory: None,
+        }
     }
 
     pub fn default_cs2() -> Self {
         Self::new(ScorerConfig::default_cs2())
+    }
+
+    /// Attach a memory adapter. The scorer will use the memory's recidivism
+    /// signal to raise scores for players with a chronic anomaly history,
+    /// improving detection of marginal cheaters.
+    pub fn with_memory(mut self, memory: Box<dyn MemoryAdapter>) -> Self {
+        self.memory = Some(memory);
+        self
     }
 
     /// Score a single feature vector
@@ -160,7 +180,8 @@ impl Scorer {
         let category_scores = self.compute_category_scores(&feature_scores);
 
         // Compute overall score
-        let overall_score = self.compute_overall_score(&category_scores, &feature_scores);
+        let overall_score =
+            self.compute_overall_score(player, &category_scores, &feature_scores);
 
         let tick = feature_vectors.first().map(|fv| fv.tick).unwrap_or(Tick(0));
 
@@ -240,6 +261,7 @@ impl Scorer {
     /// Compute overall score from category scores
     fn compute_overall_score(
         &self,
+        player: sentinel_core::PlayerId,
         category_scores: &BTreeMap<String, f64>,
         feature_scores: &BTreeMap<String, FeatureScore>,
     ) -> BehaviorScore {
@@ -261,7 +283,17 @@ impl Scorer {
         }
 
         // Compute overall using Bayesian aggregation
-        score.overall = BayesianAggregator::combine_categories(category_scores);
+        let mut overall = BayesianAggregator::combine_categories(category_scores);
+
+        // Apply memory-based recidivism adjustment: players with a chronic
+        // anomaly history get a boost; players with a clean history get a
+        // small discount. This is what surfaces marginal cheaters who stay
+        // just under single-match thresholds.
+        if let Some(memory) = &self.memory {
+            overall = (overall + memory.recidivism_adjustment(player)).clamp(0.0, 1.0);
+        }
+
+        score.overall = overall;
 
         // Count evidence items (anomalous features)
         score.evidence_count = feature_scores.values().filter(|s| s.is_anomalous).count();

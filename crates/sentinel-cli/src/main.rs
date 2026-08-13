@@ -9,6 +9,7 @@ use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
 use sentinel_map::loader;
+use sentinel_memory::Memory;
 
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
@@ -26,11 +27,29 @@ fn main() {
         "analyze" => {
             if args.len() < 3 {
                 eprintln!("Error: Missing demo file path");
-                eprintln!("Usage: sentinel analyze <match.dem>");
+                eprintln!("Usage: sentinel analyze <match.dem> [--learn]");
                 return;
             }
             let path = PathBuf::from(&args[2]);
-            run_analysis(&path);
+            // --learn records the analysis into persistent memory.
+            let learn = args.iter().any(|a| a == "--learn");
+            // Without --learn, existing memory is still loaded (read-only) so
+            // the scorer benefits from learned baselines, but nothing is
+            // written back.
+            run_analysis(&path, learn);
+        }
+        "learn" => {
+            if args.len() < 3 {
+                eprintln!("Error: Missing demo file path");
+                eprintln!("Usage: sentinel learn <match.dem>");
+                return;
+            }
+            // `learn` is shorthand for `analyze --learn`.
+            let path = PathBuf::from(&args[2]);
+            run_analysis(&path, true);
+        }
+        "memory" => {
+            run_memory_command(&args[2..]);
         }
         "calibrate" => {
             let output_path = if args.len() > 2 {
@@ -90,8 +109,12 @@ fn main() {
     }
 }
 
-/// Run the full analysis pipeline using DemoSource adapter
-fn run_analysis(path: &PathBuf) {
+/// Run the full analysis pipeline using DemoSource adapter.
+///
+/// When `learn` is true, the analysis is recorded into persistent memory
+/// (`sentinel_memory.json`) so future runs learn from it. When false, memory
+/// is still loaded read-only to improve scoring with learned baselines.
+fn run_analysis(path: &PathBuf, learn: bool) {
     println!("=== Sentinel AI Analysis Pipeline ===\n");
 
     // Step 1: Parse demo file using Source2Adapter
@@ -166,7 +189,25 @@ fn run_analysis(path: &PathBuf) {
 
     // Step 6: Run analysis
     println!("[6/7] Running analysis...");
-    let scorer = Scorer::default_cs2();
+    let mem_path = Memory::default_path();
+    let memory = match Memory::load(&mem_path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("Warning: could not load memory ({}); using defaults.", e);
+            Memory::new()
+        }
+    };
+    if memory.has_learned() {
+        println!("  Memory: learned baselines active ({} demos seen)", memory.demos_analyzed);
+    } else {
+        println!("  Memory: using default baselines (run `sentinel learn <demo>` to train)");
+    }
+    let config = sentinel_analysis::ScorerConfig {
+        baselines: memory.learned_baselines(),
+        evidence_threshold: 0.6,
+        min_evidence_per_category: 1,
+    };
+    let scorer = Scorer::new(config).with_memory(Box::new(memory.clone()));
     let mut player_results = Vec::new();
 
     for &player in &players {
@@ -180,6 +221,28 @@ fn run_analysis(path: &PathBuf) {
         }
     }
     println!("  Players scored: {}", player_results.len());
+
+    // Optionally record this match into persistent memory (self-learning).
+    if learn {
+        let mut mem = memory.clone();
+        let results_for_memory: Vec<_> = player_results
+            .iter()
+            .map(|r| {
+                let averages: BTreeMap<String, f64> = r
+                    .feature_scores
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.value))
+                    .collect();
+                let flagged = r.overall_score.overall >= 0.5;
+                (r.player, r.overall_score.overall, r.evidence.len(), averages, flagged)
+            })
+            .collect();
+        mem.observe_match(&all_feature_vectors, &results_for_memory);
+        match mem.save(&mem_path) {
+            Ok(()) => println!("  Memory: recorded match ({} demos total)", mem.demos_analyzed),
+            Err(e) => eprintln!("  Memory: failed to save: {}", e),
+        }
+    }
 
     // Step 7: Generate report
     println!("[7/7] Generating report...");
@@ -417,8 +480,16 @@ fn run_analysis_silent(path: &Path) -> AnalysisResult {
         all_feature_vectors.extend(vectors);
     }
 
-    // Score players
-    let scorer = Scorer::default_cs2();
+    // Score players using learned baselines when memory exists.
+    let memory = Memory::load(&Memory::default_path()).unwrap_or_else(|e| {
+        eprintln!("Warning: could not load memory ({}); using defaults.", e);
+        Memory::new()
+    });
+    let scorer = Scorer::new(sentinel_analysis::ScorerConfig {
+        baselines: memory.learned_baselines(),
+        evidence_threshold: 0.6,
+        min_evidence_per_category: 1,
+    });
     let mut results = Vec::new();
 
     for &player in &players {
@@ -438,11 +509,48 @@ fn run_analysis_silent(path: &Path) -> AnalysisResult {
     Ok((meta.map_name, results))
 }
 
+/// Handle the `memory` command: show memory state or reset it.
+fn run_memory_command(args: &[String]) {
+    let sub = args.first().map(String::as_str).unwrap_or("show");
+    let path = Memory::default_path();
+    match sub {
+        "reset" => {
+            if path.exists() {
+                match std::fs::remove_file(&path) {
+                    Ok(()) => println!("Memory reset: removed {}", path.display()),
+                    Err(e) => eprintln!("Error removing memory file: {}", e),
+                }
+            } else {
+                println!("Memory already empty (no file at {})", path.display());
+            }
+        }
+        "show" | _ => match Memory::load(&path) {
+            Ok(mem) => {
+                if mem.demos_analyzed == 0 {
+                    println!(
+                        "Memory is empty. Run `sentinel learn <match.dem>` to start training."
+                    );
+                    println!("Memory file: {}", path.display());
+                } else {
+                    println!("Memory file: {}", path.display());
+                    println!();
+                    print!("{}", mem.summary());
+                }
+            }
+            Err(e) => {
+                eprintln!("Error loading memory: {}", e);
+            }
+        },
+    }
+}
+
 fn print_usage() {
     println!("Usage: sentinel <command> [options]");
     println!();
     println!("Commands:");
-    println!("  analyze <match.dem>           Analyze a CS2 demo file");
+    println!("  analyze <match.dem> [--learn] Analyze a CS2 demo file");
+    println!("  learn   <match.dem>           Analyze and train memory from a demo");
+    println!("  memory [reset]                Show or reset persistent memory");
     println!("  validate <directory>          Validate on multiple demos");
     println!("  calibrate [output.json]       Generate calibration dataset");
     println!("  stats <vectors.json>          Show dataset statistics");
