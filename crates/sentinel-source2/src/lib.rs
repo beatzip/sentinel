@@ -128,7 +128,13 @@ impl DemoCollector {
 
         // Extract player_hurt specific fields
         if event.name() == "player_hurt" {
-            for key in &["dmg_health", "dmg_armor", "hitgroup", "victim_health", "victim_armor"] {
+            for key in &[
+                "dmg_health",
+                "dmg_armor",
+                "hitgroup",
+                "victim_health",
+                "victim_armor",
+            ] {
                 if let Ok(val) = event.get_value(key) {
                     let event_val = match val {
                         EventValue::Int(v) => EventData::Int(*v as i64),

@@ -49,12 +49,16 @@ impl GrenadeState {
     /// Time remaining until this grenade effect expires (in seconds).
     /// Returns None if the grenade doesn't have an end tick.
     pub fn time_remaining(&self, current_tick: Tick) -> Option<f32> {
-        self.end_tick.map(|end| (end.0 as f32 - current_tick.0 as f32) / 64.0)
+        self.end_tick
+            .map(|end| (end.0 as f32 - current_tick.0 as f32) / 64.0)
     }
 
     /// Whether this is a timed grenade (smoke, molotov, incendiary) that has a duration window.
     pub fn is_timed(&self) -> bool {
-        matches!(self.grenade_type, GrenadeType::Smoke | GrenadeType::Molotov | GrenadeType::Incendiary)
+        matches!(
+            self.grenade_type,
+            GrenadeType::Smoke | GrenadeType::Molotov | GrenadeType::Incendiary
+        )
     }
 
     /// Whether this grenade is currently active at the given tick.
@@ -63,15 +67,15 @@ impl GrenadeState {
             return false;
         }
         // Check if we're within the effect window
-        if let Some(start) = self.start_tick {
-            if current_tick.0 < start.0 {
-                return false;
-            }
+        if let Some(start) = self.start_tick
+            && current_tick.0 < start.0
+        {
+            return false;
         }
-        if let Some(end) = self.end_tick {
-            if current_tick.0 >= end.0 {
-                return false;
-            }
+        if let Some(end) = self.end_tick
+            && current_tick.0 >= end.0
+        {
+            return false;
         }
         true
     }
@@ -79,8 +83,8 @@ impl GrenadeState {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::player::Vec3;
+    use super::*;
 
     #[test]
     fn test_is_timed() {

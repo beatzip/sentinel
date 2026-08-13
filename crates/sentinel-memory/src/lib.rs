@@ -153,6 +153,21 @@ impl PlayerProfile {
     }
 }
 
+/// A per-player result from analyzing one match, fed into the memory store.
+#[derive(Debug, Clone)]
+pub struct MatchObservation {
+    /// Player this observation is about.
+    pub player: PlayerId,
+    /// Overall anomaly score for the player in this match.
+    pub overall_score: f64,
+    /// Number of evidence items generated for the player.
+    pub evidence_count: usize,
+    /// Per-feature average values for the player in this match.
+    pub feature_averages: BTreeMap<String, f64>,
+    /// Whether the player exceeded the flag threshold in this match.
+    pub flagged: bool,
+}
+
 /// The full persistent memory store.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Memory {
@@ -218,7 +233,7 @@ impl Memory {
     pub fn observe_match(
         &mut self,
         all_vectors: &[FeatureVector],
-        per_player_results: &[(PlayerId, f64, usize, BTreeMap<String, f64>, bool)],
+        per_player_results: &[MatchObservation],
     ) {
         self.demos_analyzed += 1;
 
@@ -233,9 +248,14 @@ impl Memory {
         }
 
         // Update player profiles.
-        for (player, overall, evidence, averages, flagged) in per_player_results {
-            let profile = self.players.entry(player.as_u64()).or_default();
-            profile.record_match(*overall, *evidence, averages, *flagged);
+        for obs in per_player_results {
+            let profile = self.players.entry(obs.player.as_u64()).or_default();
+            profile.record_match(
+                obs.overall_score,
+                obs.evidence_count,
+                &obs.feature_averages,
+                obs.flagged,
+            );
         }
     }
 
@@ -351,7 +371,6 @@ impl std::fmt::Display for MemoryError {
 
 impl std::error::Error for MemoryError {}
 
-
 impl sentinel_analysis::MemoryAdapter for Memory {
     fn recidivism_adjustment(&self, player: sentinel_core::PlayerId) -> f64 {
         Memory::recidivism_adjustment(self, player)
@@ -389,18 +408,20 @@ mod tests {
     #[test]
     fn observing_updates_baselines_and_profiles() {
         let mut mem = Memory::new();
-        let vectors: Vec<_> = (0..60).map(|i| fv(i % 10, 0.25 + i as f64 * 0.001)).collect();
-        let results = vec![(
-            PlayerId::new(1),
-            0.8,
-            3,
-            {
+        let vectors: Vec<_> = (0..60)
+            .map(|i| fv(i % 10, 0.25 + i as f64 * 0.001))
+            .collect();
+        let results = vec![MatchObservation {
+            player: PlayerId::new(1),
+            overall_score: 0.8,
+            evidence_count: 3,
+            feature_averages: {
                 let mut m = BTreeMap::new();
                 m.insert("reaction_time".to_string(), 0.26);
                 m
             },
-            true,
-        )];
+            flagged: true,
+        }];
         mem.observe_match(&vectors, &results);
 
         assert_eq!(mem.demos_analyzed, 1);

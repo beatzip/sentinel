@@ -1,7 +1,7 @@
-﻿use sentinel_core::{
+use sentinel_core::source::PlayerSnapshot;
+use sentinel_core::{
     Angles, KillEvent, PlayerId, PlayerState, RoundPhase, Tick, TickState, Vec3, Weapon,
 };
-use sentinel_core::source::PlayerSnapshot;
 use sentinel_events::kinds::{EventKind, EventValue, GameEvent};
 
 use crate::state::WorldState;
@@ -56,7 +56,7 @@ impl WorldRebuilder {
     /// Process events with player snapshots from a demo source.
     /// This merges real telemetry data (positions, velocities, view angles) into
     /// the world state, fixing the issue where players were frozen at (0,0,0).
-    /// 
+    ///
     /// CRITICAL: This method saves states for ALL ticks that have either events OR snapshots,
     /// not just event ticks. This "densification" ensures features can access state at any tick.
     pub fn process_events_with_snapshots<S>(
@@ -72,10 +72,7 @@ impl WorldRebuilder {
         // Pre-index events by tick for efficient lookup
         let mut events_by_tick: BTreeMap<u32, Vec<&GameEvent>> = BTreeMap::new();
         for event in events {
-            events_by_tick
-                .entry(event.tick.0)
-                .or_default()
-                .push(event);
+            events_by_tick.entry(event.tick.0).or_default().push(event);
         }
 
         // Pre-index snapshots by tick for efficient lookup
@@ -325,32 +322,40 @@ impl WorldRebuilder {
         // Track active shots for shot-calling analysis
         // Note: Shot events are stored separately via ShotEvent stream for memory efficiency.
         // Here we just note that firing occurred for potential fire-rate calculations.
-        if let Some(shooter_id) = event.data.get("userid").and_then(|v| v.as_player_id()) {
-            if let Some(player) = self.world.players.get_mut(&PlayerId::new(shooter_id)) {
-                // Update weapon category if available
-                if let Some(weapon_str) = event.data.get("weapon").and_then(|v| v.as_str()) {
-                    player.weapon = match weapon_str.to_lowercase().as_str() {
-                        // Snipers (must come before Rifle)
-                        "awp" | "scar20" | "g3sg1" => Weapon::Sniper,
-                        // Rifles
-                        "ak47" | "m4a1" | "m4a1_silencer" | "m4a1s" | "aug" | "sg553" | "famas" | "galil" | "galil_ar" | "sg556" => Weapon::Rifle,
-                        // Pistols
-                        "deagle" | "elite" | "fiveseven" | "glock" | "usp" | "usp_silencer" | "p2000" | "tec9" | "cz75a" | "p250" | "revolver" | "dark_reclaimer" => Weapon::Pistol,
-                        // SMGs
-                        "mp9" | "mp7" | "mac10" | "p90" | "bizon" | "ppbizon" | "mp5sd" | "ump45" => Weapon::SMG,
-                        // Shotguns
-                        "nova" | "xm1014" | "mag7" | "sawedoff" => Weapon::Shotgun,
-                        // MGs
-                        "m249" | "negev" => Weapon::MG,
-                        // Knife
-                        "knife" | "knife_t" | "bayonet" | "flip" | "gut" | "m9" | "classic" | "star" | "talon" | "nomad" => Weapon::Knife,
-                        // C4
-                        "c4" => Weapon::C4,
-                        // Grenades
-                        "hegrenade" | "flashbang" | "smokegrenade" | "molotov" | "incgrenade" | "decoy" => Weapon::Grenade,
-                        _ => Weapon::None,
-                    };
-                }
+        if let Some(shooter_id) = event.data.get("userid").and_then(|v| v.as_player_id())
+            && let Some(player) = self.world.players.get_mut(&PlayerId::new(shooter_id))
+        {
+            // Update weapon category if available
+            if let Some(weapon_str) = event.data.get("weapon").and_then(|v| v.as_str()) {
+                player.weapon = match weapon_str.to_lowercase().as_str() {
+                    // Snipers (must come before Rifle)
+                    "awp" | "scar20" | "g3sg1" => Weapon::Sniper,
+                    // Rifles
+                    "ak47" | "m4a1" | "m4a1_silencer" | "m4a1s" | "aug" | "sg553" | "famas"
+                    | "galil" | "galil_ar" | "sg556" => Weapon::Rifle,
+                    // Pistols
+                    "deagle" | "elite" | "fiveseven" | "glock" | "usp" | "usp_silencer"
+                    | "p2000" | "tec9" | "cz75a" | "p250" | "revolver" | "dark_reclaimer" => {
+                        Weapon::Pistol
+                    }
+                    // SMGs
+                    "mp9" | "mp7" | "mac10" | "p90" | "bizon" | "ppbizon" | "mp5sd" | "ump45" => {
+                        Weapon::SMG
+                    }
+                    // Shotguns
+                    "nova" | "xm1014" | "mag7" | "sawedoff" => Weapon::Shotgun,
+                    // MGs
+                    "m249" | "negev" => Weapon::MG,
+                    // Knife
+                    "knife" | "knife_t" | "bayonet" | "flip" | "gut" | "m9" | "classic"
+                    | "star" | "talon" | "nomad" => Weapon::Knife,
+                    // C4
+                    "c4" => Weapon::C4,
+                    // Grenades
+                    "hegrenade" | "flashbang" | "smokegrenade" | "molotov" | "incgrenade"
+                    | "decoy" => Weapon::Grenade,
+                    _ => Weapon::None,
+                };
             }
         }
     }
@@ -484,16 +489,16 @@ mod tests {
         // This verifies the "densify" behavior where we collect all unique ticks
         // from both events and snapshots
         use std::collections::BTreeMap;
-        
+
         // Simulate the tick collection logic from process_events_with_snapshots
         let mut events_by_tick: BTreeMap<u32, ()> = BTreeMap::new();
         events_by_tick.insert(0, ());
-        
+
         let mut snapshots_by_tick: BTreeMap<u32, ()> = BTreeMap::new();
         snapshots_by_tick.insert(0, ());
         snapshots_by_tick.insert(64, ());
         snapshots_by_tick.insert(128, ());
-        
+
         // Collect all unique ticks
         let mut ticks: Vec<u32> = events_by_tick
             .keys()
@@ -502,7 +507,7 @@ mod tests {
             .collect();
         ticks.sort_unstable();
         ticks.dedup();
-        
+
         // Should have 3 unique ticks: 0, 64, 128
         assert_eq!(ticks.len(), 3);
         assert!(ticks.contains(&0));
@@ -558,5 +563,3 @@ mod tests {
         assert_eq!(kills.len(), 2);
     }
 }
-
-
