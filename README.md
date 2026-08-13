@@ -149,6 +149,37 @@ Every anomaly is backed by evidence.
 
 ---
 
+# Quick Start
+
+The simplest way to run Sentinel. One helper script builds the binary on first
+use and then runs any command — no need to remember `cargo`.
+
+**Linux / macOS**
+
+```bash
+./run.sh analyze match.dem        # анализ (использует память, если есть)
+./run.sh learn   match.dem        # анализ + обучение памяти
+./run.sh memory                  # показать, чему научилось
+./run.sh memory reset            # очистить память
+./run.sh build                   # пересобрать
+```
+
+**Windows**
+
+```bat
+run.bat analyze match.dem
+run.bat learn   match.dem
+run.bat memory
+run.bat memory reset
+```
+
+On first run the script builds the optimized binary (`target/release/sentinel`)
+automatically; afterwards every command launches instantly.
+
+Want the raw CLI instead? See [CLI](#cli) below.
+
+---
+
 # Pipeline
 
 ```
@@ -260,6 +291,12 @@ sentinel memory
 
 ✔ Ensemble models
 
+✔ Self-learning baselines
+
+✔ Persistent memory
+
+✔ Recidivism-based marginal cheater detection
+
 ---
 
 # Analysis Example
@@ -342,21 +379,27 @@ crates/
 
     sentinel-map
 
-    sentinel-geometry
-
     sentinel-visibility
 
     sentinel-features
 
     sentinel-analysis
 
+    sentinel-memory       <- self-learning & persistent memory
+
     sentinel-evidence
 
     sentinel-report
 
+    sentinel-datasets
+
     sentinel-cli
 
-    sentinel-ui
+    sentinel-source2
+
+    sentinel-validation
+
+run.sh / run.bat          <- one-command launcher
 
 datasets/
 
@@ -364,7 +407,7 @@ docs/
 
 examples/
 
-tests/
+tris/                    <- map geometry
 
 assets/
 ```
@@ -376,16 +419,18 @@ assets/
 Clone
 
 ```bash
-git clone https://github.com/YOUR_NAME/sentinel.git
-
+git clone https://github.com/beatzip/sentinel.git
 cd sentinel
 ```
 
-Build
+Build (or just run `./run.sh` / `run.bat` — it builds for you on first use)
 
 ```bash
 cargo build --release
 ```
+
+The binary is `target/release/sentinel`. Memory is stored automatically in
+`sentinel_memory.json` next to the binary — no setup needed.
 
 ---
 
@@ -582,9 +627,11 @@ Interactive Replay Viewer
 
 ## Phase 8
 
-Machine Learning Validation
+Self-Learning & Machine Learning
 
-🚧
+✅ (self-learning baselines, persistent memory, recidivism scoring)
+
+🚧 (XGBoost, temporal transformers)
 
 ---
 
