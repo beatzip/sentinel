@@ -6,4 +6,4 @@ pub mod scorer;
 pub use aggregation::BayesianAggregator;
 pub use baseline::{BaselineSet, FeatureBaseline};
 pub use ml::{AnomalyModel, EnsembleModel, IsolationForest, StatisticalModel};
-pub use scorer::{FeatureScore, PlayerScoreResult, Scorer, ScorerConfig};
+pub use scorer::{FeatureScore, MemoryAdapter, PlayerScoreResult, Scorer, ScorerConfig};
