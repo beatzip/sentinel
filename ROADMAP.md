@@ -40,28 +40,28 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - Faceit L10 matches (legit)
 - Community reports (cheater)
 
-### M5 - Validation & Calibration
+### M5 - Validation & Calibration (Complete)
 
 **Goal:** Measure and improve detection quality
 
-- [ ] Validation harness with 200+ demos
-- [ ] Precision/Recall curves
-- [ ] AUC-ROC computation
-- [ ] Per-feature importance analysis
-- [ ] Calibration of score thresholds
-- [ ] Cross-validation (5-fold)
-- [ ] Per-map analysis
+- [x] Validation harness with 200+ demos
+- [x] Precision/Recall curves
+- [x] AUC-ROC computation
+- [x] Per-feature importance analysis
+- [x] Calibration of score thresholds
+- [x] Cross-validation (5-fold)
+- [x] Per-map analysis
 
-### M6 - Advanced Features
+### M6 - Advanced Features (Complete)
 
 **Goal:** Improve detection accuracy
 
-- [ ] Temporal analysis (patterns over time)
-- [ ] Cross-round behavior tracking
-- [ ] Team coordination analysis
-- [ ] Economy-based decision analysis
-- [ ] Utility lineup analysis
-- [ ] Clutch situation analysis
+- [x] Temporal analysis (patterns over time)
+- [x] Cross-round behavior tracking
+- [x] Team coordination analysis
+- [x] Economy-based decision analysis
+- [x] Utility lineup analysis
+- [x] Clutch situation analysis
 
 ### M7 - ML Integration
 
@@ -70,12 +70,12 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Self-learning baselines (online Welford accumulators)
 - [x] Persistent memory (`sentinel_memory.json`) + per-player profiles
 - [x] Recidivism-based scoring for marginal-cheater detection
-- [ ] XGBoost for feature combination
+- [x] XGBoost-style boosted stumps for feature combination
 - [x] Isolation Forest anomaly detection (scaffold)
-- [ ] Temporal patterns (Transformer)
+- [ ] Temporal patterns (Transformer) — scaffold landed, full model pending
 - [x] Model training pipeline (`sentinel learn`)
 - [x] Model versioning (memory schema version)
-- [ ] A/B testing framework
+- [x] A/B testing framework
 
 ### M8 - Web Interface
 

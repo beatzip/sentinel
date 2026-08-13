@@ -1,3 +1,6 @@
+pub mod calibration;
+pub mod curves;
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -90,6 +93,11 @@ impl ValidationHarness {
 
     pub fn add_demo(&mut self, demo: DemoValidation) {
         self.demos.push(demo);
+    }
+
+    /// Borrow all demos recorded in the harness.
+    pub fn demos(&self) -> &[DemoValidation] {
+        &self.demos
     }
 
     pub fn compute_metrics(&self) -> ValidationMetrics {

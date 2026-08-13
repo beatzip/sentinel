@@ -50,6 +50,15 @@ impl FeatureEngine {
         engine.register(crate::general::HeadshotPercentage);
         engine.register(crate::general::SurvivalTime);
 
+        // Register M6 advanced features (temporal, cross-round, coordination,
+        // economy, utility lineups, clutch performance).
+        engine.register(crate::advanced::TemporalAnalysis);
+        engine.register(crate::advanced::CrossRoundConsistency);
+        engine.register(crate::advanced::TeamCoordination);
+        engine.register(crate::advanced::EconomyDecisionScore);
+        engine.register(crate::advanced::UtilityLineupAccuracy);
+        engine.register(crate::advanced::ClutchPerformance);
+
         engine
     }
 

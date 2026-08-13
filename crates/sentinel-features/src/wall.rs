@@ -51,7 +51,8 @@ impl FeatureExt for HiddenTrackingDuration {
             // If aiming within 15 degrees of enemy
             if angle_diff < 15.0 {
                 // Check if enemy is visible using visibility engine with real map
-                let vis = VisibilityEngine::can_see_with_map(state, observer.id, enemy.id, ctx.map());
+                let vis =
+                    VisibilityEngine::can_see_with_map(state, observer.id, enemy.id, ctx.map());
 
                 // If enemy is NOT visible but player is tracking them
                 if !vis.visible {
@@ -166,7 +167,10 @@ impl FeatureExt for PrefireRate {
                     .players
                     .iter()
                     .filter(|p| p.team == target_team && p.alive)
-                    .any(|enemy| VisibilityEngine::can_see_with_map(state, obs.id, enemy.id, ctx.map()).visible);
+                    .any(|enemy| {
+                        VisibilityEngine::can_see_with_map(state, obs.id, enemy.id, ctx.map())
+                            .visible
+                    });
 
                 if !any_visible {
                     prefire_shots += 1;

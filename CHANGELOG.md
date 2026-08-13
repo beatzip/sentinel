@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased](https://github.com/user/sentinel-ai/compare/v0.1.0...HEAD)
 
 ### Added
+- M5 Validation: Precision/Recall curves, AUC-ROC, threshold calibration,
+  k-fold cross-validation, per-map analysis (`sentinel-validation::calibration`,
+  `::curves`); new `sentinel evaluate` and `sentinel cross-validate` CLI commands
+- M6 Advanced features: temporal consistency, cross-round consistency, team
+  coordination, economy-decision score, utility lineup accuracy, clutch
+  performance (`sentinel-features::advanced`)
+- M7 ML: real recursive Isolation Forest with deterministic seeded training,
+  XGBoost-style BoostedStumps (gradient boosting on decision stumps),
+  TemporalTransformer self-attention scaffold, and an A/B testing framework
+  comparing models by AUC-ROC (`sentinel-analysis::ml`)
 - Validation harness for evaluation metrics
 - Solo playstyle detection to reduce false positives
 - Team proximity and trade kill features

@@ -260,6 +260,22 @@ sentinel memory
 
 ✔ Ensemble models
 
+✔ Self-learning baselines
+
+✔ Persistent memory
+
+✔ Recidivism-based marginal cheater detection
+
+✔ ROC/PR curves + AUC-ROC
+
+✔ Threshold calibration & k-fold cross-validation
+
+✔ Temporal, cross-round, team, economy, clutch features
+
+✔ Isolation Forest, boosted stumps & temporal transformer
+
+✔ A/B model testing framework
+
 ---
 
 # Analysis Example
@@ -420,6 +436,13 @@ Statistics
 
 ```bash
 sentinel stats vectors.json
+```
+
+Evaluation & cross-validation
+
+```bash
+sentinel evaluate <directory>
+sentinel cross-validate <directory> 5
 ```
 
 Verification

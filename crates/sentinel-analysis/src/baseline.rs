@@ -135,6 +135,14 @@ impl BaselineSet {
         set.add(FeatureBaseline::new("information_availability", 0.3, 0.2));
         set.add(FeatureBaseline::new("rotation_justification", 0.5, 0.2));
 
+        // M6 advanced features
+        set.add(FeatureBaseline::new("temporal_consistency", 0.5, 0.2));
+        set.add(FeatureBaseline::new("cross_round_consistency", 0.3, 0.2));
+        set.add(FeatureBaseline::new("team_coordination", 0.6, 0.2));
+        set.add(FeatureBaseline::new("economy_decision_score", 0.5, 0.15));
+        set.add(FeatureBaseline::new("utility_lineup_accuracy", 0.5, 0.25));
+        set.add(FeatureBaseline::new("clutch_performance", 0.2, 0.2));
+
         set
     }
 }

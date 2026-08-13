@@ -180,8 +180,7 @@ impl Scorer {
         let category_scores = self.compute_category_scores(&feature_scores);
 
         // Compute overall score
-        let overall_score =
-            self.compute_overall_score(player, &category_scores, &feature_scores);
+        let overall_score = self.compute_overall_score(player, &category_scores, &feature_scores);
 
         let tick = feature_vectors.first().map(|fv| fv.tick).unwrap_or(Tick(0));
 
@@ -326,6 +325,12 @@ impl Scorer {
             ("flash_assist_rate", "utility"),
             ("smoke_timing", "utility"),
             ("nade_usage_rate", "utility"),
+            ("utility_lineup_accuracy", "utility"),
+            ("temporal_consistency", "decision"),
+            ("cross_round_consistency", "decision"),
+            ("team_coordination", "decision"),
+            ("economy_decision_score", "decision"),
+            ("clutch_performance", "decision"),
         ])
     }
 }

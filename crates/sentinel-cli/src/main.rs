@@ -5,11 +5,11 @@ use sentinel_analysis::Scorer;
 use sentinel_core::source::{DemoSource, EventData, EventKind};
 use sentinel_core::{FeatureVector, MatchContext, Tick};
 use sentinel_features::FeatureEngine;
+use sentinel_map::loader;
+use sentinel_memory::Memory;
 use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
-use sentinel_map::loader;
-use sentinel_memory::Memory;
 
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
@@ -102,6 +102,28 @@ fn main() {
             let dir = PathBuf::from(&args[2]);
             run_validation(&dir);
         }
+        "evaluate" => {
+            // Run the full validation suite (ROC, PR, calibration) on a
+            // directory of labelled demos.
+            if args.len() < 3 {
+                eprintln!("Usage: sentinel evaluate <directory_with_demos>");
+                return;
+            }
+            run_evaluation(&PathBuf::from(&args[2]));
+        }
+        "cross-validate" => {
+            // k-fold cross-validation over labelled demos.
+            if args.len() < 3 {
+                eprintln!("Usage: sentinel cross-validate <directory_with_demos> [k]");
+                return;
+            }
+            let dir = PathBuf::from(&args[2]);
+            let k = args
+                .get(3)
+                .and_then(|v| v.parse::<usize>().ok())
+                .unwrap_or(5);
+            run_cross_validation(&dir, k);
+        }
         _ => {
             eprintln!("Unknown command: {}", args[1]);
             print_usage();
@@ -167,11 +189,19 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     // Load map data for visibility calculations
     match loader::load_map_by_name(&meta.map_name) {
         Some(map) => {
-            println!("  Map loaded: {} ({} walls, {} nav nodes)", map.name, map.walls.len(), map.nav_nodes.len());
+            println!(
+                "  Map loaded: {} ({} walls, {} nav nodes)",
+                map.name,
+                map.walls.len(),
+                map.nav_nodes.len()
+            );
             ctx.set_map(map);
         }
         None => {
-            println!("  Warning: Map '{}' not found, using default dust2", meta.map_name);
+            println!(
+                "  Warning: Map '{}' not found, using default dust2",
+                meta.map_name
+            );
         }
     }
 
@@ -198,7 +228,10 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         }
     };
     if memory.has_learned() {
-        println!("  Memory: learned baselines active ({} demos seen)", memory.demos_analyzed);
+        println!(
+            "  Memory: learned baselines active ({} demos seen)",
+            memory.demos_analyzed
+        );
     } else {
         println!("  Memory: using default baselines (run `sentinel learn <demo>` to train)");
     }
@@ -234,12 +267,21 @@ fn run_analysis(path: &PathBuf, learn: bool) {
                     .map(|(k, v)| (k.clone(), v.value))
                     .collect();
                 let flagged = r.overall_score.overall >= 0.5;
-                (r.player, r.overall_score.overall, r.evidence.len(), averages, flagged)
+                (
+                    r.player,
+                    r.overall_score.overall,
+                    r.evidence.len(),
+                    averages,
+                    flagged,
+                )
             })
             .collect();
         mem.observe_match(&all_feature_vectors, &results_for_memory);
         match mem.save(&mem_path) {
-            Ok(()) => println!("  Memory: recorded match ({} demos total)", mem.demos_analyzed),
+            Ok(()) => println!(
+                "  Memory: recorded match ({} demos total)",
+                mem.demos_analyzed
+            ),
             Err(e) => eprintln!("  Memory: failed to save: {}", e),
         }
     }
@@ -544,6 +586,151 @@ fn run_memory_command(args: &[String]) {
     }
 }
 
+/// Run the full evaluation suite (M5) on a directory of demos.
+///
+/// Builds per-demo player evaluations (labelled Unknown by default), runs the
+/// validation harness, then prints ROC/PR AUC, calibrated threshold and
+/// per-map breakdown.
+fn run_evaluation(dir: &PathBuf) {
+    println!("=== Sentinel AI Evaluation Suite ===\n");
+
+    let demos = collect_labelled_demos(dir);
+    if demos.is_empty() {
+        eprintln!("No .dem files found in {:?}", dir);
+        return;
+    }
+
+    let mut harness = ValidationHarness::new(0.5);
+    for d in &demos {
+        harness.add_demo(d.clone());
+    }
+
+    let report = sentinel_validation::calibration::evaluate(&harness);
+
+    println!("=== Metrics ===");
+    let m = &report.metrics;
+    println!("  Demos: {}, Players: {}", m.total_demos, m.total_players);
+    println!(
+        "  Precision: {:.3}  Recall: {:.3}  F1: {:.3}",
+        m.precision, m.recall, m.f1_score
+    );
+    println!(
+        "  FPR: {:.3}  TPR: {:.3}  Accuracy: {:.3}",
+        m.false_positive_rate, m.true_positive_rate, m.accuracy
+    );
+
+    println!("\n=== ROC / PR ===");
+    println!("  AUC-ROC: {:.3}", report.roc.auc);
+    println!("  AUC-PR (avg precision): {:.3}", report.pr.auc);
+
+    println!("\n=== Calibration ===");
+    println!(
+        "  Best threshold: {:.2} (F1: {:.3})",
+        report.calibration.best_threshold, report.calibration.best_objective
+    );
+
+    let per_map = sentinel_validation::calibration::per_map_analysis(&demos);
+    if !per_map.is_empty() {
+        println!("\n=== Per-map ===");
+        for pm in &per_map {
+            println!(
+                "  {}: {} players, P {:.3} R {:.3} F1 {:.3} AUC {:.3}",
+                pm.map, pm.players, pm.precision, pm.recall, pm.f1, pm.auc_roc
+            );
+        }
+    }
+
+    // Save the full report as JSON for tooling.
+    let out_path = dir.join("evaluation_report.json");
+    match serde_json::to_string_pretty(&report) {
+        Ok(json) => {
+            if let Err(e) = std::fs::write(&out_path, json) {
+                eprintln!("Error saving evaluation report: {}", e);
+            } else {
+                println!("\nEvaluation report: {:?}", out_path);
+            }
+        }
+        Err(e) => eprintln!("Error serializing report: {}", e),
+    }
+}
+
+/// Run k-fold cross-validation (M5) over a directory of demos.
+fn run_cross_validation(dir: &PathBuf, k: usize) {
+    println!("=== Sentinel AI {}-fold Cross-Validation ===\n", k);
+
+    let demos = collect_labelled_demos(dir);
+    if demos.is_empty() {
+        eprintln!("No .dem files found in {:?}", dir);
+        return;
+    }
+
+    let cv = sentinel_validation::calibration::cross_validate(&demos, k);
+
+    println!("K: {}", cv.k);
+    println!("Mean AUC-ROC: {:.3}", cv.mean_auc_roc);
+    println!("Mean AUC-PR:  {:.3}", cv.mean_auc_pr);
+    println!("Mean F1:      {:.3}", cv.mean_f1);
+
+    if !cv.folds.is_empty() {
+        println!("\nPer-fold:");
+        for f in &cv.folds {
+            println!(
+                "  Fold {}: AUC-ROC {:.3}, AUC-PR {:.3}, F1 {:.3}, threshold {:.2}",
+                f.fold, f.auc_roc, f.auc_pr, f.f1, f.calibrated_threshold
+            );
+        }
+    }
+}
+
+/// Collect demo validations from a directory. Players are labelled Unknown
+/// (hook for future label files), and TP/FP/TN/FN flags are derived from the
+/// score vs a 0.5 threshold for demonstration.
+fn collect_labelled_demos(dir: &PathBuf) -> Vec<DemoValidation> {
+    let entries: Vec<_> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().and_then(|s| s.to_str()) == Some("dem"))
+        .collect();
+
+    let mut demos = Vec::new();
+    for entry in &entries {
+        let path = entry.path();
+        match run_analysis_silent(&path) {
+            Ok((map_name, players)) => {
+                let players: Vec<PlayerEvaluation> = players
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (name, score, evidence))| PlayerEvaluation {
+                        steam_id: i as u64,
+                        name,
+                        team: "Unknown".to_string(),
+                        label: PlayerLabel::Unknown,
+                        overall_score: score,
+                        category_scores: BTreeMap::new(),
+                        evidence_count: evidence,
+                        is_true_positive: false,
+                        is_false_positive: false,
+                        is_true_negative: false,
+                        is_false_negative: false,
+                    })
+                    .collect();
+                demos.push(DemoValidation {
+                    demo_path: path.to_string_lossy().to_string(),
+                    map: map_name,
+                    players,
+                    true_positives: 0,
+                    false_positives: 0,
+                    true_negatives: 0,
+                    false_negatives: 0,
+                });
+            }
+            Err(e) => eprintln!("  Skipping {:?}: {}", path, e),
+        }
+    }
+    demos
+}
+
 fn print_usage() {
     println!("Usage: sentinel <command> [options]");
     println!();
@@ -552,8 +739,9 @@ fn print_usage() {
     println!("  learn   <match.dem>           Analyze and train memory from a demo");
     println!("  memory [reset]                Show or reset persistent memory");
     println!("  validate <directory>          Validate on multiple demos");
+    println!("  evaluate <directory>           Full validation suite (ROC, PR, calibration)");
+    println!("  cross-validate <dir> [k]       k-fold cross-validation");
     println!("  calibrate [output.json]       Generate calibration dataset");
     println!("  stats <vectors.json>          Show dataset statistics");
     println!("  verify                        Run verification checks");
 }
-
