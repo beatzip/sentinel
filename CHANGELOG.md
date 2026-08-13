@@ -5,9 +5,21 @@ All notable changes to Sentinel AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/user/sentinel-ai/compare/v0.1.0...HEAD)
+## [Unreleased](https://github.com/beatzip/sentinel/compare/v0.1.0...HEAD)
 
 ### Added
+- **Self-learning memory** (`sentinel-memory` crate): persistent baselines and
+  per-player profiles in a single `sentinel_memory.json` file, no database needed
+- **Online Welford accumulators** that learn empirical feature statistics from
+  every analyzed match and replace hardcoded defaults once enough samples exist
+- **Per-player recidivism scoring**: players consistently anomalous across
+  matches get a score boost, surfacing marginal cheaters who dodge single-match
+  thresholds
+- `sentinel learn <demo>` CLI command to analyze and train memory in one step
+- `sentinel memory` / `sentinel memory reset` CLI commands to inspect/clear memory
+- `sentinel analyze <demo> --learn` flag; `analyze` auto-loads existing memory
+  (read-only) for more accurate scoring
+- `run.sh` / `run.bat` one-command launchers that build on first use
 - Validation harness for evaluation metrics
 - Solo playstyle detection to reduce false positives
 - Team proximity and trade kill features
@@ -24,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feature computation using actual world state
 - Evidence generation with proper thresholds
 
-## [0.1.0](https://github.com/user/sentinel-ai/releases/tag/v0.1.0) - 2026-07-20
+## [0.1.0](https://github.com/beatzip/sentinel/releases/tag/v0.1.0) - 2026-07-20
 
 ### Added
 
@@ -93,7 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feature computation bounds checking
 - Evidence generation thresholds
 
-## [0.0.1](https://github.com/user/sentinel-ai/releases/tag/v0.0.1) - 2026-07-15
+## [0.0.1](https://github.com/beatzip/sentinel/releases/tag/v0.0.1) - 2026-07-15
 
 ### Added
 - Initial project structure
