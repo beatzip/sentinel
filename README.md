@@ -181,6 +181,57 @@ HTML / JSON Report
 
 ---
 
+# Self-Learning & Memory
+
+Sentinel keeps a persistent memory in `sentinel_memory.json` (next to the binary) so every analyzed match makes future analysis more accurate.
+
+How it works:
+
+```
+Demo
+  |
+  v
+Feature Extraction
+  |
+  v
+Score (using learned baselines + player history)   <--- Memory (read)
+  |
+  v
+Report
+  |
+  v
+Observe match -> update baselines & player profile  <--- Memory (write, `learn`)
+```
+
+- **Learned baselines** replace the hardcoded defaults once enough samples have
+  been seen. This gives Sentinel an empirical notion of "normal" play rather
+  than fixed thresholds.
+- **Per-player profiles** track each SteamID across matches. A player who
+  consistently deviates from the learned baselines builds up a *recidivism*
+  signal that raises their score over time. This is what surfaces **marginal
+  cheaters** who stay just under single-match thresholds.
+- Everything is a single JSON file. No database, no server — `sentinel learn`
+  just appends to it.
+
+Quick start:
+
+```bash
+# 1. Build
+cargo build --release
+
+# 2. Teach Sentinel from a few legit + suspicious demos
+sentinel learn demo1.dem
+sentinel learn demo2.dem
+
+# 3. Analyze normally — it now uses everything it learned
+sentinel analyze match.dem
+
+# 4. Inspect what it has learned
+sentinel memory
+```
+
+---
+
 # Current Capabilities
 
 ✔ Source2 demo parsing
@@ -340,10 +391,23 @@ cargo build --release
 
 # CLI
 
-Analyze
+Analyze (uses learned baselines automatically when memory exists)
 
 ```bash
 sentinel analyze match.dem
+```
+
+Analyze and train memory from a demo (self-learning)
+
+```bash
+sentinel learn match.dem
+```
+
+Show / reset persistent memory
+
+```bash
+sentinel memory
+sentinel memory reset
 ```
 
 Calibration
@@ -363,6 +427,8 @@ Verification
 ```bash
 sentinel verify
 ```
+
+All commands work the same on Windows (`sentinel.exe`) and Linux (`sentinel`).
 
 ---
 
