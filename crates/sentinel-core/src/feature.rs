@@ -152,4 +152,3 @@ impl Default for FeatureRegistry {
         Self::new()
     }
 }
-

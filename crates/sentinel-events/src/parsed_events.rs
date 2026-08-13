@@ -131,10 +131,7 @@ pub fn shot_from_event(tick: Tick, data: &[(String, EventValue)]) -> ShotEvent {
 }
 
 /// Helper to create a DamageEvent from raw GameEvent data
-pub fn damage_from_event(
-    tick: Tick,
-    data: &[(String, EventValue)],
-) -> DamageEvent {
+pub fn damage_from_event(tick: Tick, data: &[(String, EventValue)]) -> DamageEvent {
     let victim_id = data
         .iter()
         .find(|(k, _)| k == "userid")
@@ -214,7 +211,7 @@ pub fn damage_from_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kinds::{make_event, EventKind};
+    use crate::kinds::{EventKind, make_event};
 
     #[test]
     fn test_hitgroup_conversion() {
@@ -244,7 +241,14 @@ mod tests {
             ],
         );
 
-        let shot = shot_from_event(event.tick, &event.data.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>());
+        let shot = shot_from_event(
+            event.tick,
+            &event
+                .data
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>(),
+        );
         assert_eq!(shot.shooter_id, 12345);
         assert_eq!(shot.weapon, "ak47");
         assert_eq!(shot.penetrated, 2);
@@ -267,7 +271,14 @@ mod tests {
             ],
         );
 
-        let damage = damage_from_event(event.tick, &event.data.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>());
+        let damage = damage_from_event(
+            event.tick,
+            &event
+                .data
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>(),
+        );
         assert_eq!(damage.victim_id, 67890);
         assert_eq!(damage.attacker_id, Some(11111));
         assert_eq!(damage.dmg_health, 25);
@@ -293,7 +304,14 @@ mod tests {
             ],
         );
 
-        let damage = damage_from_event(event.tick, &event.data.iter().map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>());
+        let damage = damage_from_event(
+            event.tick,
+            &event
+                .data
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<Vec<_>>(),
+        );
         assert_eq!(damage.dmg_health_real, 30);
     }
 }

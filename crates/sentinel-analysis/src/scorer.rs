@@ -180,8 +180,7 @@ impl Scorer {
         let category_scores = self.compute_category_scores(&feature_scores);
 
         // Compute overall score
-        let overall_score =
-            self.compute_overall_score(player, &category_scores, &feature_scores);
+        let overall_score = self.compute_overall_score(player, &category_scores, &feature_scores);
 
         let tick = feature_vectors.first().map(|fv| fv.tick).unwrap_or(Tick(0));
 
