@@ -6,3 +6,5 @@ target/
 sentinel_memory.json
 reports/tris/
 target/
+tris/
+target/
