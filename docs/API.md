@@ -11,3 +11,5 @@ Run the local API with `cargo run -p sentinel-api -- reports`. It binds to `127.
 | `GET` | `/v1/players/{steam_id}` | Matching player reports across all local reports. |
 
 The API never accepts report paths from clients and only resolves JSON files below its configured report directory.
+
+Analyze a real demo with `SENTINEL_REPORTS_DIR=reports sentinel analyze match.dem`. The analyzer writes `reports/<match>.json`, `reports/<match>.html`, and `reports/<match>.replay.json` together, so the report and replay endpoints become available without a second export command.

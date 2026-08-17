@@ -38,6 +38,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 > Repository check: the demo corpus and labels are not included, so the M4 collection targets remain unverified.
 
 - [x] Versioned dataset manifest and local audit command (`sentinel dataset init|audit`)
+- [x] Verified feature-sidecar loader and supervised training command (`sentinel dataset train`)
 
 **Sources:**
 - HLTV pro matches (legit)
@@ -74,10 +75,10 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Self-learning baselines (online Welford accumulators)
 - [x] Persistent memory (`sentinel_memory.json`) + per-player profiles
 - [x] Recidivism-based scoring for marginal-cheater detection
-- [x] Gradient-boosted tree model for feature combination (XGBoost-style contract)
+- [x] Native XGBoost-compatible binary classifier with saved model artifacts
 - [x] Isolation Forest anomaly detection
-- [x] Temporal attention sequence model (Transformer-compatible contract)
-- [x] Model training pipeline (`sentinel learn`)
+- [x] Trainable temporal Transformer encoder with saved model artifacts
+- [x] Supervised model training pipeline (`sentinel dataset train`)
 - [x] Model versioning (memory schema version)
 - [ ] A/B testing framework
 
@@ -92,6 +93,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Match history
 - [x] Report and replay JSON export (`sentinel replay`)
 - [x] Interactive Replay Viewer (frames, playback controls, Visibility Engine layer)
+- [x] Automatic replay sidecar publication during `sentinel analyze`
 
 ### M9 - API & Integration
 
@@ -99,6 +101,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 
 - [x] REST API
 - [x] Replay frames endpoint (`GET /v1/replays/{id}`)
+- [x] Automatic report/replay publication to `SENTINEL_REPORTS_DIR`
 - [ ] Discord bot
 - [x] OBS overlay data endpoint
 - [x] Stream integration data contract

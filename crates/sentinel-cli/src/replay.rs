@@ -11,6 +11,13 @@ const FRAME_INTERVAL_TICKS: usize = 32;
 pub fn export(demo_path: &Path, output_path: &Path) -> Result<(), String> {
     let adapter = sentinel_source2::Source2Adapter::from_file(demo_path)
         .map_err(|error| format!("Unable to parse demo: {error}"))?;
+    export_adapter(&adapter, output_path)
+}
+
+pub fn export_adapter(
+    adapter: &sentinel_source2::Source2Adapter,
+    output_path: &Path,
+) -> Result<(), String> {
     let events = adapter.events().collect::<Vec<_>>();
     let game_events = events
         .iter()

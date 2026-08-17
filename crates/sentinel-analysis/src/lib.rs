@@ -5,6 +5,8 @@ pub mod ml;
 pub mod scorer;
 pub mod temporal;
 pub mod temporal_attention;
+pub mod transformer;
+pub mod xgboost;
 
 pub use aggregation::BayesianAggregator;
 pub use baseline::{BaselineSet, FeatureBaseline};
@@ -13,3 +15,5 @@ pub use ml::{AnomalyModel, EnsembleModel, IsolationForest, StatisticalModel};
 pub use scorer::{FeatureScore, MemoryAdapter, PlayerScoreResult, Scorer, ScorerConfig};
 pub use temporal::{TemporalProfile, profile_feature};
 pub use temporal_attention::{TemporalAttentionModel, TemporalSequenceScore};
+pub use transformer::{LabeledSequence, TemporalTransformer};
+pub use xgboost::XgBoostModel;

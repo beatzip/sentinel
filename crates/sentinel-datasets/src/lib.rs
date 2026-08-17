@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use sentinel_analysis::BaselineSet;
+use sentinel_analysis::{BaselineSet, LabeledSequence, LabeledVector};
+use sentinel_core::{FeatureVector, PlayerId};
 
 /// Calibration dataset containing feature distributions from known-legit matches
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -283,6 +284,12 @@ pub struct DatasetEntry {
     pub label: DatasetLabel,
     pub source: String,
     pub verified: bool,
+    /// FeatureVector sidecar produced by `sentinel analyze`; relative to the manifest.
+    #[serde(default)]
+    pub features_path: Option<PathBuf>,
+    /// Required for cheater demos so unrelated players are never mislabeled.
+    #[serde(default)]
+    pub player_labels: BTreeMap<u64, DatasetLabel>,
 }
 
 /// Portable index for the M4 dataset; demo archives stay out of the repository.
@@ -354,6 +361,79 @@ impl DatasetManifest {
 
         audit
     }
+
+    /// Loads only verified labels and refuses ambiguous cheater demos.
+    pub fn supervised_corpus(&self, root: &Path) -> Result<SupervisedCorpus, std::io::Error> {
+        let mut corpus = SupervisedCorpus::default();
+        for entry in &self.entries {
+            if !entry.verified || entry.label == DatasetLabel::Unknown {
+                continue;
+            }
+            let features_path = entry.features_path.as_ref().ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("Missing features_path for {}", entry.demo_path.display()),
+                )
+            })?;
+            let vectors = serde_json::from_str::<Vec<FeatureVector>>(&std::fs::read_to_string(
+                root.join(features_path),
+            )?)
+            .map_err(std::io::Error::other)?;
+            let mut by_player: BTreeMap<PlayerId, Vec<FeatureVector>> = BTreeMap::new();
+            for vector in vectors {
+                by_player.entry(vector.player).or_default().push(vector);
+            }
+            for (player, mut sequence) in by_player {
+                sequence.sort_by_key(|vector| vector.tick);
+                let label = entry
+                    .player_labels
+                    .get(&player.as_u64())
+                    .cloned()
+                    .unwrap_or_else(|| entry.label.clone());
+                let label = match label {
+                    DatasetLabel::Legit => 0.0,
+                    DatasetLabel::Cheater
+                        if entry.label == DatasetLabel::Cheater
+                            && entry.player_labels.is_empty() =>
+                    {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!(
+                                "Cheater demo {} requires player_labels",
+                                entry.demo_path.display()
+                            ),
+                        ));
+                    }
+                    DatasetLabel::Cheater => 1.0,
+                    DatasetLabel::Unknown => continue,
+                };
+                corpus.vectors.extend(
+                    sequence
+                        .iter()
+                        .cloned()
+                        .map(|vector| LabeledVector { vector, label }),
+                );
+                corpus.sequences.push(LabeledSequence {
+                    vectors: sequence,
+                    label,
+                });
+            }
+        }
+        if corpus.vectors.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "No verified labeled feature vectors found",
+            ));
+        }
+        Ok(corpus)
+    }
+}
+
+/// Corpus split into independent vectors for trees and ordered sequences for Transformer training.
+#[derive(Debug, Default)]
+pub struct SupervisedCorpus {
+    pub vectors: Vec<LabeledVector>,
+    pub sequences: Vec<LabeledSequence>,
 }
 
 #[cfg(test)]
@@ -421,12 +501,16 @@ mod tests {
                     label: DatasetLabel::Legit,
                     source: "hltv".to_string(),
                     verified: true,
+                    features_path: None,
+                    player_labels: BTreeMap::new(),
                 },
                 DatasetEntry {
                     demo_path: PathBuf::from("cheater/missing.dem"),
                     label: DatasetLabel::Cheater,
                     source: "manual-review".to_string(),
                     verified: false,
+                    features_path: None,
+                    player_labels: BTreeMap::new(),
                 },
             ],
         };
@@ -443,6 +527,44 @@ mod tests {
                 duplicate_paths: 0,
             }
         );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn verified_manifest_loads_supervised_feature_corpus() {
+        let root = std::env::temp_dir().join("sentinel_supervised_corpus");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("legit.dem"), []).unwrap();
+        let vectors = vec![sentinel_core::FeatureVector {
+            tick: sentinel_core::Tick(64),
+            round: 1,
+            player: sentinel_core::PlayerId::new(42),
+            features: BTreeMap::from([(
+                "tracking".to_string(),
+                sentinel_core::FeatureResult::new(0.2),
+            )]),
+        }];
+        std::fs::write(
+            root.join("legit.vectors.json"),
+            serde_json::to_string(&vectors).unwrap(),
+        )
+        .unwrap();
+        let manifest = DatasetManifest {
+            version: 1,
+            entries: vec![DatasetEntry {
+                demo_path: PathBuf::from("legit.dem"),
+                label: DatasetLabel::Legit,
+                source: "verified".to_string(),
+                verified: true,
+                features_path: Some(PathBuf::from("legit.vectors.json")),
+                player_labels: BTreeMap::new(),
+            }],
+        };
+        let corpus = manifest.supervised_corpus(&root).unwrap();
+        assert_eq!(corpus.vectors.len(), 1);
+        assert_eq!(corpus.sequences.len(), 1);
+        assert_eq!(corpus.vectors[0].label, 0.0);
         let _ = std::fs::remove_dir_all(root);
     }
 }

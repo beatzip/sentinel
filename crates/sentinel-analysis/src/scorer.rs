@@ -194,6 +194,27 @@ impl Scorer {
         }
     }
 
+    /// Blend learned scores only after feature-level evidence is generated.
+    pub fn apply_learned_scores(
+        &self,
+        result: &mut PlayerScoreResult,
+        xgboost_score: f64,
+        transformer_score: f64,
+    ) {
+        let baseline_score = result.overall_score.overall;
+        result
+            .overall_score
+            .categories
+            .insert("learned_xgboost".to_string(), xgboost_score);
+        result
+            .overall_score
+            .categories
+            .insert("learned_temporal".to_string(), transformer_score);
+        result.overall_score.overall =
+            (baseline_score * 0.35 + xgboost_score * 0.40 + transformer_score * 0.25)
+                .clamp(0.0, 1.0);
+    }
+
     /// Generate human-readable reason for evidence
     fn generate_evidence_reason(&self, score: &FeatureScore) -> String {
         match score.name.as_str() {

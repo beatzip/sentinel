@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use sentinel_analysis::Scorer;
+use sentinel_analysis::{AnomalyModel, Scorer, TemporalTransformer, XgBoostModel};
 use sentinel_core::source::{DemoSource, EventData, EventKind};
 use sentinel_core::{FeatureVector, MatchContext, Tick};
 use sentinel_features::FeatureEngine;
@@ -213,6 +213,13 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         all_feature_vectors.extend(vectors);
     }
     println!("  Feature vectors: {}", all_feature_vectors.len());
+    let vectors_path = path.with_extension("vectors.json");
+    match serde_json::to_string_pretty(&all_feature_vectors)
+        .and_then(|json| std::fs::write(&vectors_path, json).map_err(serde_json::Error::io))
+    {
+        Ok(()) => println!("  Feature vectors: {}", vectors_path.display()),
+        Err(error) => eprintln!("  Warning: could not save feature vectors ({error})"),
+    }
 
     // Step 6: Run analysis
     println!("[6/7] Running analysis...");
@@ -238,6 +245,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         min_evidence_per_category: 1,
     };
     let scorer = Scorer::new(config).with_memory(Box::new(memory.clone()));
+    let learned_models = load_production_models();
     let mut player_results = Vec::new();
 
     for &player in &players {
@@ -246,7 +254,21 @@ fn run_analysis(path: &PathBuf, learn: bool) {
             .filter(|fv| fv.player == player)
             .collect();
         if !fvs.is_empty() {
-            let result = scorer.score_player(player, &fvs);
+            let mut result = scorer.score_player(player, &fvs);
+            if let Some((xgboost, transformer)) = &learned_models {
+                let xgboost_score = fvs
+                    .iter()
+                    .filter_map(|vector| xgboost.predict(vector).ok())
+                    .sum::<f64>()
+                    / fvs.len() as f64;
+                let sequence = fvs
+                    .iter()
+                    .map(|vector| (*vector).clone())
+                    .collect::<Vec<_>>();
+                if let Ok(transformer_score) = transformer.predict_sequence(&sequence) {
+                    scorer.apply_learned_scores(&mut result, xgboost_score, transformer_score);
+                }
+            }
             player_results.push(result);
         }
     }
@@ -334,8 +356,14 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         }
     }
 
-    // Save reports
-    let json_path = path.with_extension("json");
+    // Publish report and replay sidecar where sentinel-api reads them.
+    let reports_dir = api_reports_dir();
+    if let Err(error) = std::fs::create_dir_all(&reports_dir) {
+        eprintln!("Error creating API reports directory: {error}");
+        return;
+    }
+    let report_id = api_report_id(path);
+    let json_path = reports_dir.join(format!("{report_id}.json"));
     let json = serde_json::to_string_pretty(&report).unwrap_or_default();
     if let Err(e) = std::fs::write(&json_path, &json) {
         eprintln!("Error saving report: {}", e);
@@ -343,7 +371,13 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         println!("\nJSON report: {:?}", json_path);
     }
 
-    let html_path = path.with_extension("html");
+    let replay_path = reports_dir.join(format!("{report_id}.replay.json"));
+    match replay::export_adapter(&adapter, &replay_path) {
+        Ok(()) => println!("Replay export: {:?}", replay_path),
+        Err(error) => eprintln!("Replay export failed: {error}"),
+    }
+
+    let html_path = reports_dir.join(format!("{report_id}.html"));
     let html = sentinel_report::html::HtmlReport::generate(&report);
     if let Err(e) = std::fs::write(&html_path, &html) {
         eprintln!("Error saving HTML: {}", e);
@@ -602,6 +636,47 @@ fn run_memory_command(args: &[String]) {
     }
 }
 
+fn load_production_models() -> Option<(XgBoostModel, TemporalTransformer)> {
+    let root = PathBuf::from(
+        std::env::var("SENTINEL_MODELS_DIR").unwrap_or_else(|_| "models".to_string()),
+    );
+    let metadata = std::fs::read_to_string(root.join("training-metadata.json")).ok()?;
+    let feature_names = serde_json::from_str::<serde_json::Value>(&metadata)
+        .ok()?
+        .get("xgboost_features")?
+        .as_array()?
+        .iter()
+        .filter_map(|value| value.as_str().map(str::to_string))
+        .collect::<Vec<_>>();
+    let xgboost = XgBoostModel::load(&root.join("sentinel-xgboost.sqb"), feature_names).ok()?;
+    let transformer = TemporalTransformer::load(&root.join("sentinel-transformer.json")).ok()?;
+    println!(
+        "  Production models: XGBoost + Transformer active ({})",
+        root.display()
+    );
+    Some((xgboost, transformer))
+}
+
+fn api_reports_dir() -> PathBuf {
+    PathBuf::from(std::env::var("SENTINEL_REPORTS_DIR").unwrap_or_else(|_| "reports".to_string()))
+}
+
+fn api_report_id(path: &std::path::Path) -> String {
+    path.file_stem()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .unwrap_or("match")
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || character == '-' || character == '_' {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
+
 fn print_usage() {
     println!("Usage: sentinel <command> [options]");
     println!();
@@ -612,7 +687,9 @@ fn print_usage() {
     println!("  validate <directory>          Validate on multiple demos");
     println!("  calibrate [output.json]       Generate calibration dataset");
     println!("  stats <vectors.json>          Show dataset statistics");
-    println!("  dataset <init|audit>          Create or audit a labeled dataset manifest");
+    println!(
+        "  dataset <init|audit|train>    Create, audit, or train from a labeled dataset manifest"
+    );
     println!("  replay <match.dem> [output]   Export sampled replay frames with visibility pairs");
     println!("  verify                        Run verification checks");
 }
