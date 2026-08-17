@@ -177,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_html_generation() {
-        use crate::{MatchMetadata, MatchReport, PlayerReport};
+        use crate::{ConfidenceAssessment, MatchMetadata, MatchReport, PlayerReport};
         use sentinel_core::BehaviorScore;
 
         let metadata = MatchMetadata {
@@ -197,6 +197,7 @@ mod tests {
             scores: BehaviorScore::new(),
             evidence: Vec::new(),
             summary: "No anomalies".to_string(),
+            confidence: ConfidenceAssessment::default(),
         });
 
         let html = HtmlReport::generate(&report);

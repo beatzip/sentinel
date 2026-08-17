@@ -10,6 +10,10 @@ use sentinel_core::source::{
 use sentinel_core::{PlayerId, Tick};
 use source2_demo::prelude::*;
 
+/// Parser identity written into Sentinel report provenance.
+pub const DEMO_PARSER_VERSION: &str =
+    concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"));
+
 pub struct Source2Adapter {
     metadata: MatchMetadata,
     events: Vec<Source2Event>,
@@ -98,8 +102,20 @@ impl DemoCollector {
         let tick = Tick(self.current_tick);
         let mut data = Vec::new();
 
-        // Extract common fields
-        for key in &["attacker", "userid", "weapon", "team", "name", "winner"] {
+        // Extract common public combat and round fields.
+        for key in &[
+            "attacker",
+            "userid",
+            "assister",
+            "weapon",
+            "team",
+            "name",
+            "winner",
+            "headshot",
+            "penetrated",
+            "thrusmoke",
+            "reason",
+        ] {
             if let Ok(val) = event.get_value(key) {
                 let event_val = match val {
                     EventValue::Int(v) => EventData::Int(*v as i64),

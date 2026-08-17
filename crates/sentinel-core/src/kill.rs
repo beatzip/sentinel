@@ -12,4 +12,8 @@ pub struct KillEvent {
     pub headshot: bool,
     pub assisted: bool,
     pub assist_player: Option<PlayerId>,
+    #[serde(default)]
+    pub wallbang: bool,
+    #[serde(default)]
+    pub through_smoke: bool,
 }

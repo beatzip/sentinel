@@ -1,3 +1,4 @@
+pub mod ab_test;
 pub mod aggregation;
 pub mod baseline;
 pub mod boosted;
@@ -8,6 +9,7 @@ pub mod temporal_attention;
 pub mod transformer;
 pub mod xgboost;
 
+pub use ab_test::{AbTestConfig, EvaluationMetric, ModelArm};
 pub use aggregation::BayesianAggregator;
 pub use baseline::{BaselineSet, FeatureBaseline};
 pub use boosted::{GradientBoostedStumps, LabeledVector};

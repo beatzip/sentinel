@@ -2,12 +2,15 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use sentinel_analysis::{AnomalyModel, Scorer, TemporalTransformer, XgBoostModel};
-use sentinel_core::source::{DemoSource, EventData, EventKind};
-use sentinel_core::{FeatureVector, MatchContext, Tick};
+use sentinel_core::source::{DemoSource, EventData, EventKind, RoundInfo};
+use sentinel_core::{FeatureVector, MatchContext, Team, Tick, TickState};
 use sentinel_features::FeatureEngine;
 use sentinel_map::loader;
 use sentinel_memory::{MatchObservation, Memory};
-use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
+use sentinel_report::{
+    AnalysisProvenance, ConfidenceAssessment, MatchMetadata, MatchReport, PlayerReport, RosterKill,
+    RoundContext, SupportingMatch,
+};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
 
@@ -183,8 +186,8 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     let player_count = adapter.player_ids().len();
     println!("  Players found: {}", player_count);
 
-    // Load map data for visibility calculations
-    match loader::load_map_by_name(&meta.map_name) {
+    // Load map data for visibility calculations and capture its geometry version.
+    let map_asset_version = match loader::load_map_by_name(&meta.map_name) {
         Some(map) => {
             println!(
                 "  Map loaded: {} ({} walls, {} nav nodes)",
@@ -192,15 +195,18 @@ fn run_analysis(path: &PathBuf, learn: bool) {
                 map.walls.len(),
                 map.nav_nodes.len()
             );
+            let version = map_asset_version(&map);
             ctx.set_map(map);
+            version
         }
         None => {
             println!(
                 "  Warning: Map '{}' not found, using default dust2",
                 meta.map_name
             );
+            "unavailable".to_string()
         }
-    }
+    };
 
     // Step 5: Compute features
     println!("[5/7] Computing features...");
@@ -277,9 +283,12 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     // Optionally record this match into persistent memory (self-learning).
     if learn {
         let mut mem = memory.clone();
+        let report_id = api_report_id(path);
         let results_for_memory: Vec<_> = player_results
             .iter()
             .map(|r| MatchObservation {
+                report_id: report_id.clone(),
+                map_name: meta.map_name.clone(),
                 player: r.player,
                 overall_score: r.overall_score.overall,
                 evidence_count: r.evidence.len(),
@@ -314,6 +323,18 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     };
 
     let mut report = MatchReport::new(report_meta);
+    report.rounds = build_round_contexts(&adapter, ctx.states(), ctx.kills(), &game_events);
+    report.provenance = AnalysisProvenance {
+        engine_version: format!("sentinel-cli@{}", env!("CARGO_PKG_VERSION")),
+        demo_parser_version: sentinel_source2::DEMO_PARSER_VERSION.to_string(),
+        demo_fingerprint: file_fingerprint(path),
+        map_asset_version,
+        feature_schema_version: feature_schema_fingerprint(&all_feature_vectors),
+        xgboost_artifact_version: file_fingerprint(&models_dir().join("sentinel-xgboost.sqb")),
+        transformer_artifact_version: file_fingerprint(
+            &models_dir().join("sentinel-transformer.json"),
+        ),
+    };
 
     for result in &player_results {
         let name = adapter
@@ -323,6 +344,24 @@ fn run_analysis(path: &PathBuf, learn: bool) {
             .player_team(result.player)
             .map(|t| format!("{:?}", t))
             .unwrap_or_else(|| "Unknown".to_string());
+        let history = memory.account_history(result.player);
+        let supporting_matches = history
+            .supporting_matches
+            .into_iter()
+            .map(|item| SupportingMatch {
+                report_id: item.report_id,
+                map_name: item.map_name,
+                overall_score: item.overall_score,
+                evidence_count: item.evidence_count,
+                flagged: item.flagged,
+            })
+            .collect();
+        let confidence = ConfidenceAssessment::assess(
+            &result.overall_score,
+            history.matches_observed,
+            history.flagged_matches,
+            supporting_matches,
+        );
 
         report.add_player(PlayerReport {
             steam_id: result.player.as_u64(),
@@ -331,10 +370,13 @@ fn run_analysis(path: &PathBuf, learn: bool) {
             scores: result.overall_score.clone(),
             evidence: result.evidence.clone(),
             summary: format!(
-                "Overall: {:.2}, Evidence: {}",
+                "Overall: {:.2}, Evidence: {}, Confidence: {:?}/{:?}",
                 result.overall_score.overall,
-                result.evidence.len()
+                result.evidence.len(),
+                confidence.level,
+                confidence.status,
             ),
+            confidence,
         });
     }
 
@@ -426,7 +468,113 @@ pub(crate) fn convert_demo_event(
         data.insert(key.clone(), sentinel_value);
     }
 
+    // Source2's public player_death event uses `userid` for the victim;
+    // WorldRebuilder exposes the normalized field as `victim`.
+    if matches!(event.kind(), EventKind::PlayerDeath)
+        && let Some(victim) = data.get("userid").cloned()
+    {
+        data.insert("victim".to_string(), victim);
+    }
+
     Some(GameEvent { kind, tick, data })
+}
+
+pub(crate) fn build_round_contexts(
+    adapter: &sentinel_source2::Source2Adapter,
+    states: &[TickState],
+    kills: &[sentinel_core::KillEvent],
+    events: &[sentinel_events::kinds::GameEvent],
+) -> Vec<RoundContext> {
+    adapter
+        .rounds()
+        .iter()
+        .map(|round| {
+            let start_tick = round.start_tick().0;
+            let end_tick = round.end_tick().0;
+            let end_state = states
+                .iter()
+                .filter(|state| state.tick.0 >= start_tick && state.tick.0 <= end_tick)
+                .last();
+            let (t_score, ct_score, t_survivors, ct_survivors) = end_state
+                .map(|state| {
+                    (
+                        state.round.t_score,
+                        state.round.ct_score,
+                        state
+                            .players
+                            .iter()
+                            .filter(|player| player.alive && player.team == Team::Terrorist)
+                            .count(),
+                        state
+                            .players
+                            .iter()
+                            .filter(|player| player.alive && player.team == Team::CounterTerrorist)
+                            .count(),
+                    )
+                })
+                .unwrap_or_default();
+            let round_events = events
+                .iter()
+                .filter(|event| event.tick.0 >= start_tick && event.tick.0 <= end_tick)
+                .collect::<Vec<_>>();
+            let end_reason = round_events
+                .iter()
+                .find(|event| event.kind == sentinel_events::kinds::EventKind::RoundEnd)
+                .and_then(|event| event.data.get("reason"))
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            let bomb_result = if round_events
+                .iter()
+                .any(|event| event.kind == sentinel_events::kinds::EventKind::BombDefuse)
+            {
+                Some("defused".to_string())
+            } else if round_events
+                .iter()
+                .any(|event| event.kind == sentinel_events::kinds::EventKind::BombPlant)
+            {
+                Some("planted".to_string())
+            } else {
+                None
+            };
+            let kills = kills
+                .iter()
+                .filter(|kill| kill.tick.0 >= start_tick && kill.tick.0 <= end_tick)
+                .map(|kill| RosterKill {
+                    tick: kill.tick.0,
+                    attacker_id: kill.attacker.as_u64(),
+                    attacker_name: adapter
+                        .player_name(kill.attacker)
+                        .unwrap_or_else(|| format!("Player_{}", kill.attacker.as_u64())),
+                    victim_id: kill.victim.as_u64(),
+                    victim_name: adapter
+                        .player_name(kill.victim)
+                        .unwrap_or_else(|| format!("Player_{}", kill.victim.as_u64())),
+                    assist_id: kill.assist_player.map(|player| player.as_u64()),
+                    assist_name: kill
+                        .assist_player
+                        .and_then(|player| adapter.player_name(player)),
+                    weapon: kill.weapon.clone(),
+                    headshot: kill.headshot,
+                    wallbang: kill.wallbang,
+                    through_smoke: kill.through_smoke,
+                })
+                .collect();
+            RoundContext {
+                round_number: round.number(),
+                start_tick,
+                end_tick,
+                t_score,
+                ct_score,
+                winner: round.winner().map(|team| format!("{team:?}")),
+                end_reason,
+                bomb_result,
+                buy_matchup: None,
+                t_survivors,
+                ct_survivors,
+                kills,
+            }
+        })
+        .collect()
 }
 
 /// Run validation on a directory of demo files
@@ -637,9 +785,7 @@ fn run_memory_command(args: &[String]) {
 }
 
 fn load_production_models() -> Option<(XgBoostModel, TemporalTransformer)> {
-    let root = PathBuf::from(
-        std::env::var("SENTINEL_MODELS_DIR").unwrap_or_else(|_| "models".to_string()),
-    );
+    let root = models_dir();
     let metadata = std::fs::read_to_string(root.join("training-metadata.json")).ok()?;
     let feature_names = serde_json::from_str::<serde_json::Value>(&metadata)
         .ok()?
@@ -655,6 +801,48 @@ fn load_production_models() -> Option<(XgBoostModel, TemporalTransformer)> {
         root.display()
     );
     Some((xgboost, transformer))
+}
+
+fn models_dir() -> PathBuf {
+    PathBuf::from(std::env::var("SENTINEL_MODELS_DIR").unwrap_or_else(|_| "models".to_string()))
+}
+
+fn fingerprint_bytes(bytes: &[u8]) -> String {
+    format!(
+        "fnv1a64:{:016x}",
+        bytes.iter().fold(0xcbf29ce484222325_u64, |hash, byte| {
+            (hash ^ *byte as u64).wrapping_mul(0x100000001b3)
+        })
+    )
+}
+
+fn file_fingerprint(path: &std::path::Path) -> String {
+    std::fs::read(path)
+        .map(|bytes| fingerprint_bytes(&bytes))
+        .unwrap_or_else(|_| "unavailable".to_string())
+}
+
+fn feature_schema_fingerprint(vectors: &[FeatureVector]) -> String {
+    let schema = vectors
+        .iter()
+        .flat_map(|vector| vector.features.keys())
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join("|");
+    fingerprint_bytes(schema.as_bytes())
+}
+
+fn map_asset_version(map: &sentinel_map::MapData) -> String {
+    let signature = format!(
+        "{}:{}:{}:{}",
+        map.name,
+        map.walls.len(),
+        map.nav_nodes.len(),
+        map.spawns.len()
+    );
+    format!("geometry:{}", fingerprint_bytes(signature.as_bytes()))
 }
 
 fn api_reports_dir() -> PathBuf {

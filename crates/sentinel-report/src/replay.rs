@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::RoundContext;
+
 /// Browser-friendly replay data, produced alongside a Sentinel report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReplayData {
@@ -7,6 +9,9 @@ pub struct ReplayData {
     pub map: String,
     pub tick_rate: u32,
     pub frames: Vec<ReplayFrame>,
+    /// Same round contexts as the match report for viewer-side evidence drill-down.
+    #[serde(default)]
+    pub rounds: Vec<RoundContext>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

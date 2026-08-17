@@ -7,6 +7,172 @@ use serde::{Deserialize, Serialize};
 
 use sentinel_core::{BehaviorScore, Evidence};
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum RiskLevel {
+    #[default]
+    Clean,
+    Low,
+    Moderate,
+    High,
+    Extreme,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum VerdictStatus {
+    #[default]
+    InsufficientHistory,
+    Tentative,
+    Standard,
+    Strong,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SupportingMatch {
+    pub report_id: String,
+    pub map_name: String,
+    pub overall_score: f64,
+    pub evidence_count: usize,
+    pub flagged: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ConfidenceAssessment {
+    pub level: RiskLevel,
+    pub status: VerdictStatus,
+    pub independent_signals: usize,
+    pub matches_observed: usize,
+    pub flagged_matches: usize,
+    pub recurrence: f64,
+    pub supporting_matches: Vec<SupportingMatch>,
+}
+
+impl ConfidenceAssessment {
+    pub fn assess(
+        score: &BehaviorScore,
+        matches_observed: usize,
+        flagged_matches: usize,
+        supporting_matches: Vec<SupportingMatch>,
+    ) -> Self {
+        let level = match score.overall {
+            value if value < 0.2 => RiskLevel::Clean,
+            value if value < 0.4 => RiskLevel::Low,
+            value if value < 0.6 => RiskLevel::Moderate,
+            value if value < 0.8 => RiskLevel::High,
+            _ => RiskLevel::Extreme,
+        };
+        let rule_signals = score
+            .categories
+            .iter()
+            .filter(|(name, value)| {
+                !name.starts_with("learned_") && **value >= 0.6 && *name != "overall"
+            })
+            .count();
+        let xgboost = score
+            .categories
+            .get("learned_xgboost")
+            .copied()
+            .unwrap_or(0.0);
+        let temporal = score
+            .categories
+            .get("learned_temporal")
+            .copied()
+            .unwrap_or(0.0);
+        let model_signals = usize::from(xgboost >= 0.6) + usize::from(temporal >= 0.6);
+        let history_signal = usize::from(matches_observed >= 3 && flagged_matches >= 2);
+        let independent_signals = rule_signals + model_signals + history_signal;
+        let disagreement = (xgboost - temporal).abs() >= 0.35 && xgboost > 0.0 && temporal > 0.0;
+        let status = if matches_observed < 2 {
+            VerdictStatus::InsufficientHistory
+        } else if disagreement
+            || (matches_observed >= 3 && score.overall >= 0.6 && independent_signals < 2)
+        {
+            VerdictStatus::Tentative
+        } else if score.overall >= 0.6 && independent_signals >= 3 {
+            VerdictStatus::Strong
+        } else {
+            VerdictStatus::Standard
+        };
+        Self {
+            level,
+            status,
+            independent_signals,
+            matches_observed,
+            flagged_matches,
+            recurrence: if matches_observed == 0 {
+                0.0
+            } else {
+                flagged_matches as f64 / matches_observed as f64
+            },
+            supporting_matches,
+        }
+    }
+}
+
+/// Immutable versions and fingerprints used to produce a report.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AnalysisProvenance {
+    pub engine_version: String,
+    pub demo_parser_version: String,
+    pub demo_fingerprint: String,
+    pub map_asset_version: String,
+    pub feature_schema_version: String,
+    pub xgboost_artifact_version: String,
+    pub transformer_artifact_version: String,
+}
+
+/// Whether a stored report should be recomputed under a newer analysis stack.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ReanalysisStatus {
+    pub required: bool,
+    pub reasons: Vec<String>,
+}
+
+impl AnalysisProvenance {
+    pub fn reanalysis_status(&self, current: &Self) -> ReanalysisStatus {
+        let checks = [
+            (
+                "engine_version",
+                &self.engine_version,
+                &current.engine_version,
+            ),
+            (
+                "demo_parser_version",
+                &self.demo_parser_version,
+                &current.demo_parser_version,
+            ),
+            (
+                "map_asset_version",
+                &self.map_asset_version,
+                &current.map_asset_version,
+            ),
+            (
+                "feature_schema_version",
+                &self.feature_schema_version,
+                &current.feature_schema_version,
+            ),
+            (
+                "xgboost_artifact_version",
+                &self.xgboost_artifact_version,
+                &current.xgboost_artifact_version,
+            ),
+            (
+                "transformer_artifact_version",
+                &self.transformer_artifact_version,
+                &current.transformer_artifact_version,
+            ),
+        ];
+        let reasons = checks
+            .into_iter()
+            .filter(|(_, recorded, active)| !recorded.is_empty() && recorded != active)
+            .map(|(field, _, _)| field.to_string())
+            .collect::<Vec<_>>();
+        ReanalysisStatus {
+            required: !reasons.is_empty(),
+            reasons,
+        }
+    }
+}
+
 /// Match metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchMetadata {
@@ -24,6 +190,39 @@ pub struct MatchMetadata {
     pub tick_rate: u32,
 }
 
+/// Public combat details tied to one roster-resolved kill.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RosterKill {
+    pub tick: u32,
+    pub attacker_id: u64,
+    pub attacker_name: String,
+    pub victim_id: u64,
+    pub victim_name: String,
+    pub assist_id: Option<u64>,
+    pub assist_name: Option<String>,
+    pub weapon: String,
+    pub headshot: bool,
+    pub wallbang: bool,
+    pub through_smoke: bool,
+}
+
+/// Factual round context retained when the demo exposes each field.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RoundContext {
+    pub round_number: u32,
+    pub start_tick: u32,
+    pub end_tick: u32,
+    pub t_score: u32,
+    pub ct_score: u32,
+    pub winner: Option<String>,
+    pub end_reason: Option<String>,
+    pub bomb_result: Option<String>,
+    pub buy_matchup: Option<String>,
+    pub t_survivors: usize,
+    pub ct_survivors: usize,
+    pub kills: Vec<RosterKill>,
+}
+
 /// Player report data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerReport {
@@ -39,6 +238,9 @@ pub struct PlayerReport {
     pub evidence: Vec<Evidence>,
     /// Human-readable summary
     pub summary: String,
+    /// Confidence policy and account-level recurrence from local Sentinel history.
+    #[serde(default)]
+    pub confidence: ConfidenceAssessment,
 }
 
 /// Complete match report
@@ -54,6 +256,15 @@ pub struct MatchReport {
     pub players: Vec<PlayerReport>,
     /// Overall match anomaly score
     pub overall_anomaly: f64,
+    /// Round-by-round factual context and roster-resolved kill feed.
+    #[serde(default)]
+    pub rounds: Vec<RoundContext>,
+    /// Versions and content fingerprints used by this analysis.
+    #[serde(default)]
+    pub provenance: AnalysisProvenance,
+    /// Set when this report is compared to a newer active provenance.
+    #[serde(default)]
+    pub reanalysis: ReanalysisStatus,
 }
 
 impl MatchReport {
@@ -64,6 +275,9 @@ impl MatchReport {
             metadata,
             players: Vec::new(),
             overall_anomaly: 0.0,
+            rounds: Vec::new(),
+            provenance: AnalysisProvenance::default(),
+            reanalysis: ReanalysisStatus::default(),
         }
     }
 
@@ -94,5 +308,37 @@ impl MatchReport {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
         sorted.into_iter().take(n).collect()
+    }
+}
+
+#[cfg(test)]
+mod provenance_tests {
+    use super::*;
+
+    #[test]
+    fn changed_map_asset_requires_reanalysis() {
+        let recorded = AnalysisProvenance {
+            map_asset_version: "dust2-a".into(),
+            ..Default::default()
+        };
+        let current = AnalysisProvenance {
+            map_asset_version: "dust2-b".into(),
+            ..Default::default()
+        };
+        let status = recorded.reanalysis_status(&current);
+        assert!(status.required);
+        assert_eq!(status.reasons, vec!["map_asset_version"]);
+    }
+
+    #[test]
+    fn disagreement_is_tentative_when_models_diverge() {
+        let mut score = BehaviorScore::new();
+        score.overall = 0.7;
+        score.categories.insert("learned_xgboost".into(), 0.9);
+        score.categories.insert("learned_temporal".into(), 0.2);
+        assert_eq!(
+            ConfidenceAssessment::assess(&score, 4, 2, vec![]).status,
+            VerdictStatus::Tentative
+        );
     }
 }

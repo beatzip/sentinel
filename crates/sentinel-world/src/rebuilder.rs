@@ -290,6 +290,30 @@ impl WorldRebuilder {
                 .get("headshot")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
+            let assist_player = event
+                .data
+                .get("assister")
+                .and_then(|v| v.as_player_id())
+                .map(PlayerId::new);
+            let wallbang = event
+                .data
+                .get("penetrated")
+                .and_then(|v| v.as_i64())
+                .map(|value| value > 0)
+                .or_else(|| event.data.get("penetrated").and_then(|v| v.as_bool()))
+                .unwrap_or(false);
+            let through_smoke = event
+                .data
+                .get("thrusmoke")
+                .and_then(|v| v.as_bool())
+                .or_else(|| {
+                    event
+                        .data
+                        .get("thrusmoke")
+                        .and_then(|v| v.as_i64())
+                        .map(|value| value > 0)
+                })
+                .unwrap_or(false);
 
             self.world.add_kill(KillEvent {
                 tick: event.tick,
@@ -297,8 +321,10 @@ impl WorldRebuilder {
                 victim: PlayerId::new(victim_id),
                 weapon,
                 headshot,
-                assisted: false,
-                assist_player: None,
+                assisted: assist_player.is_some(),
+                assist_player,
+                wallbang,
+                through_smoke,
             });
         }
     }
@@ -532,6 +558,8 @@ mod tests {
                 headshot: false,
                 assisted: false,
                 assist_player: None,
+                wallbang: false,
+                through_smoke: false,
             },
             KillEvent {
                 tick: Tick(200),
@@ -541,6 +569,8 @@ mod tests {
                 headshot: true,
                 assisted: false,
                 assist_player: None,
+                wallbang: false,
+                through_smoke: false,
             },
             KillEvent {
                 tick: Tick(300),
@@ -550,6 +580,8 @@ mod tests {
                 headshot: false,
                 assisted: false,
                 assist_player: None,
+                wallbang: false,
+                through_smoke: false,
             },
         ]);
 

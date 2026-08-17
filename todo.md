@@ -8,3 +8,14 @@
 - [x] Добавить обучаемую Transformer-модель для временных последовательностей.
 - [x] Автоматизировать экспорт `.replay.json` реальных демо в каталог API.
 - [x] Проверить обучение и экспорт на доступном корпусе без подмены данных.
+- [x] Подготовить и передать презентацию по XGBoost, Transformer и replay-пайплайну Sentinel.
+- [x] Добавить provenance версий demo и map-asset в каждый отчёт Sentinel.
+- [x] Добавить reanalysis lifecycle для отчётов с устаревшим provenance.
+- [x] Добавить account-level aggregation и уровни уверенности на истории нескольких матчей.
+- [x] Добавить policy Tentative/Strong для расхождения независимых сигналов.
+- [x] Добавить per-map calibration, regression dataset и A/B-контракты без фиктивных результатов.
+- [x] Добавить контекст раунда и roster-resolved kill feed в report/replay контракт.
+- [ ] Подключить корпус с human-verified demo/feature-sidecar файлами и выполнить calibration, regression и A/B evaluation.
+- [ ] Добавить per-feature importance analysis на verified-корпусе.
+- [ ] Реализовать utility lineup analysis.
+- [ ] Реализовать Discord bot после утверждения формата интеграции.

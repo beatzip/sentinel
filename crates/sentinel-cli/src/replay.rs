@@ -25,6 +25,7 @@ pub fn export_adapter(
         .collect::<Vec<_>>();
     let mut rebuilder = WorldRebuilder::new();
     let states = rebuilder.process_events_with_snapshots(&game_events, &adapter.player_snapshots());
+    let kills = rebuilder.take_kills();
     let metadata = adapter.metadata();
     let map = loader::load_map_by_name(&metadata.map_name).unwrap_or_else(MapData::dust2);
     let map_ref = &map;
@@ -84,6 +85,7 @@ pub fn export_adapter(
         map: metadata.map_name,
         tick_rate: metadata.tick_rate,
         frames,
+        rounds: super::build_round_contexts(adapter, &states, &kills, &game_events),
     };
     let json = serde_json::to_string_pretty(&replay).map_err(|error| error.to_string())?;
     std::fs::write(output_path, json).map_err(|error| error.to_string())
@@ -105,6 +107,7 @@ mod tests {
                 players: Vec::new(),
                 visible_pairs: Vec::new(),
             }],
+            rounds: Vec::new(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));
     }

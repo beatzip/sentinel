@@ -27,6 +27,25 @@ use sentinel_core::{FeatureVector, PlayerId};
 /// Minimum number of per-feature samples before learned baselines are trusted
 /// over the hardcoded defaults.
 pub const MIN_SAMPLES_FOR_LEARNED: usize = 50;
+const MAX_SUPPORTING_MATCHES: usize = 20;
+
+/// A locally analyzed match that supports an account-level recurrence read.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SupportingMatch {
+    pub report_id: String,
+    pub map_name: String,
+    pub overall_score: f64,
+    pub evidence_count: usize,
+    pub flagged: bool,
+}
+
+/// Local-only account history derived from Sentinel evidence, never K/D or external profiles.
+#[derive(Debug, Clone, Default)]
+pub struct AccountHistory {
+    pub matches_observed: usize,
+    pub flagged_matches: usize,
+    pub supporting_matches: Vec<SupportingMatch>,
+}
 
 /// Online accumulator for a single feature's statistics (Welford's algorithm).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -119,11 +138,16 @@ pub struct PlayerProfile {
     pub flagged_matches: usize,
     /// Sum of evidence items across all observed matches.
     pub total_evidence: usize,
+    /// Recent locally analyzed matches with enough evidence to support recurrence review.
+    #[serde(default)]
+    pub supporting_matches: Vec<SupportingMatch>,
 }
 
 impl PlayerProfile {
     pub fn record_match(
         &mut self,
+        report_id: &str,
+        map_name: &str,
         overall_score: f64,
         evidence_count: usize,
         feature_averages: &BTreeMap<String, f64>,
@@ -134,6 +158,21 @@ impl PlayerProfile {
         self.total_evidence += evidence_count;
         if flagged {
             self.flagged_matches += 1;
+        }
+        if flagged || overall_score >= 0.5 {
+            self.supporting_matches.push(SupportingMatch {
+                report_id: report_id.to_string(),
+                map_name: map_name.to_string(),
+                overall_score,
+                evidence_count,
+                flagged,
+            });
+            self.supporting_matches.sort_by(|a, b| {
+                b.overall_score
+                    .partial_cmp(&a.overall_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            self.supporting_matches.truncate(MAX_SUPPORTING_MATCHES);
         }
         for (name, &value) in feature_averages {
             self.feature_means
@@ -156,6 +195,10 @@ impl PlayerProfile {
 /// A per-player result from analyzing one match, fed into the memory store.
 #[derive(Debug, Clone)]
 pub struct MatchObservation {
+    /// Stable local report identifier.
+    pub report_id: String,
+    /// Map recorded by the analyzed demo.
+    pub map_name: String,
     /// Player this observation is about.
     pub player: PlayerId,
     /// Overall anomaly score for the player in this match.
@@ -251,11 +294,25 @@ impl Memory {
         for obs in per_player_results {
             let profile = self.players.entry(obs.player.as_u64()).or_default();
             profile.record_match(
+                &obs.report_id,
+                &obs.map_name,
                 obs.overall_score,
                 obs.evidence_count,
                 &obs.feature_averages,
                 obs.flagged,
             );
+        }
+    }
+
+    /// Account-level history drawn only from locally computed Sentinel evidence.
+    pub fn account_history(&self, player: PlayerId) -> AccountHistory {
+        let Some(profile) = self.players.get(&player.as_u64()) else {
+            return AccountHistory::default();
+        };
+        AccountHistory {
+            matches_observed: profile.matches_observed,
+            flagged_matches: profile.flagged_matches,
+            supporting_matches: profile.supporting_matches.clone(),
         }
     }
 
@@ -412,6 +469,8 @@ mod tests {
             .map(|i| fv(i % 10, 0.25 + i as f64 * 0.001))
             .collect();
         let results = vec![MatchObservation {
+            report_id: "fixture".into(),
+            map_name: "de_dust2".into(),
             player: PlayerId::new(1),
             overall_score: 0.8,
             evidence_count: 3,
@@ -429,6 +488,7 @@ mod tests {
         let profile = mem.players.get(&1).unwrap();
         assert_eq!(profile.matches_observed, 1);
         assert!(profile.flagged_matches == 1);
+        assert_eq!(profile.supporting_matches.len(), 1);
         assert!((profile.recidivism() - 1.0).abs() < 1e-9);
     }
 
@@ -461,5 +521,25 @@ mod tests {
         assert_eq!(loaded.demos_analyzed, 1);
         assert!(loaded.global_baselines.contains_key("reaction_time"));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn account_history_links_back_to_local_reports() {
+        let mut mem = Memory::new();
+        mem.observe_match(
+            &[],
+            &[MatchObservation {
+                report_id: "match-1".into(),
+                map_name: "de_mirage".into(),
+                player: PlayerId::new(7),
+                overall_score: 0.8,
+                evidence_count: 3,
+                feature_averages: BTreeMap::new(),
+                flagged: true,
+            }],
+        );
+        let history = mem.account_history(PlayerId::new(7));
+        assert_eq!(history.matches_observed, 1);
+        assert_eq!(history.supporting_matches[0].report_id, "match-1");
     }
 }

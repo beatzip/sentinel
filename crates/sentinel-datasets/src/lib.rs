@@ -88,6 +88,39 @@ impl CalibrationDataset {
     }
 }
 
+/// A map-specific threshold override derived only from verified labeled matches.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct PerMapCalibration {
+    pub map_name: String,
+    pub evidence_threshold: f64,
+    pub verified_match_count: usize,
+    pub minimum_verified_matches: usize,
+}
+
+impl PerMapCalibration {
+    pub fn is_ready(&self) -> bool {
+        self.verified_match_count >= self.minimum_verified_matches
+    }
+}
+
+/// Portable collection of map-specific calibration overrides.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PerMapCalibrationSet {
+    pub version: u32,
+    #[serde(default)]
+    pub maps: BTreeMap<String, PerMapCalibration>,
+}
+
+impl PerMapCalibrationSet {
+    /// Returns an override only after it has reached its declared verified-sample minimum.
+    pub fn threshold_for(&self, map_name: &str) -> Option<f64> {
+        self.maps
+            .get(map_name)
+            .filter(|calibration| calibration.is_ready())
+            .map(|calibration| calibration.evidence_threshold)
+    }
+}
+
 /// Golden test case for regression testing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoldenTestCase {
@@ -101,9 +134,33 @@ pub struct GoldenTestCase {
     pub tolerance: f64,
 }
 
+/// Ordered risk labels used by a regression fixture without coupling datasets to report rendering.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum RegressionRiskLevel {
+    Clean,
+    Low,
+    Moderate,
+    High,
+    Extreme,
+}
+
+/// One real demo whose expected classification is locked after human verification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegressionCase {
+    pub name: String,
+    pub demo_path: PathBuf,
+    pub expected_risk_level: RegressionRiskLevel,
+    /// Optional score lock for detecting numerical drift in addition to a level change.
+    #[serde(default)]
+    pub expected_risk_score: Option<f64>,
+    pub tolerance: f64,
+}
+
 /// Manager for golden test cases
 pub struct GoldenTestManager {
     cases: Vec<GoldenTestCase>,
+    regression_cases: Vec<RegressionCase>,
     datasets_dir: PathBuf,
 }
 
@@ -111,6 +168,7 @@ impl GoldenTestManager {
     pub fn new(datasets_dir: PathBuf) -> Self {
         Self {
             cases: Vec::new(),
+            regression_cases: Vec::new(),
             datasets_dir,
         }
     }
@@ -134,6 +192,22 @@ impl GoldenTestManager {
             }
         }
 
+        let regression_dir = self.datasets_dir.join("regression");
+        if !regression_dir.exists() {
+            std::fs::create_dir_all(&regression_dir)?;
+            return Ok(());
+        }
+        for entry in std::fs::read_dir(regression_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|suffix| suffix.to_str()) == Some("json") {
+                let json = std::fs::read_to_string(&path)?;
+                if let Ok(regression_case) = serde_json::from_str::<RegressionCase>(&json) {
+                    self.regression_cases.push(regression_case);
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -147,12 +221,28 @@ impl GoldenTestManager {
         self.cases.push(case);
     }
 
+    pub fn regression_cases(&self) -> &[RegressionCase] {
+        &self.regression_cases
+    }
+
+    pub fn add_regression_case(&mut self, case: RegressionCase) {
+        self.regression_cases.push(case);
+    }
+
     /// Save a test case to disk
     pub fn save_case(&self, case: &GoldenTestCase) -> Result<(), std::io::Error> {
         let golden_dir = self.datasets_dir.join("golden");
         std::fs::create_dir_all(&golden_dir)?;
 
         let path = golden_dir.join(format!("{}.json", case.name));
+        let json = serde_json::to_string_pretty(case).map_err(std::io::Error::other)?;
+        std::fs::write(path, json)
+    }
+
+    pub fn save_regression_case(&self, case: &RegressionCase) -> Result<(), std::io::Error> {
+        let regression_dir = self.datasets_dir.join("regression");
+        std::fs::create_dir_all(&regression_dir)?;
+        let path = regression_dir.join(format!("{}.json", case.name));
         let json = serde_json::to_string_pretty(case).map_err(std::io::Error::other)?;
         std::fs::write(path, json)
     }

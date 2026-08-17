@@ -18,7 +18,7 @@ impl JsonReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{MatchMetadata, MatchReport, PlayerReport};
+    use crate::{ConfidenceAssessment, MatchMetadata, MatchReport, PlayerReport};
     use sentinel_core::BehaviorScore;
 
     #[test]
@@ -41,6 +41,7 @@ mod tests {
             scores: BehaviorScore::new(),
             evidence: Vec::new(),
             summary: "No anomalies detected".to_string(),
+            confidence: ConfidenceAssessment::default(),
         };
 
         report.add_player(player_report);
