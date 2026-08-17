@@ -1271,46 +1271,44 @@ mod nav_tests {
     /// Area 0 (id=0) at center, connected to Area 1 (id=1) and Area 2 (id=2)
     /// Area 1 and Area 2 are NOT connected to each other (separated by a wall)
     fn create_nav_test_map() -> MapData {
-        let mut areas = Vec::new();
-
-        // Area 0: center room at (0, 0), size ~100x100
-        areas.push(NavNode {
-            id: 0,
-            center: Vec3::new(0.0, 0.0, 64.0),
-            connections: vec![1, 2],
-            bbox: Some(AABB2D {
-                min_x: -50.0,
-                min_y: -50.0,
-                max_x: 50.0,
-                max_y: 50.0,
-            }),
-        });
-
-        // Area 1: left room at (-200, 0), connected to Area 0
-        areas.push(NavNode {
-            id: 1,
-            center: Vec3::new(-200.0, 0.0, 64.0),
-            connections: vec![0],
-            bbox: Some(AABB2D {
-                min_x: -250.0,
-                min_y: -50.0,
-                max_x: -150.0,
-                max_y: 50.0,
-            }),
-        });
-
-        // Area 2: right room at (200, 0), connected to Area 0
-        areas.push(NavNode {
-            id: 2,
-            center: Vec3::new(200.0, 0.0, 64.0),
-            connections: vec![0],
-            bbox: Some(AABB2D {
-                min_x: 150.0,
-                min_y: -50.0,
-                max_x: 250.0,
-                max_y: 50.0,
-            }),
-        });
+        let areas = vec![
+            // Area 0: center room at (0, 0), size ~100x100
+            NavNode {
+                id: 0,
+                center: Vec3::new(0.0, 0.0, 64.0),
+                connections: vec![1, 2],
+                bbox: Some(AABB2D {
+                    min_x: -50.0,
+                    min_y: -50.0,
+                    max_x: 50.0,
+                    max_y: 50.0,
+                }),
+            },
+            // Area 1: left room at (-200, 0), connected to Area 0
+            NavNode {
+                id: 1,
+                center: Vec3::new(-200.0, 0.0, 64.0),
+                connections: vec![0],
+                bbox: Some(AABB2D {
+                    min_x: -250.0,
+                    min_y: -50.0,
+                    max_x: -150.0,
+                    max_y: 50.0,
+                }),
+            },
+            // Area 2: right room at (200, 0), connected to Area 0
+            NavNode {
+                id: 2,
+                center: Vec3::new(200.0, 0.0, 64.0),
+                connections: vec![0],
+                bbox: Some(AABB2D {
+                    min_x: 150.0,
+                    min_y: -50.0,
+                    max_x: 250.0,
+                    max_y: 50.0,
+                }),
+            },
+        ];
 
         MapData {
             name: "nav_test".to_string(),
@@ -1408,33 +1406,32 @@ mod nav_tests {
     #[test]
     fn test_can_walk_between_unreachable() {
         // Test with a map where some areas are truly disconnected
-        let mut areas = Vec::new();
-
-        // Area A: isolated at (0, 0)
-        areas.push(NavNode {
-            id: 10,
-            center: Vec3::new(0.0, 0.0, 64.0),
-            connections: Vec::new(), // No connections
-            bbox: Some(AABB2D {
-                min_x: -50.0,
-                min_y: -50.0,
-                max_x: 50.0,
-                max_y: 50.0,
-            }),
-        });
-
-        // Area B: isolated at (500, 500)
-        areas.push(NavNode {
-            id: 11,
-            center: Vec3::new(500.0, 500.0, 64.0),
-            connections: Vec::new(), // No connections
-            bbox: Some(AABB2D {
-                min_x: 450.0,
-                min_y: 450.0,
-                max_x: 550.0,
-                max_y: 550.0,
-            }),
-        });
+        let areas = vec![
+            // Area A: isolated at (0, 0)
+            NavNode {
+                id: 10,
+                center: Vec3::new(0.0, 0.0, 64.0),
+                connections: Vec::new(), // No connections
+                bbox: Some(AABB2D {
+                    min_x: -50.0,
+                    min_y: -50.0,
+                    max_x: 50.0,
+                    max_y: 50.0,
+                }),
+            },
+            // Area B: isolated at (500, 500)
+            NavNode {
+                id: 11,
+                center: Vec3::new(500.0, 500.0, 64.0),
+                connections: Vec::new(), // No connections
+                bbox: Some(AABB2D {
+                    min_x: 450.0,
+                    min_y: 450.0,
+                    max_x: 550.0,
+                    max_y: 550.0,
+                }),
+            },
+        ];
 
         let map = MapData {
             name: "disconnected".to_string(),

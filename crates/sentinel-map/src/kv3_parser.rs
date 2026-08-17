@@ -431,7 +431,8 @@ mod tests {
     #[test]
     fn test_parse_float() {
         let result = parse_kv3("3.14").unwrap();
-        assert!(matches!(result, KV3Value::Float(f) if (f - 3.14).abs() < 0.001));
+        let expected = 314.0 / 100.0;
+        assert!(matches!(result, KV3Value::Float(f) if (f - expected).abs() < 0.001));
     }
 
     #[test]

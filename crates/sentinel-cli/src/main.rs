@@ -493,8 +493,7 @@ pub(crate) fn build_round_contexts(
             let end_tick = round.end_tick().0;
             let end_state = states
                 .iter()
-                .filter(|state| state.tick.0 >= start_tick && state.tick.0 <= end_tick)
-                .next_back();
+                .rfind(|state| state.tick.0 >= start_tick && state.tick.0 <= end_tick);
             let (t_score, ct_score, t_survivors, ct_survivors) = end_state
                 .map(|state| {
                     (
