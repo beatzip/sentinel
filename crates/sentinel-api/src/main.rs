@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use sentinel_report::{MatchReport, PlayerReport};
+use sentinel_report::{MatchReport, PlayerReport, replay::ReplayData};
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -73,6 +73,7 @@ fn app(reports_dir: PathBuf) -> Router {
         .route("/health", get(health))
         .route("/v1/reports", get(list_reports))
         .route("/v1/reports/{id}", get(get_report))
+        .route("/v1/replays/{id}", get(get_replay))
         .route("/v1/players/{steam_id}", get(player_history))
         .route("/v1/overlay/{id}", get(overlay_snapshot))
         .with_state(ApiState { reports_dir })
@@ -110,6 +111,18 @@ async fn get_report(
     match read_report(&path) {
         Ok(report) => Ok(Json(report)),
         Err(_) => Err((StatusCode::NOT_FOUND, "Report not found".to_string())),
+    }
+}
+
+async fn get_replay(
+    State(state): State<ApiState>,
+    ApiPath(id): ApiPath<String>,
+) -> ApiResult<ReplayData> {
+    let path = replay_path(&state.reports_dir, &id)
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "Invalid replay id".to_string()))?;
+    match read_replay(&path) {
+        Ok(replay) => Ok(Json(replay)),
+        Err(_) => Err((StatusCode::NOT_FOUND, "Replay not found".to_string())),
     }
 }
 
@@ -169,6 +182,14 @@ fn report_path(root: &Path, id: &str) -> Option<PathBuf> {
     .then(|| root.join(format!("{id}.json")))
 }
 
+fn replay_path(root: &Path, id: &str) -> Option<PathBuf> {
+    (!id.is_empty()
+        && id.chars().all(|character| {
+            character.is_ascii_alphanumeric() || character == '-' || character == '_'
+        }))
+    .then(|| root.join(format!("{id}.replay.json")))
+}
+
 fn load_reports(root: &Path) -> Result<Vec<(String, MatchReport)>, (StatusCode, String)> {
     let entries = match std::fs::read_dir(root) {
         Ok(entries) => entries,
@@ -195,6 +216,11 @@ fn read_report(path: &Path) -> Result<MatchReport, std::io::Error> {
     serde_json::from_str(&json).map_err(std::io::Error::other)
 }
 
+fn read_replay(path: &Path) -> Result<ReplayData, std::io::Error> {
+    let json = std::fs::read_to_string(path)?;
+    serde_json::from_str(&json).map_err(std::io::Error::other)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,5 +229,6 @@ mod tests {
     fn report_id_cannot_escape_the_report_directory() {
         assert!(report_path(Path::new("reports"), "match_01").is_some());
         assert!(report_path(Path::new("reports"), "../secrets").is_none());
+        assert!(replay_path(Path::new("reports"), "match_01").is_some());
     }
 }

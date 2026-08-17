@@ -12,6 +12,7 @@ use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, Validat
 use sentinel_world::WorldRebuilder;
 
 mod dataset;
+mod replay;
 
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
@@ -87,6 +88,21 @@ fn main() {
             }
         }
         "dataset" => dataset::run(&args[2..]),
+        "replay" => {
+            if args.len() < 3 {
+                eprintln!("Usage: sentinel replay <match.dem> [output.replay.json]");
+                return;
+            }
+            let input = PathBuf::from(&args[2]);
+            let output = args
+                .get(3)
+                .map(PathBuf::from)
+                .unwrap_or_else(|| input.with_extension("replay.json"));
+            match replay::export(&input, &output) {
+                Ok(()) => println!("Replay export: {}", output.display()),
+                Err(error) => eprintln!("Replay export failed: {error}"),
+            }
+        }
         "verify" => {
             println!("Running verification...");
             let output = std::process::Command::new("cargo")
@@ -337,7 +353,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
 }
 
 /// Convert a DemoSource event to a sentinel GameEvent
-fn convert_demo_event(
+pub(crate) fn convert_demo_event(
     event: &impl sentinel_core::source::DemoEvent,
 ) -> Option<sentinel_events::kinds::GameEvent> {
     use sentinel_events::kinds::{EventKind as SentinelKind, EventValue, GameEvent};
@@ -597,5 +613,6 @@ fn print_usage() {
     println!("  calibrate [output.json]       Generate calibration dataset");
     println!("  stats <vectors.json>          Show dataset statistics");
     println!("  dataset <init|audit>          Create or audit a labeled dataset manifest");
+    println!("  replay <match.dem> [output]   Export sampled replay frames with visibility pairs");
     println!("  verify                        Run verification checks");
 }

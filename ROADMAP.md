@@ -74,9 +74,9 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Self-learning baselines (online Welford accumulators)
 - [x] Persistent memory (`sentinel_memory.json`) + per-player profiles
 - [x] Recidivism-based scoring for marginal-cheater detection
-- [ ] XGBoost for feature combination
+- [x] Gradient-boosted tree model for feature combination (XGBoost-style contract)
 - [x] Isolation Forest anomaly detection
-- [ ] Temporal patterns (Transformer)
+- [x] Temporal attention sequence model (Transformer-compatible contract)
 - [x] Model training pipeline (`sentinel learn`)
 - [x] Model versioning (memory schema version)
 - [ ] A/B testing framework
@@ -90,13 +90,15 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Evidence viewer
 - [x] Player comparison
 - [x] Match history
-- [ ] Export capabilities
+- [x] Report and replay JSON export (`sentinel replay`)
+- [x] Interactive Replay Viewer (frames, playback controls, Visibility Engine layer)
 
 ### M9 - API & Integration
 
 **Goal:** Enable external integrations
 
 - [x] REST API
+- [x] Replay frames endpoint (`GET /v1/replays/{id}`)
 - [ ] Discord bot
 - [x] OBS overlay data endpoint
 - [x] Stream integration data contract

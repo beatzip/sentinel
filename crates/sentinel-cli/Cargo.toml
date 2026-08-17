@@ -30,3 +30,4 @@ sentinel-source2 = { path = "../sentinel-source2" }
 sentinel-validation = { path = "../sentinel-validation" }
 sentinel-memory = { path = "../sentinel-memory" }
 sentinel-map = { path = "../sentinel-map" }
+sentinel-visibility = { path = "../sentinel-visibility" }

@@ -921,6 +921,7 @@ dependencies = [
  "sentinel-report",
  "sentinel-source2",
  "sentinel-validation",
+ "sentinel-visibility",
  "sentinel-world",
  "serde",
  "serde_json",
