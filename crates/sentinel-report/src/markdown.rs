@@ -31,7 +31,7 @@ impl MarkdownReport {
         ));
 
         let grade = Self::score_grade(report.overall_anomaly);
-        md.push_str(&format!("**Assessment:** {}\n\n", grade));
+        md.push_str(&format!("**Assessment:** {grade}\n\n"));
 
         // Player reports
         md.push_str("## Player Analysis\n\n");
@@ -48,7 +48,7 @@ impl MarkdownReport {
             md.push_str("- **Category Scores:**\n");
             for (category, score) in &player.scores.categories {
                 let bar = Self::score_bar(*score);
-                md.push_str(&format!("  - {}: {:.2} {}\n", category, score, bar));
+                md.push_str(&format!("  - {category}: {score:.2} {bar}\n"));
             }
 
             // Evidence

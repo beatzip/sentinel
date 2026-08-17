@@ -73,10 +73,10 @@ impl fmt::Display for KV3Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             KV3Value::Null => write!(f, "null"),
-            KV3Value::Bool(b) => write!(f, "{}", b),
-            KV3Value::Int(i) => write!(f, "{}", i),
-            KV3Value::Float(fl) => write!(f, "{}", fl),
-            KV3Value::String(s) => write!(f, "\"{}\"", s),
+            KV3Value::Bool(b) => write!(f, "{b}"),
+            KV3Value::Int(i) => write!(f, "{i}"),
+            KV3Value::Float(fl) => write!(f, "{fl}"),
+            KV3Value::String(s) => write!(f, "\"{s}\""),
             KV3Value::Bytes(b) => write!(f, "#[{} bytes]", b.len()),
             KV3Value::Array(_) => write!(f, "[array]"),
             KV3Value::Object(_) => write!(f, "{{object}}"),
@@ -99,11 +99,11 @@ impl fmt::Display for KV3Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             KV3Error::UnexpectedEnd => write!(f, "Unexpected end of input"),
-            KV3Error::UnexpectedChar(c) => write!(f, "Unexpected character: {}", c),
-            KV3Error::InvalidNumber(s) => write!(f, "Invalid number: {}", s),
-            KV3Error::InvalidString(s) => write!(f, "Invalid string: {}", s),
-            KV3Error::InvalidHex(s) => write!(f, "Invalid hex: {}", s),
-            KV3Error::UnexpectedToken(t) => write!(f, "Unexpected token: {}", t),
+            KV3Error::UnexpectedChar(c) => write!(f, "Unexpected character: {c}"),
+            KV3Error::InvalidNumber(s) => write!(f, "Invalid number: {s}"),
+            KV3Error::InvalidString(s) => write!(f, "Invalid string: {s}"),
+            KV3Error::InvalidHex(s) => write!(f, "Invalid hex: {s}"),
+            KV3Error::UnexpectedToken(t) => write!(f, "Unexpected token: {t}"),
         }
     }
 }

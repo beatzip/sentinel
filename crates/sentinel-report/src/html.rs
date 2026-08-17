@@ -103,8 +103,7 @@ impl HtmlReport {
             for (category, score) in &player.scores.categories {
                 let bar_width = (score * 100.0) as u32;
                 html.push_str(&format!(
-                    "                <tr><td>{}</td><td>{:.2}</td><td><div class=\"score-bar\"><div class=\"score-fill\" style=\"width: {}%\"></div></div></td></tr>\n",
-                    category, score, bar_width
+                    "                <tr><td>{category}</td><td>{score:.2}</td><td><div class=\"score-bar\"><div class=\"score-fill\" style=\"width: {bar_width}%\"></div></div></td></tr>\n"
                 ));
             }
             html.push_str("            </table>\n");

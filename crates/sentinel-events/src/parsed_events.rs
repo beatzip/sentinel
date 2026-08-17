@@ -252,7 +252,7 @@ mod tests {
         assert_eq!(shot.shooter_id, 12345);
         assert_eq!(shot.weapon, "ak47");
         assert_eq!(shot.penetrated, 2);
-        assert_eq!(shot.is_alt_fire, false);
+        assert!(!shot.is_alt_fire);
     }
 
     #[test]

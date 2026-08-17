@@ -86,10 +86,10 @@ impl VPhysData {
 
     /// Load VPhys from file path
     pub fn load_from_file(path: &std::path::Path) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read vphys file: {}", e))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read vphys file: {e}"))?;
 
-        let kv = parse_kv3(&content).map_err(|e| format!("Failed to parse KV3: {:?}", e))?;
+        let kv = parse_kv3(&content).map_err(|e| format!("Failed to parse KV3: {e:?}"))?;
 
         Self::from_kv3(&kv)
     }
@@ -454,7 +454,7 @@ mod tests {
             if vphys_path.exists() {
                 if let Ok(vphys) = VPhysData::load_from_file(vphys_path) {
                     let triangles = vphys.extract_triangles();
-                    assert!(triangles.len() > 0, "Should have triangles");
+                    assert!(!triangles.is_empty(), "Should have triangles");
                     println!("Loaded {} triangles from {:?}", triangles.len(), vphys_path);
                     loaded = true;
                     break;

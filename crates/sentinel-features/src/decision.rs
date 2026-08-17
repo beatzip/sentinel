@@ -143,10 +143,10 @@ impl FeatureExt for SoloPlaystyleIndex {
                 .min(1.0);
 
         FeatureResult::new(solo_score)
-            .with_metadata("avg_distance".to_string(), format!("{:.0}", avg_distance))
+            .with_metadata("avg_distance".to_string(), format!("{avg_distance:.0}"))
             .with_metadata(
                 "isolation_ratio".to_string(),
-                format!("{:.2}", isolation_ratio),
+                format!("{isolation_ratio:.2}"),
             )
             .with_metadata("alive_teammates".to_string(), alive_teammates.to_string())
     }
@@ -198,7 +198,7 @@ impl FeatureExt for TeamProximityScore {
         let proximity = (1.0 - (avg_distance / 2000.0).min(1.0)).max(0.0);
 
         FeatureResult::new(proximity)
-            .with_metadata("avg_distance".to_string(), format!("{:.0}", avg_distance))
+            .with_metadata("avg_distance".to_string(), format!("{avg_distance:.0}"))
             .with_metadata("teammate_count".to_string(), teammates.len().to_string())
     }
 }

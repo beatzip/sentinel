@@ -54,11 +54,11 @@ struct NavMesh {
 
 /// Load a nav mesh from JSON file and extract wall segments
 pub fn load_map_from_nav(path: &std::path::Path) -> Result<MapData, String> {
-    let file = File::open(path).map_err(|e| format!("Failed to open nav file: {}", e))?;
+    let file = File::open(path).map_err(|e| format!("Failed to open nav file: {e}"))?;
     let reader = BufReader::new(file);
 
     let nav: NavMesh =
-        serde_json::from_reader(reader).map_err(|e| format!("Failed to parse nav JSON: {}", e))?;
+        serde_json::from_reader(reader).map_err(|e| format!("Failed to parse nav JSON: {e}"))?;
 
     // Extract map name from filename
     let map_name = path
@@ -409,7 +409,7 @@ pub fn load_map_by_name(map_name: &str) -> Option<MapData> {
     // Try loading .tri files for CS2 maps
     let tri_extensions = ["de_", "cs_", "ar_"];
     for prefix in &tri_extensions {
-        let tri_name = format!("{}{}.tri", prefix, name_lower);
+        let tri_name = format!("{prefix}{name_lower}.tri");
         let tri_search_paths = [
             std::path::Path::new("tris"),
             std::path::Path::new("data/tris"),
@@ -429,7 +429,7 @@ pub fn load_map_by_name(map_name: &str) -> Option<MapData> {
     }
 
     // Also try the map name directly as a .tri file
-    let direct_tri_name = format!("{}.tri", name_lower);
+    let direct_tri_name = format!("{name_lower}.tri");
     for search_path in &[
         std::path::Path::new("tris"),
         std::path::Path::new("data/tris"),
@@ -452,7 +452,7 @@ pub fn load_map_by_name(map_name: &str) -> Option<MapData> {
     ];
 
     for search_path in &search_paths {
-        let nav_path = search_path.join(format!("{}.json", name_lower));
+        let nav_path = search_path.join(format!("{name_lower}.json"));
         if nav_path.exists() {
             return load_map_from_nav(&nav_path).ok();
         }
@@ -461,16 +461,20 @@ pub fn load_map_by_name(map_name: &str) -> Option<MapData> {
         let cs2_map_name = if name_lower.starts_with("de_") {
             name_lower.clone()
         } else {
-            format!("de_{}", name_lower)
+            format!("de_{name_lower}")
         };
 
-        let cs2_nav_path = search_path.join(format!("{}.json", cs2_map_name));
+        let cs2_nav_path = search_path.join(format!("{cs2_map_name}.json"));
         if cs2_nav_path.exists() {
             return load_map_from_nav(&cs2_nav_path).ok();
         }
     }
 
     None
+}
+/// Load a map from a .vphys file (CS2 physics collision data with accurate geometry)
+pub fn load_map_from_vphys(path: &std::path::Path) -> Result<MapData, String> {
+    crate::vphys_parser::VPhysData::load_vphys_as_mapdata(path)
 }
 
 #[cfg(test)]
@@ -679,8 +683,4 @@ mod tri_tests {
             "Ray should be blocked by wall BVH"
         );
     }
-}
-/// Load a map from a .vphys file (CS2 physics collision data with accurate geometry)
-pub fn load_map_from_vphys(path: &std::path::Path) -> Result<MapData, String> {
-    crate::vphys_parser::VPhysData::load_vphys_as_mapdata(path)
 }

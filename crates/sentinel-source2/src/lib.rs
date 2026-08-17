@@ -343,16 +343,16 @@ impl DemoCollector {
 
 impl Source2Adapter {
     pub fn from_file(path: &Path) -> Result<Self, String> {
-        let bytes = std::fs::read(path).map_err(|e| format!("Failed to read: {}", e))?;
+        let bytes = std::fs::read(path).map_err(|e| format!("Failed to read: {e}"))?;
         Self::from_bytes(&bytes, path)
     }
 
     pub fn from_bytes(bytes: &[u8], path: &Path) -> Result<Self, String> {
-        let mut parser = Parser::new(bytes).map_err(|e| format!("Parser error: {}", e))?;
+        let mut parser = Parser::new(bytes).map_err(|e| format!("Parser error: {e}"))?;
         let rc: Rc<RefCell<DemoCollector>> = parser.register_observer();
         parser
             .run_to_end()
-            .map_err(|e| format!("Parse error: {}", e))?;
+            .map_err(|e| format!("Parse error: {e}"))?;
 
         let c = rc.borrow();
 
@@ -363,19 +363,19 @@ impl Source2Adapter {
             *event_counts.entry(format!("{:?}", e.kind)).or_insert(0) += 1;
         }
         for (kind, count) in &event_counts {
-            eprintln!("  {}: {}", kind, count);
+            eprintln!("  {kind}: {count}");
         }
         // Debug: print first player_spawn and player_death events
         if let Some(spawn) = c.events.iter().find(|e| e.kind == EventKind::PlayerSpawn) {
             eprintln!("First spawn event data:");
             for (key, value) in &spawn.data {
-                eprintln!("  {}: {:?}", key, value);
+                eprintln!("  {key}: {value:?}");
             }
         }
         if let Some(death) = c.events.iter().find(|e| e.kind == EventKind::PlayerDeath) {
             eprintln!("First death event data:");
             for (key, value) in &death.data {
-                eprintln!("  {}: {:?}", key, value);
+                eprintln!("  {key}: {value:?}");
             }
         }
 

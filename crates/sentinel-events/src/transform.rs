@@ -73,7 +73,7 @@ impl EventTransformer {
         let mut fields = std::collections::BTreeMap::new();
         for i in 0..field_count {
             let type_tag = cursor.read_u8().ok()?;
-            let key = format!("field_{}", i);
+            let key = format!("field_{i}");
 
             match type_tag {
                 0 => {

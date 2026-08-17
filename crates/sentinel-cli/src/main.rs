@@ -66,10 +66,10 @@ fn main() {
             println!("Generating calibration dataset...");
             let dataset = sentinel_datasets::CalibrationDataset::default_cs2();
             if let Err(e) = dataset.save(&output_path) {
-                eprintln!("Error saving calibration data: {}", e);
+                eprintln!("Error saving calibration data: {e}");
                 return;
             }
-            println!("Calibration dataset saved to: {:?}", output_path);
+            println!("Calibration dataset saved to: {output_path:?}");
         }
         "stats" => {
             if args.len() < 3 {
@@ -87,7 +87,7 @@ fn main() {
                         println!("  Feature coverage: {:.1}%", stats.feature_coverage * 100.0);
                     }
                 }
-                Err(e) => eprintln!("Error: {}", e),
+                Err(e) => eprintln!("Error: {e}"),
             }
         }
         "dataset" => dataset::run(&args[2..]),
@@ -140,11 +140,11 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     println!("=== Sentinel AI Analysis Pipeline ===\n");
 
     // Step 1: Parse demo file using Source2Adapter
-    println!("[1/7] Parsing demo file: {:?}", path);
+    println!("[1/7] Parsing demo file: {path:?}");
     let adapter = match sentinel_source2::Source2Adapter::from_file(path) {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("Error parsing demo: {}", e);
+            eprintln!("Error parsing demo: {e}");
             return;
         }
     };
@@ -184,7 +184,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     let mut ctx = MatchContext::new(tick_states);
     ctx.set_kills(kills);
     let player_count = adapter.player_ids().len();
-    println!("  Players found: {}", player_count);
+    println!("  Players found: {player_count}");
 
     // Load map data for visibility calculations and capture its geometry version.
     let map_asset_version = match loader::load_map_by_name(&meta.map_name) {
@@ -233,7 +233,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     let memory = match Memory::load(&mem_path) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!("Warning: could not load memory ({}); using defaults.", e);
+            eprintln!("Warning: could not load memory ({e}); using defaults.");
             Memory::new()
         }
     };
@@ -306,7 +306,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
                 "  Memory: recorded match ({} demos total)",
                 mem.demos_analyzed
             ),
-            Err(e) => eprintln!("  Memory: failed to save: {}", e),
+            Err(e) => eprintln!("  Memory: failed to save: {e}"),
         }
     }
 
@@ -342,7 +342,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
             .unwrap_or_else(|| format!("Player_{}", result.player.as_u64()));
         let team = adapter
             .player_team(result.player)
-            .map(|t| format!("{:?}", t))
+            .map(|t| format!("{t:?}"))
             .unwrap_or_else(|| "Unknown".to_string());
         let history = memory.account_history(result.player);
         let supporting_matches = history
@@ -388,7 +388,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         println!("\n  {} ({}):", player.name, player.team);
         println!("    Overall: {:.2}", player.scores.overall);
         for (cat, score) in &player.scores.categories {
-            println!("    {}: {:.2}", cat, score);
+            println!("    {cat}: {score:.2}");
         }
         if !player.evidence.is_empty() {
             println!("    Evidence: {} items", player.evidence.len());
@@ -408,23 +408,23 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     let json_path = reports_dir.join(format!("{report_id}.json"));
     let json = serde_json::to_string_pretty(&report).unwrap_or_default();
     if let Err(e) = std::fs::write(&json_path, &json) {
-        eprintln!("Error saving report: {}", e);
+        eprintln!("Error saving report: {e}");
     } else {
-        println!("\nJSON report: {:?}", json_path);
+        println!("\nJSON report: {json_path:?}");
     }
 
     let replay_path = reports_dir.join(format!("{report_id}.replay.json"));
     match replay::export_adapter(&adapter, &replay_path) {
-        Ok(()) => println!("Replay export: {:?}", replay_path),
+        Ok(()) => println!("Replay export: {replay_path:?}"),
         Err(error) => eprintln!("Replay export failed: {error}"),
     }
 
     let html_path = reports_dir.join(format!("{report_id}.html"));
     let html = sentinel_report::html::HtmlReport::generate(&report);
     if let Err(e) = std::fs::write(&html_path, &html) {
-        eprintln!("Error saving HTML: {}", e);
+        eprintln!("Error saving HTML: {e}");
     } else {
-        println!("HTML report: {:?}", html_path);
+        println!("HTML report: {html_path:?}");
     }
 }
 
@@ -494,7 +494,7 @@ pub(crate) fn build_round_contexts(
             let end_state = states
                 .iter()
                 .filter(|state| state.tick.0 >= start_tick && state.tick.0 <= end_tick)
-                .last();
+                .next_back();
             let (t_score, ct_score, t_survivors, ct_survivors) = end_state
                 .map(|state| {
                     (
@@ -590,7 +590,7 @@ fn run_validation(dir: &PathBuf) {
         .collect();
 
     if demos.is_empty() {
-        eprintln!("No .dem files found in {:?}", dir);
+        eprintln!("No .dem files found in {dir:?}");
         return;
     }
 
@@ -641,10 +641,10 @@ fn run_validation(dir: &PathBuf) {
                     false_negatives: 0,
                 };
                 harness.add_demo(demo_validation);
-                println!("  Analyzed: {} players", player_count);
+                println!("  Analyzed: {player_count} players");
             }
             Err(e) => {
-                eprintln!("  Error: {}", e);
+                eprintln!("  Error: {e}");
             }
         }
     }
@@ -659,7 +659,7 @@ type AnalysisResult = Result<(String, Vec<PlayerScore>), String>;
 use std::path::Path;
 fn run_analysis_silent(path: &Path) -> AnalysisResult {
     let adapter = sentinel_source2::Source2Adapter::from_file(path)
-        .map_err(|e| format!("Parse error: {}", e))?;
+        .map_err(|e| format!("Parse error: {e}"))?;
 
     let meta = adapter.metadata();
 
@@ -699,7 +699,7 @@ fn run_analysis_silent(path: &Path) -> AnalysisResult {
 
     // Score players using learned baselines when memory exists.
     let memory = Memory::load(&Memory::default_path()).unwrap_or_else(|e| {
-        eprintln!("Warning: could not load memory ({}); using defaults.", e);
+        eprintln!("Warning: could not load memory ({e}); using defaults.");
         Memory::new()
     });
     let scorer = Scorer::new(sentinel_analysis::ScorerConfig {
@@ -735,7 +735,7 @@ fn run_memory_command(args: &[String]) {
             if path.exists() {
                 match std::fs::remove_file(&path) {
                     Ok(()) => println!("Memory reset: removed {}", path.display()),
-                    Err(e) => eprintln!("Error removing memory file: {}", e),
+                    Err(e) => eprintln!("Error removing memory file: {e}"),
                 }
             } else {
                 println!("Memory already empty (no file at {})", path.display());
@@ -755,13 +755,13 @@ fn run_memory_command(args: &[String]) {
                 }
             }
             Err(e) => {
-                eprintln!("Error loading memory: {}", e);
+                eprintln!("Error loading memory: {e}");
             }
         },
         // Unknown subcommand: treat like "show".
         _ => {
             if sub != "show" {
-                eprintln!("Unknown memory subcommand: {} (use 'show' or 'reset')", sub);
+                eprintln!("Unknown memory subcommand: {sub} (use 'show' or 'reset')");
             }
             match Memory::load(&path) {
                 Ok(mem) => {
@@ -777,7 +777,7 @@ fn run_memory_command(args: &[String]) {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Error loading memory: {}", e);
+                    eprintln!("Error loading memory: {e}");
                 }
             }
         }

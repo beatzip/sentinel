@@ -255,10 +255,10 @@ impl FeatureExt for RotationJustification {
 
         FeatureResult::new(adjusted_justification)
             .with_metadata("teammate_deaths".to_string(), teammate_deaths.to_string())
-            .with_metadata("solo_score".to_string(), format!("{:.2}", solo_score))
+            .with_metadata("solo_score".to_string(), format!("{solo_score:.2}"))
             .with_metadata(
                 "base_justification".to_string(),
-                format!("{:.2}", base_justification),
+                format!("{base_justification:.2}"),
             )
     }
 }

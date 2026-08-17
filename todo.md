@@ -19,3 +19,5 @@
 - [ ] Добавить per-feature importance analysis на verified-корпусе.
 - [ ] Реализовать utility lineup analysis.
 - [ ] Реализовать Discord bot после утверждения формата интеграции.
+- [ ] Провести нагрузочный benchmark на реальных демо и зафиксировать пороги масштабирования ingestion/analysis pipeline.
+- [x] Устранить Clippy `manual_contains` в A/B contract и подтвердить CI.

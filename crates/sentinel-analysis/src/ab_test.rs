@@ -40,7 +40,7 @@ impl AbTestConfig {
         if self.variants.is_empty() {
             return Err("A/B test requires at least one model variant");
         }
-        if self.variants.iter().any(|arm| *arm == self.control) {
+        if self.variants.contains(&self.control) {
             return Err("A/B variants must not repeat the control arm");
         }
         if self.minimum_verified_matches == 0 {

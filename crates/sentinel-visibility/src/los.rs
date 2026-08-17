@@ -227,10 +227,7 @@ impl VisibilityEngine {
         AudioResult {
             audible: volume > 0.05, // Threshold for audible sound
             volume,
-            reason: format!(
-                "Distance: {:.0}, Wall attenuation: {:.1}",
-                distance, wall_attenuation
-            ),
+            reason: format!("Distance: {distance:.0}, Wall attenuation: {wall_attenuation:.1}"),
             attenuation: wall_attenuation,
         }
     }
@@ -744,7 +741,7 @@ mod tests {
 
         // The line from (1300, 2800) to (1500, 2800) crosses the wall at x=1400
         assert!(
-            result.visible == false || result.reason == VisibilityReason::ThroughWall,
+            !result.visible || result.reason == VisibilityReason::ThroughWall,
             "Expected ThroughWall but got: {:?}",
             result.reason
         );

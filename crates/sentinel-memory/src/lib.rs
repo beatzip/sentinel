@@ -419,9 +419,9 @@ pub enum MemoryError {
 impl std::fmt::Display for MemoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MemoryError::Io(m) => write!(f, "memory io: {}", m),
-            MemoryError::Corrupt(m) => write!(f, "memory corrupt: {}", m),
-            MemoryError::Serialize(m) => write!(f, "memory serialize: {}", m),
+            MemoryError::Io(m) => write!(f, "memory io: {m}"),
+            MemoryError::Corrupt(m) => write!(f, "memory corrupt: {m}"),
+            MemoryError::Serialize(m) => write!(f, "memory serialize: {m}"),
         }
     }
 }

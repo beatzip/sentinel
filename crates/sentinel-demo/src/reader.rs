@@ -85,8 +85,7 @@ impl DemReader {
             Some(ft) => ft,
             None => {
                 return Err(sentinel_common::error::SentinelError::Parse(format!(
-                    "Unknown frame type: {}",
-                    frame_type_byte
+                    "Unknown frame type: {frame_type_byte}"
                 )));
             }
         };

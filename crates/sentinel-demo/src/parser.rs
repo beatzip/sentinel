@@ -162,8 +162,7 @@ fn decode_game_event(tick: u32, cursor: &mut std::io::Cursor<&[u8]>) -> Result<R
             4 => RawEventField::EntityId(cursor.read_u32::<LittleEndian>()?),
             _ => {
                 return Err(SentinelError::Parse(format!(
-                    "Unknown event field type: {}",
-                    type_tag
+                    "Unknown event field type: {type_tag}"
                 )));
             }
         };

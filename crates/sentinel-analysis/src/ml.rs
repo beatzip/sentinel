@@ -29,9 +29,9 @@ pub enum ModelError {
 impl std::fmt::Display for ModelError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ModelError::TrainingFailed(msg) => write!(f, "Training failed: {}", msg),
-            ModelError::PredictionFailed(msg) => write!(f, "Prediction failed: {}", msg),
-            ModelError::InvalidData(msg) => write!(f, "Invalid data: {}", msg),
+            ModelError::TrainingFailed(msg) => write!(f, "Training failed: {msg}"),
+            ModelError::PredictionFailed(msg) => write!(f, "Prediction failed: {msg}"),
+            ModelError::InvalidData(msg) => write!(f, "Invalid data: {msg}"),
             ModelError::ModelNotTrained => write!(f, "Model not trained"),
         }
     }

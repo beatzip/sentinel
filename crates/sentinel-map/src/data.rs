@@ -627,11 +627,11 @@ impl MapData {
         use std::io::Read;
 
         let mut file =
-            std::fs::File::open(path).map_err(|e| format!("Failed to open tri file: {}", e))?;
+            std::fs::File::open(path).map_err(|e| format!("Failed to open tri file: {e}"))?;
 
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer)
-            .map_err(|e| format!("Failed to read tri file: {}", e))?;
+            .map_err(|e| format!("Failed to read tri file: {e}"))?;
 
         // Parse triangles (each is 9 f32 values = 36 bytes)
         let triangle_count = buffer.len() / 36;
@@ -779,22 +779,22 @@ impl MapData {
     pub fn get_triangles(&self) -> Vec<Triangle3D> {
         if let Some(ref bvh) = self.bvh {
             let mut triangles = Vec::new();
-            self.collect_triangles_bvh(bvh, &mut triangles);
+            Self::collect_triangles_bvh(bvh, &mut triangles);
             triangles
         } else {
             Vec::new()
         }
     }
 
-    fn collect_triangles_bvh(&self, node: &BVHNode3D, triangles: &mut Vec<Triangle3D>) {
+    fn collect_triangles_bvh(node: &BVHNode3D, triangles: &mut Vec<Triangle3D>) {
         if let Some(ref triangle) = node.triangle {
             triangles.push(triangle.clone());
         }
         if let Some(ref left) = node.left {
-            self.collect_triangles_bvh(left, triangles);
+            Self::collect_triangles_bvh(left, triangles);
         }
         if let Some(ref right) = node.right {
-            self.collect_triangles_bvh(right, triangles);
+            Self::collect_triangles_bvh(right, triangles);
         }
     }
 

@@ -57,8 +57,8 @@ impl FeatureExt for ReactionTime {
         };
         let reaction = (base - distance_bonus + angle_penalty).clamp(0.08, 0.5);
         FeatureResult::new(reaction)
-            .with_metadata("distance".to_string(), format!("{:.0}", distance))
-            .with_metadata("angle_diff".to_string(), format!("{:.1}", angle_diff))
+            .with_metadata("distance".to_string(), format!("{distance:.0}"))
+            .with_metadata("angle_diff".to_string(), format!("{angle_diff:.1}"))
     }
 }
 
