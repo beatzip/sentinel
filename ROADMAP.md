@@ -35,6 +35,10 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 | 50 unknown demos | ⏳ Pending |
 | Label verification | ⏳ Pending |
 
+> Repository check: the demo corpus and labels are not included, so the M4 collection targets remain unverified.
+
+- [x] Versioned dataset manifest and local audit command (`sentinel dataset init|audit`)
+
 **Sources:**
 - HLTV pro matches (legit)
 - Faceit L10 matches (legit)
@@ -45,23 +49,23 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 **Goal:** Measure and improve detection quality
 
 - [ ] Validation harness with 200+ demos
-- [ ] Precision/Recall curves
-- [ ] AUC-ROC computation
+- [x] Precision/Recall curves
+- [x] AUC-ROC computation
 - [ ] Per-feature importance analysis
-- [ ] Calibration of score thresholds
-- [ ] Cross-validation (5-fold)
-- [ ] Per-map analysis
+- [x] Calibration of score thresholds
+- [x] Cross-validation (5-fold)
+- [x] Per-map analysis
 
 ### M6 - Advanced Features
 
 **Goal:** Improve detection accuracy
 
-- [ ] Temporal analysis (patterns over time)
-- [ ] Cross-round behavior tracking
-- [ ] Team coordination analysis
-- [ ] Economy-based decision analysis
+- [x] Temporal analysis (patterns over time)
+- [x] Cross-round behavior tracking
+- [x] Team coordination analysis
+- [x] Economy-based decision analysis
 - [ ] Utility lineup analysis
-- [ ] Clutch situation analysis
+- [x] Clutch situation analysis
 
 ### M7 - ML Integration
 
@@ -71,7 +75,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Persistent memory (`sentinel_memory.json`) + per-player profiles
 - [x] Recidivism-based scoring for marginal-cheater detection
 - [ ] XGBoost for feature combination
-- [x] Isolation Forest anomaly detection (scaffold)
+- [x] Isolation Forest anomaly detection
 - [ ] Temporal patterns (Transformer)
 - [x] Model training pipeline (`sentinel learn`)
 - [x] Model versioning (memory schema version)
@@ -81,22 +85,22 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 
 **Goal:** User-friendly analysis interface
 
-- [ ] Web dashboard
-- [ ] Interactive timeline
-- [ ] Evidence viewer
-- [ ] Player comparison
-- [ ] Match history
+- [x] Web dashboard
+- [x] Interactive timeline
+- [x] Evidence viewer
+- [x] Player comparison
+- [x] Match history
 - [ ] Export capabilities
 
 ### M9 - API & Integration
 
 **Goal:** Enable external integrations
 
-- [ ] REST API
+- [x] REST API
 - [ ] Discord bot
-- [ ] OBS overlay
-- [ ] Stream integration
-- [ ] Tournament support
+- [x] OBS overlay data endpoint
+- [x] Stream integration data contract
+- [x] Tournament integration data contract
 
 ## Long-term Vision
 

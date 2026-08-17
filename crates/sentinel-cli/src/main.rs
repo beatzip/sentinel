@@ -11,6 +11,8 @@ use sentinel_report::{MatchMetadata, MatchReport, PlayerReport};
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
 
+mod dataset;
+
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
     println!("Version: {}", env!("CARGO_PKG_VERSION"));
@@ -84,6 +86,7 @@ fn main() {
                 Err(e) => eprintln!("Error: {}", e),
             }
         }
+        "dataset" => dataset::run(&args[2..]),
         "verify" => {
             println!("Running verification...");
             let output = std::process::Command::new("cargo")
@@ -593,5 +596,6 @@ fn print_usage() {
     println!("  validate <directory>          Validate on multiple demos");
     println!("  calibrate [output.json]       Generate calibration dataset");
     println!("  stats <vectors.json>          Show dataset statistics");
+    println!("  dataset <init|audit>          Create or audit a labeled dataset manifest");
     println!("  verify                        Run verification checks");
 }

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use sentinel_analysis::BaselineSet;
@@ -267,6 +267,95 @@ impl DatasetStats {
     }
 }
 
+/// Human-verified label assigned to a demo before it is used for validation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum DatasetLabel {
+    Legit,
+    Cheater,
+    Unknown,
+}
+
+/// One demo registered in a labeled dataset. Paths are relative to the manifest.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatasetEntry {
+    pub demo_path: PathBuf,
+    pub label: DatasetLabel,
+    pub source: String,
+    pub verified: bool,
+}
+
+/// Portable index for the M4 dataset; demo archives stay out of the repository.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatasetManifest {
+    pub version: u32,
+    pub entries: Vec<DatasetEntry>,
+}
+
+impl Default for DatasetManifest {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            entries: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DatasetAudit {
+    pub total: usize,
+    pub legit: usize,
+    pub cheater: usize,
+    pub unknown: usize,
+    pub missing_files: usize,
+    pub unverified: usize,
+    pub duplicate_paths: usize,
+}
+
+impl DatasetManifest {
+    pub fn load(path: &Path) -> Result<Self, std::io::Error> {
+        let json = std::fs::read_to_string(path)?;
+        serde_json::from_str(&json).map_err(std::io::Error::other)
+    }
+
+    pub fn save(&self, path: &Path) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        std::fs::write(path, json)
+    }
+
+    pub fn audit(&self, root: &Path) -> DatasetAudit {
+        let mut paths = HashSet::new();
+        let mut audit = DatasetAudit {
+            total: self.entries.len(),
+            legit: 0,
+            cheater: 0,
+            unknown: 0,
+            missing_files: 0,
+            unverified: 0,
+            duplicate_paths: 0,
+        };
+
+        for entry in &self.entries {
+            match entry.label {
+                DatasetLabel::Legit => audit.legit += 1,
+                DatasetLabel::Cheater => audit.cheater += 1,
+                DatasetLabel::Unknown => audit.unknown += 1,
+            }
+            if !entry.verified {
+                audit.unverified += 1;
+            }
+            if !root.join(&entry.demo_path).is_file() {
+                audit.missing_files += 1;
+            }
+            if !paths.insert(&entry.demo_path) {
+                audit.duplicate_paths += 1;
+            }
+        }
+
+        audit
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -316,5 +405,44 @@ mod tests {
         let stats = DatasetStats::compute(&[fv]);
         assert_eq!(stats.total_vectors, 1);
         assert_eq!(stats.unique_players, 1);
+    }
+
+    #[test]
+    fn manifest_audit_counts_labels_and_missing_files() {
+        let root = std::env::temp_dir().join("sentinel_dataset_audit");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("legit")).unwrap();
+        std::fs::write(root.join("legit/match.dem"), []).unwrap();
+        let manifest = DatasetManifest {
+            version: 1,
+            entries: vec![
+                DatasetEntry {
+                    demo_path: PathBuf::from("legit/match.dem"),
+                    label: DatasetLabel::Legit,
+                    source: "hltv".to_string(),
+                    verified: true,
+                },
+                DatasetEntry {
+                    demo_path: PathBuf::from("cheater/missing.dem"),
+                    label: DatasetLabel::Cheater,
+                    source: "manual-review".to_string(),
+                    verified: false,
+                },
+            ],
+        };
+
+        assert_eq!(
+            manifest.audit(&root),
+            DatasetAudit {
+                total: 2,
+                legit: 1,
+                cheater: 1,
+                unknown: 0,
+                missing_files: 1,
+                unverified: 1,
+                duplicate_paths: 0,
+            }
+        );
+        let _ = std::fs::remove_dir_all(root);
     }
 }

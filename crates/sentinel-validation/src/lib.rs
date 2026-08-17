@@ -54,6 +54,7 @@ pub struct ValidationMetrics {
     pub false_positive_rate: f64,
     pub true_positive_rate: f64,
     pub accuracy: f64,
+    pub auc_roc: f64,
     pub score_distribution: ScoreDistribution,
     pub feature_importance: BTreeMap<String, f64>,
 }
@@ -69,14 +70,28 @@ pub struct ScoreDistribution {
     pub max: f64,
 }
 
+/// Metrics at one score cutoff for ROC and precision/recall charts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThresholdMetrics {
+    pub threshold: f64,
+    pub precision: f64,
+    pub recall: f64,
+    pub f1_score: f64,
+    pub false_positive_rate: f64,
+}
+
+/// One held-out fold evaluated with a threshold learned from the remaining demos.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CrossValidationFold {
+    pub fold: usize,
+    pub threshold: f64,
+    pub metrics: ValidationMetrics,
+}
+
 /// Validation harness for running evaluations
 pub struct ValidationHarness {
     demos: Vec<DemoValidation>,
-    /// Score cutoff used to classify a player as a cheater. Currently the
-    /// harness reports metrics over the full score distribution; this is kept
-    /// so the threshold-gated classification path can be wired in without
-    /// breaking the public constructor.
-    #[expect(dead_code, reason = "preserved for threshold-gated classification")]
+    /// Score cutoff used to classify a labeled player as a cheater.
     threshold: f64,
 }
 
@@ -90,6 +105,99 @@ impl ValidationHarness {
 
     pub fn add_demo(&mut self, demo: DemoValidation) {
         self.demos.push(demo);
+    }
+
+    /// Returns score cutoffs suitable for ROC and precision/recall charts.
+    pub fn threshold_curve(&self) -> Vec<ThresholdMetrics> {
+        let mut thresholds = self
+            .demos
+            .iter()
+            .flat_map(|demo| &demo.players)
+            .filter(|player| player.label != PlayerLabel::Unknown)
+            .map(|player| player.overall_score)
+            .collect::<Vec<_>>();
+        thresholds.sort_by(f64::total_cmp);
+        thresholds.dedup();
+        thresholds
+            .into_iter()
+            .rev()
+            .map(|threshold| {
+                let metrics = self.metrics_at(threshold);
+                ThresholdMetrics {
+                    threshold,
+                    precision: metrics.precision,
+                    recall: metrics.recall,
+                    f1_score: metrics.f1_score,
+                    false_positive_rate: metrics.false_positive_rate,
+                }
+            })
+            .collect()
+    }
+
+    /// Selects the threshold with the highest F1 score; ties prefer fewer false positives.
+    pub fn calibrate_threshold(&self) -> Option<ThresholdMetrics> {
+        self.threshold_curve().into_iter().max_by(|left, right| {
+            left.f1_score.total_cmp(&right.f1_score).then_with(|| {
+                right
+                    .false_positive_rate
+                    .total_cmp(&left.false_positive_rate)
+            })
+        })
+    }
+
+    /// Returns metrics grouped by map at the harness threshold.
+    pub fn per_map_metrics(&self) -> BTreeMap<String, ValidationMetrics> {
+        let mut by_map: BTreeMap<String, Vec<DemoValidation>> = BTreeMap::new();
+        for demo in &self.demos {
+            by_map
+                .entry(demo.map.clone())
+                .or_default()
+                .push(demo.clone());
+        }
+        by_map
+            .into_iter()
+            .map(|(map, demos)| {
+                (
+                    map,
+                    Self::with_demos(self.threshold, demos).compute_metrics(),
+                )
+            })
+            .collect()
+    }
+
+    /// Splits demos by insertion order and evaluates each held-out fold.
+    pub fn cross_validate(&self, folds: usize) -> Vec<CrossValidationFold> {
+        if folds < 2 || self.demos.len() < folds {
+            return Vec::new();
+        }
+
+        (0..folds)
+            .filter_map(|fold| {
+                let training = self
+                    .demos
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| index % folds != fold)
+                    .map(|(_, demo)| demo.clone())
+                    .collect::<Vec<_>>();
+                let threshold = Self::with_demos(self.threshold, training)
+                    .calibrate_threshold()?
+                    .threshold;
+                let held_out = self
+                    .demos
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| index % folds == fold)
+                    .map(|(_, demo)| demo.clone())
+                    .collect::<Vec<_>>();
+
+                Some(CrossValidationFold {
+                    fold,
+                    threshold,
+                    metrics: Self::with_demos(threshold, held_out).compute_metrics(),
+                })
+            })
+            .collect()
     }
 
     pub fn compute_metrics(&self) -> ValidationMetrics {
@@ -106,21 +214,23 @@ impl ValidationHarness {
             for player in &demo.players {
                 total_players += 1;
                 match player.label {
-                    PlayerLabel::Cheater => total_cheaters += 1,
-                    PlayerLabel::Legit => total_legit += 1,
-                    _ => {}
-                }
-                if player.is_true_positive {
-                    tp += 1;
-                }
-                if player.is_false_positive {
-                    fp += 1;
-                }
-                if player.is_true_negative {
-                    tn += 1;
-                }
-                if player.is_false_negative {
-                    fn_ += 1;
+                    PlayerLabel::Cheater => {
+                        total_cheaters += 1;
+                        if player.overall_score >= self.threshold {
+                            tp += 1;
+                        } else {
+                            fn_ += 1;
+                        }
+                    }
+                    PlayerLabel::Legit => {
+                        total_legit += 1;
+                        if player.overall_score >= self.threshold {
+                            fp += 1;
+                        } else {
+                            tn += 1;
+                        }
+                    }
+                    PlayerLabel::Unknown => {}
                 }
                 all_scores.push(player.overall_score);
             }
@@ -155,6 +265,7 @@ impl ValidationHarness {
 
         let score_dist = Self::compute_distribution(&all_scores);
         let feature_imp = self.compute_feature_importance();
+        let auc_roc = self.compute_auc_roc();
 
         ValidationMetrics {
             total_demos: self.demos.len(),
@@ -171,9 +282,56 @@ impl ValidationHarness {
             false_positive_rate: fpr,
             true_positive_rate: tpr,
             accuracy,
+            auc_roc,
             score_distribution: score_dist,
             feature_importance: feature_imp,
         }
+    }
+
+    fn metrics_at(&self, threshold: f64) -> ValidationMetrics {
+        Self::with_demos(threshold, self.demos.clone()).compute_metrics()
+    }
+
+    fn with_demos(threshold: f64, demos: Vec<DemoValidation>) -> Self {
+        Self { demos, threshold }
+    }
+
+    fn compute_auc_roc(&self) -> f64 {
+        let mut scores = self
+            .demos
+            .iter()
+            .flat_map(|demo| &demo.players)
+            .filter_map(|player| match player.label {
+                PlayerLabel::Cheater => Some((player.overall_score, true)),
+                PlayerLabel::Legit => Some((player.overall_score, false)),
+                PlayerLabel::Unknown => None,
+            })
+            .collect::<Vec<_>>();
+        let positives = scores.iter().filter(|(_, positive)| *positive).count();
+        let negatives = scores.len() - positives;
+        if positives == 0 || negatives == 0 {
+            return 0.0;
+        }
+
+        scores.sort_by(|left, right| left.0.total_cmp(&right.0));
+        let mut positive_rank_sum = 0.0;
+        let mut start = 0;
+        while start < scores.len() {
+            let mut end = start + 1;
+            while end < scores.len() && scores[end].0 == scores[start].0 {
+                end += 1;
+            }
+            let average_rank = (start + 1 + end) as f64 / 2.0;
+            positive_rank_sum += scores[start..end]
+                .iter()
+                .filter(|(_, positive)| *positive)
+                .count() as f64
+                * average_rank;
+            start = end;
+        }
+
+        (positive_rank_sum - (positives * (positives + 1) / 2) as f64)
+            / (positives * negatives) as f64
     }
 
     fn compute_distribution(scores: &[f64]) -> ScoreDistribution {
@@ -260,7 +418,8 @@ impl ValidationHarness {
              F1 Score:   {:.3}\n\
              FPR:        {:.3}\n\
              TPR:        {:.3}\n\
-             Accuracy:   {:.3}\n\n\
+             Accuracy:   {:.3}\n\
+             AUC-ROC:    {:.3}\n\n\
              === Score Distribution ===\n\
              Mean:   {:.3}\n\
              Median: {:.3}\n\
@@ -281,6 +440,7 @@ impl ValidationHarness {
             metrics.false_positive_rate,
             metrics.true_positive_rate,
             metrics.accuracy,
+            metrics.auc_roc,
             metrics.score_distribution.mean,
             metrics.score_distribution.median,
             metrics.score_distribution.std_dev,
@@ -341,13 +501,24 @@ mod tests {
             false_negatives: 0,
         };
 
+        harness.add_demo(demo.clone());
         harness.add_demo(demo);
 
         let metrics = harness.compute_metrics();
-        assert_eq!(metrics.total_players, 2);
-        assert_eq!(metrics.true_positives, 1);
-        assert_eq!(metrics.true_negatives, 1);
+        assert_eq!(metrics.total_players, 4);
+        assert_eq!(metrics.true_positives, 2);
+        assert_eq!(metrics.true_negatives, 2);
         assert_eq!(metrics.precision, 1.0);
         assert_eq!(metrics.recall, 1.0);
+        assert_eq!(metrics.auc_roc, 1.0);
+        assert_eq!(harness.threshold_curve().len(), 2);
+        assert_eq!(harness.calibrate_threshold().unwrap().threshold, 0.8);
+        assert_eq!(harness.per_map_metrics()["de_dust2"].total_demos, 2);
+        assert!(
+            harness
+                .cross_validate(2)
+                .iter()
+                .all(|fold| fold.metrics.f1_score == 1.0)
+        );
     }
 }

@@ -36,7 +36,7 @@ Thank you for your interest in contributing to Sentinel AI! This document provid
 
 ### Prerequisites
 
-- Rust 1.75+ (latest stable recommended)
+- Rust 1.88+
 - Cargo
 - Git
 

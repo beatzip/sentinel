@@ -46,25 +46,14 @@ pub struct IsolationForest {
     /// Maximum depth of each tree
     max_depth: usize,
     /// Trained trees
-    trees: Vec<IsolationTree>,
+    trees: Vec<IsolationNode>,
+    feature_names: Vec<String>,
+    bounds: Vec<(f64, f64)>,
+    sample_size: usize,
     /// Whether the model is trained
     trained: bool,
 }
 
-/// A single isolation tree node.
-///
-/// Scaffold for the tree-walking implementation; the current scoring path uses
-/// a simplified heuristic while the recursive structure below is wired up so
-/// the public API and on-disk model shape stay stable as the algorithm lands.
-#[expect(dead_code, reason = "scaffold for the recursive isolation-tree walker")]
-struct IsolationTree {
-    feature_index: usize,
-    split_value: f64,
-    left: Option<Box<IsolationNode>>,
-    right: Option<Box<IsolationNode>>,
-}
-
-#[expect(dead_code, reason = "scaffold for the recursive isolation-tree walker")]
 enum IsolationNode {
     Branch {
         feature_index: usize,
@@ -83,35 +72,95 @@ impl IsolationForest {
             n_trees,
             max_depth,
             trees: Vec::new(),
+            feature_names: Vec::new(),
+            bounds: Vec::new(),
+            sample_size: 0,
             trained: false,
         }
     }
 
-    /// Compute anomaly score (lower = more anomalous for isolation forest)
+    /// Compute anomaly score where higher values are more anomalous.
     fn compute_score(&self, vector: &FeatureVector) -> f64 {
         if self.trees.is_empty() {
             return 0.5;
         }
+        if self.bounds.iter().enumerate().any(|(index, (min, max))| {
+            let value = self.feature_value(vector, index);
+            value < *min || value > *max
+        }) {
+            return 1.0;
+        }
 
-        let total_depth: usize = self
+        let average_depth = self
             .trees
             .iter()
-            .map(|tree| self.path_length(tree, vector))
-            .sum();
-        let avg_depth = total_depth as f64 / self.trees.len() as f64;
+            .map(|tree| self.path_length(tree, vector) as f64)
+            .sum::<f64>()
+            / self.trees.len() as f64;
 
-        // Normalize to [0, 1] where 1 is most anomalous
-        let c = self.average_path_length(self.n_trees);
+        let c = self.average_path_length(self.sample_size);
         if c == 0.0 {
             0.5
         } else {
-            2.0_f64.powf(-avg_depth / c)
+            2.0_f64.powf(-average_depth / c)
         }
     }
 
-    fn path_length(&self, _tree: &IsolationTree, _vector: &FeatureVector) -> usize {
-        // Simplified: would traverse the tree
-        self.max_depth / 2
+    fn path_length(&self, node: &IsolationNode, vector: &FeatureVector) -> usize {
+        match node {
+            IsolationNode::Leaf { depth } => *depth,
+            IsolationNode::Branch {
+                feature_index,
+                split_value,
+                left,
+                right,
+            } => {
+                if self.feature_value(vector, *feature_index) < *split_value {
+                    self.path_length(left, vector)
+                } else {
+                    self.path_length(right, vector)
+                }
+            }
+        }
+    }
+
+    fn feature_value(&self, vector: &FeatureVector, index: usize) -> f64 {
+        self.feature_names
+            .get(index)
+            .and_then(|name| vector.features.get(name))
+            .map_or(0.0, |result| result.value)
+    }
+
+    fn build_tree(&self, samples: &[Vec<f64>], depth: usize, tree_index: usize) -> IsolationNode {
+        if depth >= self.max_depth || samples.len() <= 1 || self.feature_names.is_empty() {
+            return IsolationNode::Leaf { depth };
+        }
+        let feature_index = (tree_index + depth) % self.feature_names.len();
+        let min = samples
+            .iter()
+            .map(|sample| sample[feature_index])
+            .fold(f64::INFINITY, f64::min);
+        let max = samples
+            .iter()
+            .map(|sample| sample[feature_index])
+            .fold(f64::NEG_INFINITY, f64::max);
+        if min >= max {
+            return IsolationNode::Leaf { depth };
+        }
+        let split_value = min + (max - min) * [0.25, 0.5, 0.75][(tree_index + depth) % 3];
+        let (left_samples, right_samples): (Vec<_>, Vec<_>) = samples
+            .iter()
+            .cloned()
+            .partition(|sample| sample[feature_index] < split_value);
+        if left_samples.is_empty() || right_samples.is_empty() {
+            return IsolationNode::Leaf { depth };
+        }
+        IsolationNode::Branch {
+            feature_index,
+            split_value,
+            left: Box::new(self.build_tree(&left_samples, depth + 1, tree_index)),
+            right: Box::new(self.build_tree(&right_samples, depth + 1, tree_index)),
+        }
     }
 
     fn average_path_length(&self, n: usize) -> f64 {
@@ -128,16 +177,42 @@ impl AnomalyModel for IsolationForest {
             return Err(ModelError::TrainingFailed("No training data".to_string()));
         }
 
-        // Simplified training: create random trees
+        self.feature_names = vectors
+            .iter()
+            .flat_map(|vector| vector.features.keys().cloned())
+            .collect();
+        self.feature_names.sort();
+        self.feature_names.dedup();
+        if self.feature_names.is_empty() {
+            return Err(ModelError::InvalidData("No numeric features".to_string()));
+        }
+        let samples = vectors
+            .iter()
+            .map(|vector| {
+                self.feature_names
+                    .iter()
+                    .map(|name| vector.features.get(name).map_or(0.0, |result| result.value))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        self.bounds = (0..self.feature_names.len())
+            .map(|index| {
+                (
+                    samples
+                        .iter()
+                        .map(|sample| sample[index])
+                        .fold(f64::INFINITY, f64::min),
+                    samples
+                        .iter()
+                        .map(|sample| sample[index])
+                        .fold(f64::NEG_INFINITY, f64::max),
+                )
+            })
+            .collect();
         self.trees.clear();
-        for _ in 0..self.n_trees {
-            // In real implementation, would build isolation trees
-            self.trees.push(IsolationTree {
-                feature_index: 0,
-                split_value: 0.0,
-                left: None,
-                right: None,
-            });
+        self.sample_size = samples.len();
+        for tree_index in 0..self.n_trees {
+            self.trees.push(self.build_tree(&samples, 0, tree_index));
         }
 
         self.trained = true;
@@ -156,7 +231,7 @@ impl AnomalyModel for IsolationForest {
     }
 
     fn version(&self) -> &str {
-        "1.0.0"
+        "1.1.0"
     }
 }
 
@@ -384,8 +459,10 @@ mod tests {
         model.train(&vectors).unwrap();
 
         let test = make_feature_vector(25.0);
-        let score = model.predict(&test).unwrap();
-        assert!((0.0..=1.0).contains(&score));
+        let normal_score = model.predict(&test).unwrap();
+        let anomaly_score = model.predict(&make_feature_vector(100.0)).unwrap();
+        assert!((0.0..=1.0).contains(&normal_score));
+        assert!(anomaly_score > normal_score);
     }
 
     #[test]

@@ -40,6 +40,8 @@ impl FeatureEngine {
         engine.register(crate::decision::TeamProximityScore);
         engine.register(crate::decision::TradeKillParticipation);
         engine.register(crate::decision::UtilitySupportRate);
+        engine.register(crate::advanced::EconomyShare);
+        engine.register(crate::advanced::ClutchPressure);
 
         // Register utility features
         engine.register(crate::utility::FlashAssistRate);
