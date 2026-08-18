@@ -6,7 +6,10 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use sentinel_report::{MatchReport, PlayerReport, replay::ReplayData};
+use sentinel_report::{
+    AnalysisProvenance, ConfidenceAssessment, MatchReport, PlayerReport, ReanalysisStatus,
+    SupportingMatch, replay::ReplayData,
+};
 use serde::Serialize;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -34,6 +37,26 @@ struct PlayerHistory {
     report_id: String,
     map: String,
     player: PlayerReport,
+}
+
+#[derive(Serialize)]
+struct DossierMatch {
+    report_id: String,
+    map: String,
+    player: PlayerReport,
+    provenance: AnalysisProvenance,
+    reanalysis: ReanalysisStatus,
+}
+
+/// Profile data computed exclusively from locally published Sentinel reports.
+#[derive(Serialize)]
+struct PlayerDossier {
+    steam_id: u64,
+    name: String,
+    matches_observed: usize,
+    flagged_matches: usize,
+    confidence: ConfidenceAssessment,
+    matches: Vec<DossierMatch>,
 }
 
 #[derive(Serialize)]
@@ -75,6 +98,7 @@ fn app(reports_dir: PathBuf) -> Router {
         .route("/v1/reports/{id}", get(get_report))
         .route("/v1/replays/{id}", get(get_replay))
         .route("/v1/players/{steam_id}", get(player_history))
+        .route("/v1/players/{steam_id}/dossier", get(player_dossier))
         .route("/v1/overlay/{id}", get(overlay_snapshot))
         .with_state(ApiState { reports_dir })
         .layer(CorsLayer::new().allow_origin(Any))
@@ -147,6 +171,76 @@ async fn player_history(
         })
         .collect();
     Ok(Json(history))
+}
+
+async fn player_dossier(
+    State(state): State<ApiState>,
+    ApiPath(steam_id): ApiPath<u64>,
+) -> ApiResult<PlayerDossier> {
+    let reports = load_reports(&state.reports_dir)?;
+    let mut matches = reports
+        .into_iter()
+        .flat_map(|(report_id, report)| {
+            let map = report.metadata.map_name;
+            let provenance = report.provenance;
+            let reanalysis = report.reanalysis;
+            report
+                .players
+                .into_iter()
+                .filter(move |player| player.steam_id == steam_id)
+                .map(move |player| DossierMatch {
+                    report_id: report_id.clone(),
+                    map: map.clone(),
+                    player,
+                    provenance: provenance.clone(),
+                    reanalysis: reanalysis.clone(),
+                })
+        })
+        .collect::<Vec<_>>();
+    matches.sort_by(|left, right| left.report_id.cmp(&right.report_id));
+    let current = matches
+        .iter()
+        .max_by(|left, right| {
+            left.player
+                .scores
+                .overall
+                .total_cmp(&right.player.scores.overall)
+        })
+        .ok_or_else(|| {
+            (
+                StatusCode::NOT_FOUND,
+                "Player not found in local reports".to_string(),
+            )
+        })?;
+    let flagged_matches = matches
+        .iter()
+        .filter(|entry| entry.player.scores.overall >= 0.6)
+        .count();
+    let supporting_matches = matches
+        .iter()
+        .filter(|entry| entry.player.scores.overall >= 0.5)
+        .map(|entry| SupportingMatch {
+            report_id: entry.report_id.clone(),
+            map_name: entry.map.clone(),
+            overall_score: entry.player.scores.overall,
+            evidence_count: entry.player.evidence.len(),
+            flagged: entry.player.scores.overall >= 0.6,
+        })
+        .collect();
+    let confidence = ConfidenceAssessment::assess(
+        &current.player.scores,
+        matches.len(),
+        flagged_matches,
+        supporting_matches,
+    );
+    Ok(Json(PlayerDossier {
+        steam_id,
+        name: current.player.name.clone(),
+        matches_observed: matches.len(),
+        flagged_matches,
+        confidence,
+        matches,
+    }))
 }
 
 async fn overlay_snapshot(

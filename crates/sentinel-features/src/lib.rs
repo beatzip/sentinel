@@ -3,6 +3,7 @@ pub mod aim;
 pub mod decision;
 pub mod engine;
 pub mod general;
+pub mod lineups;
 pub mod movement;
 pub mod rotation;
 pub mod traits;

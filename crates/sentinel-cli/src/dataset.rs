@@ -10,8 +10,12 @@ pub fn run(args: &[String]) {
             args.get(1).map(String::as_str),
             args.get(2).map(String::as_str),
         ),
+        Some("promote-reviews") => promote_reviews(
+            args.get(1).map(String::as_str),
+            args.get(2).map(String::as_str),
+        ),
         _ => eprintln!(
-            "Usage: sentinel dataset <init [directory] | audit <manifest.json> | train <manifest.json> [models_dir]>"
+            "Usage: sentinel dataset <init [directory] | audit <manifest.json> | train <manifest.json> [models_dir] | promote-reviews <manifest.json> <reviews.json>>"
         ),
     }
 }
@@ -60,6 +64,42 @@ fn audit(manifest_path: Option<&str>) {
     println!("  Missing files: {}", audit.missing_files);
     println!("  Unverified labels: {}", audit.unverified);
     println!("  Duplicate paths: {}", audit.duplicate_paths);
+}
+
+fn promote_reviews(manifest_path: Option<&str>, reviews_path: Option<&str>) {
+    let (Some(manifest_path), Some(reviews_path)) = (manifest_path, reviews_path) else {
+        eprintln!("Usage: sentinel dataset promote-reviews <manifest.json> <reviews.json>");
+        return;
+    };
+    let manifest_path = Path::new(manifest_path);
+    let mut manifest = match sentinel_datasets::DatasetManifest::load(manifest_path) {
+        Ok(manifest) => manifest,
+        Err(error) => {
+            eprintln!("Error loading manifest: {error}");
+            return;
+        }
+    };
+    let reviews = match sentinel_datasets::ReviewManifest::load(Path::new(reviews_path)) {
+        Ok(reviews) => reviews,
+        Err(error) => {
+            eprintln!("Error loading reviews: {error}");
+            return;
+        }
+    };
+    let promotion = manifest.apply_verified_reviews(&reviews);
+    if let Err(error) = manifest.save(manifest_path) {
+        eprintln!("Error saving manifest: {error}");
+        return;
+    }
+    println!("Review promotion:");
+    println!("  Promoted: {}", promotion.promoted);
+    println!("  Unverified: {}", promotion.skipped_unverified);
+    println!("  Ambiguous: {}", promotion.skipped_ambiguous);
+    println!("  Missing evidence: {}", promotion.skipped_missing_evidence);
+    println!(
+        "  Missing manifest entry: {}",
+        promotion.skipped_missing_entry
+    );
 }
 
 fn train(manifest_path: Option<&str>, models_dir: Option<&str>) {

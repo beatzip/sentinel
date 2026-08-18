@@ -33,6 +33,9 @@ impl HtmlReport {
         .player-card { background: #1a1a1a; padding: 20px; border-radius: 8px; margin-bottom: 15px; }
         .score-bar { display: inline-block; height: 20px; background: #333; border-radius: 4px; overflow: hidden; }
         .score-fill { height: 100%; background: linear-gradient(90deg, #00ff88, #ffaa00, #ff0000); }
+        .round-story { background: #161d1d; padding: 14px; margin: 12px 0; border-left: 3px solid #ffaa00; }
+        .round-story p { margin-top: 6px; color: #c5d1d1; }
+        .round-story ul { margin: 10px 0 0 20px; }
         table { width: 100%; border-collapse: collapse; margin: 10px 0; }
         th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; }
         th { color: #00ccff; }
@@ -128,6 +131,28 @@ impl HtmlReport {
             }
 
             html.push_str("        </div>\n\n");
+        }
+
+        if !report.rounds.is_empty() {
+            html.push_str("        <h2>Round Story</h2>\n");
+            for round in &report.rounds {
+                html.push_str("        <div class=\"round-story\">\n");
+                html.push_str(&format!("            <h3>{}</h3>\n", round.story.headline));
+                html.push_str(&format!("            <p>{}</p>\n", round.story.result));
+                if round.story.deaths.is_empty() {
+                    html.push_str("            <p>No roster-resolved deaths were recorded for this round.</p>\n");
+                } else {
+                    html.push_str("            <ul>\n");
+                    for death in &round.story.deaths {
+                        html.push_str(&format!(
+                            "                <li>Tick {}: {}</li>\n",
+                            death.tick, death.summary
+                        ));
+                    }
+                    html.push_str("            </ul>\n");
+                }
+                html.push_str("        </div>\n");
+            }
         }
 
         // Footer

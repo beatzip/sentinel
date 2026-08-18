@@ -17,8 +17,17 @@
 - [x] Добавить контекст раунда и roster-resolved kill feed в report/replay контракт.
 - [ ] Подключить корпус с human-verified demo/feature-sidecar файлами и выполнить calibration, regression и A/B evaluation.
 - [ ] Добавить per-feature importance analysis на verified-корпусе.
-- [ ] Реализовать utility lineup analysis.
+- [ ] Наполнить utility lineup library вручную проверенными lineups и подключить реальные траектории гранат из demo pipeline.
 - [ ] Реализовать Discord bot после утверждения формата интеграции.
 - [ ] Провести нагрузочный benchmark на реальных демо и зафиксировать пороги масштабирования ingestion/analysis pipeline.
 - [x] Устранить Clippy `manual_contains` в A/B contract и подтвердить CI.
 - [x] Устранить Clippy `filter_next` в CLI и проверять lint на `--all-targets`.
+- [x] Сформировать и реализовать приоритетный набор Mercurial-inspired product capabilities без внешних credibility scores.
+- [x] Добавить deterministic Round Story и evidence-backed death explanations в report/replay контракт.
+- [x] Добавить Encounter/Duel Ledger и экспортировать его в replay sidecar.
+- [x] Вывести Round Story, kill feed и local player dossier в Radar Room.
+- [x] Добавить audited review labels с provenance и явным verified workflow для датасета.
+- [x] Добавить versioned utility meta-lineup library и mode-aware calibration gates без фиктивных lineups.
+- [x] Добавить optional structured AI summary, ограниченный facts-only evidence schema и retryable status.
+- [ ] Расширить Encounter Ledger реальными shot/damage sequences и TTD после экспорта верифицируемого event stream.
+- [ ] Подтвердить AI summary end-to-end на admin account и реальном report после подключения API в production.

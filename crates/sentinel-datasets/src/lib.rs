@@ -121,6 +121,34 @@ impl PerMapCalibrationSet {
     }
 }
 
+/// Exact dataset scope required before a calibration override may affect scoring.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CalibrationScope {
+    pub map_name: String,
+    pub game_mode: String,
+}
+
+/// Versioned map-and-mode calibration collection. An unknown game mode never falls back to a
+/// different mode's threshold.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ModeAwareCalibrationSet {
+    pub version: u32,
+    #[serde(default)]
+    pub calibrations: BTreeMap<CalibrationScope, PerMapCalibration>,
+}
+
+impl ModeAwareCalibrationSet {
+    pub fn threshold_for(&self, map_name: &str, game_mode: &str) -> Option<f64> {
+        self.calibrations
+            .get(&CalibrationScope {
+                map_name: map_name.to_string(),
+                game_mode: game_mode.to_string(),
+            })
+            .filter(|calibration| calibration.is_ready())
+            .map(|calibration| calibration.evidence_threshold)
+    }
+}
+
 /// Golden test case for regression testing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GoldenTestCase {
@@ -380,6 +408,55 @@ pub struct DatasetEntry {
     /// Required for cheater demos so unrelated players are never mislabeled.
     #[serde(default)]
     pub player_labels: BTreeMap<u64, DatasetLabel>,
+    /// Immutable review identifiers that established this label.
+    #[serde(default)]
+    pub review_ids: Vec<String>,
+}
+
+/// A human review stored separately from the training manifest until explicit verification.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReviewLabel {
+    pub review_id: String,
+    pub demo_path: PathBuf,
+    pub label: DatasetLabel,
+    pub reviewer: String,
+    pub reviewed_at: String,
+    /// Report/evidence references are required for auditability.
+    #[serde(default)]
+    pub evidence_refs: Vec<String>,
+    #[serde(default)]
+    pub player_labels: BTreeMap<u64, DatasetLabel>,
+    /// Only verified reviews may promote a manifest entry into the supervised corpus.
+    pub verified: bool,
+}
+
+/// Versioned collection of review labels; demos and feature sidecars remain outside the repository.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ReviewManifest {
+    pub version: u32,
+    #[serde(default)]
+    pub reviews: Vec<ReviewLabel>,
+}
+
+impl ReviewManifest {
+    pub fn load(path: &Path) -> Result<Self, std::io::Error> {
+        let json = std::fs::read_to_string(path)?;
+        serde_json::from_str(&json).map_err(std::io::Error::other)
+    }
+
+    pub fn save(&self, path: &Path) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        std::fs::write(path, json)
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReviewPromotion {
+    pub promoted: usize,
+    pub skipped_unverified: usize,
+    pub skipped_ambiguous: usize,
+    pub skipped_missing_evidence: usize,
+    pub skipped_missing_entry: usize,
 }
 
 /// Portable index for the M4 dataset; demo archives stay out of the repository.
@@ -418,6 +495,44 @@ impl DatasetManifest {
     pub fn save(&self, path: &Path) -> Result<(), std::io::Error> {
         let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
         std::fs::write(path, json)
+    }
+
+    /// Promote only audited, unambiguous reviews into the supervised dataset manifest.
+    pub fn apply_verified_reviews(&mut self, reviews: &ReviewManifest) -> ReviewPromotion {
+        let mut promotion = ReviewPromotion::default();
+        for review in &reviews.reviews {
+            if !review.verified {
+                promotion.skipped_unverified += 1;
+                continue;
+            }
+            if review.label == DatasetLabel::Unknown
+                || (review.label == DatasetLabel::Cheater && review.player_labels.is_empty())
+            {
+                promotion.skipped_ambiguous += 1;
+                continue;
+            }
+            if review.evidence_refs.is_empty() {
+                promotion.skipped_missing_evidence += 1;
+                continue;
+            }
+            let Some(entry) = self
+                .entries
+                .iter_mut()
+                .find(|entry| entry.demo_path == review.demo_path)
+            else {
+                promotion.skipped_missing_entry += 1;
+                continue;
+            };
+            entry.label = review.label.clone();
+            entry.player_labels = review.player_labels.clone();
+            entry.verified = true;
+            entry.source = format!("review:{}", review.reviewer);
+            if !entry.review_ids.contains(&review.review_id) {
+                entry.review_ids.push(review.review_id.clone());
+            }
+            promotion.promoted += 1;
+        }
+        promotion
     }
 
     pub fn audit(&self, root: &Path) -> DatasetAudit {
@@ -475,25 +590,21 @@ impl DatasetManifest {
             }
             for (player, mut sequence) in by_player {
                 sequence.sort_by_key(|vector| vector.tick);
-                let label = entry
-                    .player_labels
-                    .get(&player.as_u64())
-                    .cloned()
-                    .unwrap_or_else(|| entry.label.clone());
+                let label = if entry.label == DatasetLabel::Cheater {
+                    entry
+                        .player_labels
+                        .get(&player.as_u64())
+                        .cloned()
+                        .unwrap_or(DatasetLabel::Unknown)
+                } else {
+                    entry
+                        .player_labels
+                        .get(&player.as_u64())
+                        .cloned()
+                        .unwrap_or_else(|| entry.label.clone())
+                };
                 let label = match label {
                     DatasetLabel::Legit => 0.0,
-                    DatasetLabel::Cheater
-                        if entry.label == DatasetLabel::Cheater
-                            && entry.player_labels.is_empty() =>
-                    {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!(
-                                "Cheater demo {} requires player_labels",
-                                entry.demo_path.display()
-                            ),
-                        ));
-                    }
                     DatasetLabel::Cheater => 1.0,
                     DatasetLabel::Unknown => continue,
                 };
@@ -536,6 +647,28 @@ mod tests {
         assert_eq!(dataset.name, "cs2_default");
         assert!(dataset.match_count > 0);
         assert!(!dataset.baselines.baselines.is_empty());
+    }
+
+    #[test]
+    fn mode_aware_calibration_never_crosses_game_modes() {
+        let scope = CalibrationScope {
+            map_name: "de_dust2".into(),
+            game_mode: "competitive".into(),
+        };
+        let set = ModeAwareCalibrationSet {
+            version: 1,
+            calibrations: BTreeMap::from([(
+                scope,
+                PerMapCalibration {
+                    map_name: "de_dust2".into(),
+                    evidence_threshold: 0.7,
+                    verified_match_count: 20,
+                    minimum_verified_matches: 20,
+                },
+            )]),
+        };
+        assert_eq!(set.threshold_for("de_dust2", "competitive"), Some(0.7));
+        assert_eq!(set.threshold_for("de_dust2", "wingman"), None);
     }
 
     #[test]
@@ -593,6 +726,7 @@ mod tests {
                     verified: true,
                     features_path: None,
                     player_labels: BTreeMap::new(),
+                    review_ids: Vec::new(),
                 },
                 DatasetEntry {
                     demo_path: PathBuf::from("cheater/missing.dem"),
@@ -601,6 +735,7 @@ mod tests {
                     verified: false,
                     features_path: None,
                     player_labels: BTreeMap::new(),
+                    review_ids: Vec::new(),
                 },
             ],
         };
@@ -649,6 +784,7 @@ mod tests {
                 verified: true,
                 features_path: Some(PathBuf::from("legit.vectors.json")),
                 player_labels: BTreeMap::new(),
+                review_ids: Vec::new(),
             }],
         };
         let corpus = manifest.supervised_corpus(&root).unwrap();
@@ -656,5 +792,51 @@ mod tests {
         assert_eq!(corpus.sequences.len(), 1);
         assert_eq!(corpus.vectors[0].label, 0.0);
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn only_verified_review_with_evidence_promotes_dataset_entry() {
+        let mut manifest = DatasetManifest {
+            version: 1,
+            entries: vec![DatasetEntry {
+                demo_path: PathBuf::from("reviewed.dem"),
+                label: DatasetLabel::Unknown,
+                source: "upload".to_string(),
+                verified: false,
+                features_path: None,
+                player_labels: BTreeMap::new(),
+                review_ids: Vec::new(),
+            }],
+        };
+        let reviews = ReviewManifest {
+            version: 1,
+            reviews: vec![
+                ReviewLabel {
+                    review_id: "missing-evidence".into(),
+                    demo_path: PathBuf::from("reviewed.dem"),
+                    label: DatasetLabel::Legit,
+                    reviewer: "analyst".into(),
+                    reviewed_at: "2026-08-18T00:00:00Z".into(),
+                    evidence_refs: Vec::new(),
+                    player_labels: BTreeMap::new(),
+                    verified: true,
+                },
+                ReviewLabel {
+                    review_id: "approved".into(),
+                    demo_path: PathBuf::from("reviewed.dem"),
+                    label: DatasetLabel::Legit,
+                    reviewer: "analyst".into(),
+                    reviewed_at: "2026-08-18T00:00:00Z".into(),
+                    evidence_refs: vec!["report:sample#evidence-1".into()],
+                    player_labels: BTreeMap::new(),
+                    verified: true,
+                },
+            ],
+        };
+        let promotion = manifest.apply_verified_reviews(&reviews);
+        assert_eq!(promotion.promoted, 1);
+        assert_eq!(promotion.skipped_missing_evidence, 1);
+        assert!(manifest.entries[0].verified);
+        assert_eq!(manifest.entries[0].review_ids, vec!["approved"]);
     }
 }

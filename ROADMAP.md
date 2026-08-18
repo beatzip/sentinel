@@ -68,7 +68,9 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Cross-round behavior tracking
 - [x] Team coordination analysis
 - [x] Economy-based decision analysis
-- [ ] Utility lineup analysis
+- [x] Versioned utility-lineup library and geometry matching contract
+- [x] Mode-aware calibration gate that refuses cross-mode threshold reuse
+- [ ] Populate reviewed lineups and connect real grenade trajectory extraction
 - [x] Clutch situation analysis
 
 ### M7 - ML Integration
@@ -98,6 +100,9 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Report and replay JSON export (`sentinel replay`)
 - [x] Interactive Replay Viewer (frames, playback controls, Visibility Engine layer)
 - [x] Automatic replay sidecar publication during `sentinel analyze`
+- [x] Round Story and roster-resolved kill/death explanations in report, replay and Radar Room
+- [x] Local player dossier with recurrence, confidence, supporting reports and reanalysis/provenance state
+- [x] Optional protected structured AI summary, restricted to supplied evidence facts and fact references
 
 ### M9 - API & Integration
 
@@ -106,6 +111,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] REST API
 - [x] Replay frames endpoint (`GET /v1/replays/{id}`)
 - [x] Automatic report/replay publication to `SENTINEL_REPORTS_DIR`
+- [x] Local dossier endpoint (`GET /v1/players/{steam_id}/dossier`)
 - [ ] Discord bot
 - [x] OBS overlay data endpoint
 - [x] Stream integration data contract
@@ -119,6 +125,9 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Account-level local-history scan with recurrence and report-linked supporting matches; it does not use external profile statistics
 - [x] Round context in reports and replay sidecars, including score progression, survivors, outcome fields and roster-resolved kill/assist feed
 - [x] Kill-context fields for weapon, headshot, wallbang and through-smoke events
+- [x] Terminal Encounter/Duel Ledger exported through round context and replay JSON; shot history/TTD stay absent until verified event streams are exported
+- [x] Audited review manifest and explicit `sentinel dataset promote-reviews` workflow; unverified, ambiguous or evidence-less labels cannot promote training data
+- [x] Empty versioned utility lineup manifest, preventing fabricated production lineups
 
 ## Long-term Vision
 

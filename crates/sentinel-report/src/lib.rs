@@ -206,6 +206,135 @@ pub struct RosterKill {
     pub through_smoke: bool,
 }
 
+/// One explicitly observed characteristic of a death; this never infers player intent.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum DeathFact {
+    Headshot,
+    Wallbang,
+    ThroughSmoke,
+    Assisted,
+}
+
+/// Deterministic explanation built only from one roster-resolved kill event.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DeathExplanation {
+    pub tick: u32,
+    pub attacker_name: String,
+    pub victim_name: String,
+    pub summary: String,
+    pub facts: Vec<DeathFact>,
+}
+
+impl DeathExplanation {
+    pub fn from_kill(kill: &RosterKill) -> Self {
+        let mut facts = Vec::new();
+        if kill.headshot {
+            facts.push(DeathFact::Headshot);
+        }
+        if kill.wallbang {
+            facts.push(DeathFact::Wallbang);
+        }
+        if kill.through_smoke {
+            facts.push(DeathFact::ThroughSmoke);
+        }
+        if kill.assist_name.is_some() {
+            facts.push(DeathFact::Assisted);
+        }
+        let qualifiers = facts
+            .iter()
+            .map(|fact| match fact {
+                DeathFact::Headshot => "headshot",
+                DeathFact::Wallbang => "wallbang",
+                DeathFact::ThroughSmoke => "through-smoke",
+                DeathFact::Assisted => "assisted",
+            })
+            .collect::<Vec<_>>();
+        let suffix = (!qualifiers.is_empty()).then(|| format!(" ({})", qualifiers.join(", ")));
+        Self {
+            tick: kill.tick,
+            attacker_name: kill.attacker_name.clone(),
+            victim_name: kill.victim_name.clone(),
+            summary: format!(
+                "{} eliminated {} with {}{}",
+                kill.attacker_name,
+                kill.victim_name,
+                kill.weapon,
+                suffix.unwrap_or_default()
+            ),
+            facts,
+        }
+    }
+}
+
+/// A terminal, roster-resolved duel. Timing is exact for the kill event; wider shot history is
+/// intentionally absent until the demo pipeline exports it as verified data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Encounter {
+    pub round_number: u32,
+    pub start_tick: u32,
+    pub end_tick: u32,
+    pub attacker_id: u64,
+    pub attacker_name: String,
+    pub defender_id: u64,
+    pub defender_name: String,
+    pub weapon: String,
+    pub outcome: String,
+    pub death_facts: Vec<DeathFact>,
+}
+
+impl Encounter {
+    pub fn from_kill(round_number: u32, kill: &RosterKill) -> Self {
+        let explanation = DeathExplanation::from_kill(kill);
+        Self {
+            round_number,
+            start_tick: kill.tick,
+            end_tick: kill.tick,
+            attacker_id: kill.attacker_id,
+            attacker_name: kill.attacker_name.clone(),
+            defender_id: kill.victim_id,
+            defender_name: kill.victim_name.clone(),
+            weapon: kill.weapon.clone(),
+            outcome: "attacker_kill".to_string(),
+            death_facts: explanation.facts,
+        }
+    }
+}
+
+/// Factual summary that links a round result to its roster-resolved deaths.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RoundStory {
+    pub headline: String,
+    pub result: String,
+    pub deaths: Vec<DeathExplanation>,
+}
+
+impl RoundStory {
+    pub fn from_facts(
+        round_number: u32,
+        t_score: u32,
+        ct_score: u32,
+        winner: Option<&str>,
+        end_reason: Option<&str>,
+        bomb_result: Option<&str>,
+        kills: &[RosterKill],
+    ) -> Self {
+        let winner = winner.unwrap_or("unresolved");
+        let mut outcomes = end_reason
+            .into_iter()
+            .chain(bomb_result)
+            .collect::<Vec<_>>();
+        if outcomes.is_empty() {
+            outcomes.push("result recorded");
+        }
+        Self {
+            headline: format!("Round {round_number}: {winner} ({t_score}-{ct_score})"),
+            result: outcomes.join(" · "),
+            deaths: kills.iter().map(DeathExplanation::from_kill).collect(),
+        }
+    }
+}
+
 /// Factual round context retained when the demo exposes each field.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RoundContext {
@@ -221,6 +350,12 @@ pub struct RoundContext {
     pub t_survivors: usize,
     pub ct_survivors: usize,
     pub kills: Vec<RosterKill>,
+    /// Terminal duel ledger built from roster-resolved kills in this round.
+    #[serde(default)]
+    pub encounters: Vec<Encounter>,
+    /// Deterministic narrative generated exclusively from this round's factual fields.
+    #[serde(default)]
+    pub story: RoundStory,
 }
 
 /// Player report data
@@ -340,5 +475,23 @@ mod provenance_tests {
             ConfidenceAssessment::assess(&score, 4, 2, vec![]).status,
             VerdictStatus::Tentative
         );
+    }
+
+    #[test]
+    fn round_story_uses_only_observed_kill_facts() {
+        let kill = RosterKill {
+            tick: 128,
+            attacker_name: "Alpha".into(),
+            victim_name: "Bravo".into(),
+            weapon: "ak47".into(),
+            headshot: true,
+            wallbang: true,
+            ..Default::default()
+        };
+        let story = RoundStory::from_facts(3, 2, 1, Some("Terrorist"), None, None, &[kill]);
+        assert_eq!(story.headline, "Round 3: Terrorist (2-1)");
+        assert!(story.deaths[0].facts.contains(&DeathFact::Headshot));
+        assert!(story.deaths[0].facts.contains(&DeathFact::Wallbang));
+        assert!(!story.deaths[0].summary.contains("intent"));
     }
 }

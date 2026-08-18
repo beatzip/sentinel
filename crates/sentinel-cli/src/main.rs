@@ -8,8 +8,8 @@ use sentinel_features::FeatureEngine;
 use sentinel_map::loader;
 use sentinel_memory::{MatchObservation, Memory};
 use sentinel_report::{
-    AnalysisProvenance, ConfidenceAssessment, MatchMetadata, MatchReport, PlayerReport, RosterKill,
-    RoundContext, SupportingMatch,
+    AnalysisProvenance, ConfidenceAssessment, Encounter, MatchMetadata, MatchReport, PlayerReport,
+    RosterKill, RoundContext, RoundStory, SupportingMatch,
 };
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
@@ -535,7 +535,7 @@ pub(crate) fn build_round_contexts(
             } else {
                 None
             };
-            let kills = kills
+            let kills: Vec<RosterKill> = kills
                 .iter()
                 .filter(|kill| kill.tick.0 >= start_tick && kill.tick.0 <= end_tick)
                 .map(|kill| RosterKill {
@@ -558,19 +558,35 @@ pub(crate) fn build_round_contexts(
                     through_smoke: kill.through_smoke,
                 })
                 .collect();
+            let winner = round.winner().map(|team| format!("{team:?}"));
+            let story = RoundStory::from_facts(
+                round.number(),
+                t_score,
+                ct_score,
+                winner.as_deref(),
+                end_reason.as_deref(),
+                bomb_result.as_deref(),
+                &kills,
+            );
+            let encounters = kills
+                .iter()
+                .map(|kill| Encounter::from_kill(round.number(), kill))
+                .collect();
             RoundContext {
                 round_number: round.number(),
                 start_tick,
                 end_tick,
                 t_score,
                 ct_score,
-                winner: round.winner().map(|team| format!("{team:?}")),
+                winner,
                 end_reason,
                 bomb_result,
                 buy_matchup: None,
                 t_survivors,
                 ct_survivors,
                 kills,
+                encounters,
+                story,
             }
         })
         .collect()
