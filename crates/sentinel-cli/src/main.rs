@@ -18,6 +18,8 @@ use sentinel_world::WorldRebuilder;
 mod dataset;
 mod replay;
 
+const DEFAULT_FEATURE_SAMPLE_STRIDE: usize = 16;
+
 fn main() {
     println!("Sentinel AI - CS2 Behavior Analysis Platform");
     println!("Version: {}", env!("CARGO_PKG_VERSION"));
@@ -215,12 +217,21 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     let feature_engine = FeatureEngine::new();
     let players = adapter.player_ids();
     let mut all_feature_vectors = Vec::new();
+    let sample_stride = std::env::var("SENTINEL_FEATURE_SAMPLE_STRIDE")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|stride| *stride > 0)
+        .unwrap_or(DEFAULT_FEATURE_SAMPLE_STRIDE);
 
     for &player in &players {
         let vectors = feature_engine.compute_match(&ctx, player);
-        all_feature_vectors.extend(vectors);
+        // ponytail: bounds vector retention for long demos; set stride=1 when a host has capacity.
+        all_feature_vectors.extend(vectors.into_iter().step_by(sample_stride));
     }
-    println!("  Feature vectors: {}", all_feature_vectors.len());
+    println!(
+        "  Feature vectors: {} (sample stride: {sample_stride})",
+        all_feature_vectors.len()
+    );
     let vectors_path = path.with_extension("vectors.json");
     match serde_json::to_string_pretty(&all_feature_vectors)
         .and_then(|json| std::fs::write(&vectors_path, json).map_err(serde_json::Error::io))

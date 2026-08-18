@@ -14,6 +14,9 @@ use source2_demo::prelude::*;
 pub const DEMO_PARSER_VERSION: &str =
     concat!(env!("CARGO_PKG_NAME"), "@", env!("CARGO_PKG_VERSION"));
 
+// Source2 game-event `userid` fields can be short-lived slot IDs, not Steam IDs.
+const MIN_STEAM_ID: u64 = 1_000_000_000_000;
+
 pub struct Source2Adapter {
     metadata: MatchMetadata,
     events: Vec<Source2Event>,
@@ -179,6 +182,7 @@ impl DemoCollector {
         // Track player names/teams from spawn events
         if event.name() == "player_spawn"
             && let Some((_, EventData::PlayerId(id))) = data.iter().find(|(k, _)| k == "userid")
+            && id.as_u64() >= MIN_STEAM_ID
         {
             let pid = *id;
             if let Some((_, EventData::String(name))) = data.iter().find(|(k, _)| k == "name") {
@@ -561,7 +565,23 @@ impl DemoSource for Source2Adapter {
         self.metadata.tick_rate
     }
     fn player_ids(&self) -> Vec<PlayerId> {
-        self.player_names.keys().cloned().collect()
+        let mut ids = self
+            .player_snapshots
+            .iter()
+            .map(|snapshot| snapshot.player_id)
+            .filter(|id| id.as_u64() >= MIN_STEAM_ID)
+            .collect::<HashSet<_>>();
+        if ids.is_empty() {
+            ids.extend(
+                self.player_names
+                    .keys()
+                    .copied()
+                    .filter(|id| id.as_u64() >= MIN_STEAM_ID),
+            );
+        }
+        let mut ids = ids.into_iter().collect::<Vec<_>>();
+        ids.sort_by_key(|id| id.as_u64());
+        ids
     }
     fn player_name(&self, id: PlayerId) -> Option<String> {
         self.player_names.get(&id).cloned()

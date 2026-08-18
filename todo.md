@@ -33,3 +33,7 @@
 - [ ] Подтвердить AI summary end-to-end на admin account и реальном report после подключения API в production.
 - [x] Экспортировать наблюдаемые shot/damage events и использовать их в Encounter Ledger без синтетического TTD.
 - [x] Добавить import validation для human-verified corpus и reviewed utility lineup coordinates.
+- [x] Обработать предоставленные Nuke/Mirage demo, сохранить sidecars и зарегистрировать их как unknown до human review.
+- [x] Исправить смешение event user IDs и roster Steam IDs в Source2Adapter, блокирующее анализ предоставленной Nuke demo.
+- [x] Ограничить удержание feature vectors при анализе длинной demo, сохраняя детерминированную tick sampling семантику.
+- [ ] Исправить Source2 map metadata и event-to-Steam kill resolution до использования score этих демо для calibration или verdict.

@@ -4,6 +4,8 @@ target/
 *.dll
 *.so
 sentinel_memory.json
+datasets/manifest.local.json
+datasets/unknown/
 reports/tris/
 target/
 tris/
