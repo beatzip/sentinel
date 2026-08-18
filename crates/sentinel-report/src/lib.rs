@@ -267,8 +267,32 @@ impl DeathExplanation {
     }
 }
 
-/// A terminal, roster-resolved duel. Timing is exact for the kill event; wider shot history is
-/// intentionally absent until the demo pipeline exports it as verified data.
+/// A weapon fire observed in a demo. The intended target is deliberately absent because a
+/// `weapon_fire` event does not provide one.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObservedShot {
+    pub tick: u32,
+    pub shooter_id: u64,
+    pub weapon: String,
+    pub penetrated: i64,
+    pub is_alt_fire: bool,
+}
+
+/// Damage observed in a demo; it is not a model inference.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObservedDamage {
+    pub tick: u32,
+    pub victim_id: u64,
+    pub attacker_id: Option<u64>,
+    pub weapon: String,
+    pub dmg_health: i64,
+    pub dmg_armor: i64,
+    pub hitgroup: String,
+    pub dmg_health_real: i64,
+}
+
+/// A terminal, roster-resolved duel. `direct_damage` contains only events whose attacker and
+/// victim match this terminal kill; weapon fire remains in the replay-wide observed stream.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Encounter {
     pub round_number: u32,
@@ -281,14 +305,31 @@ pub struct Encounter {
     pub weapon: String,
     pub outcome: String,
     pub death_facts: Vec<DeathFact>,
+    #[serde(default)]
+    pub direct_damage: Vec<ObservedDamage>,
+    /// Interval from the first observed direct damage to the terminal kill, never a guessed TTD.
+    #[serde(default)]
+    pub observed_damage_to_death_ticks: Option<u32>,
 }
 
 impl Encounter {
     pub fn from_kill(round_number: u32, kill: &RosterKill) -> Self {
+        Self::from_kill_with_damage(round_number, kill, Vec::new())
+    }
+
+    pub fn from_kill_with_damage(
+        round_number: u32,
+        kill: &RosterKill,
+        direct_damage: Vec<ObservedDamage>,
+    ) -> Self {
         let explanation = DeathExplanation::from_kill(kill);
+        let start_tick = direct_damage
+            .first()
+            .map(|damage| damage.tick)
+            .unwrap_or(kill.tick);
         Self {
             round_number,
-            start_tick: kill.tick,
+            start_tick,
             end_tick: kill.tick,
             attacker_id: kill.attacker_id,
             attacker_name: kill.attacker_name.clone(),
@@ -297,6 +338,9 @@ impl Encounter {
             weapon: kill.weapon.clone(),
             outcome: "attacker_kill".to_string(),
             death_facts: explanation.facts,
+            observed_damage_to_death_ticks: (!direct_damage.is_empty())
+                .then_some(kill.tick.saturating_sub(start_tick)),
+            direct_damage,
         }
     }
 }
@@ -493,5 +537,32 @@ mod provenance_tests {
         assert!(story.deaths[0].facts.contains(&DeathFact::Headshot));
         assert!(story.deaths[0].facts.contains(&DeathFact::Wallbang));
         assert!(!story.deaths[0].summary.contains("intent"));
+    }
+
+    #[test]
+    fn encounter_uses_only_direct_observed_damage_before_terminal_kill() {
+        let kill = RosterKill {
+            tick: 128,
+            attacker_id: 1,
+            victim_id: 2,
+            attacker_name: "Alpha".into(),
+            victim_name: "Bravo".into(),
+            weapon: "ak47".into(),
+            ..Default::default()
+        };
+        let damage = ObservedDamage {
+            tick: 96,
+            victim_id: 2,
+            attacker_id: Some(1),
+            weapon: "ak47".into(),
+            dmg_health: 40,
+            dmg_armor: 0,
+            hitgroup: "chest".into(),
+            dmg_health_real: 40,
+        };
+        let encounter = Encounter::from_kill_with_damage(2, &kill, vec![damage]);
+        assert_eq!(encounter.start_tick, 96);
+        assert_eq!(encounter.observed_damage_to_death_ticks, Some(32));
+        assert_eq!(encounter.direct_damage.len(), 1);
     }
 }

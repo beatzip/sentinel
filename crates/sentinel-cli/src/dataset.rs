@@ -14,8 +14,9 @@ pub fn run(args: &[String]) {
             args.get(1).map(String::as_str),
             args.get(2).map(String::as_str),
         ),
+        Some("audit-lineups") => audit_lineups(args.get(1).map(String::as_str)),
         _ => eprintln!(
-            "Usage: sentinel dataset <init [directory] | audit <manifest.json> | train <manifest.json> [models_dir] | promote-reviews <manifest.json> <reviews.json>>"
+            "Usage: sentinel dataset <init [directory] | audit <manifest.json> | train <manifest.json> [models_dir] | promote-reviews <manifest.json> <reviews.json> | audit-lineups <utility-lineups.json>>"
         ),
     }
 }
@@ -100,6 +101,28 @@ fn promote_reviews(manifest_path: Option<&str>, reviews_path: Option<&str>) {
         "  Missing manifest entry: {}",
         promotion.skipped_missing_entry
     );
+}
+
+fn audit_lineups(library_path: Option<&str>) {
+    let Some(library_path) = library_path else {
+        eprintln!("Usage: sentinel dataset audit-lineups <utility-lineups.json>");
+        return;
+    };
+    let library =
+        match sentinel_features::lineups::UtilityLineupLibrary::load(Path::new(library_path)) {
+            Ok(library) => library,
+            Err(error) => {
+                eprintln!("Error loading lineup library: {error}");
+                return;
+            }
+        };
+    let audit = library.audit();
+    println!("Utility lineup audit:");
+    println!("  Coordinates: {}", audit.total);
+    println!("  Unreviewed: {}", audit.unreviewed);
+    println!("  Missing review reference: {}", audit.missing_review_ref);
+    println!("  Missing source: {}", audit.missing_source);
+    println!("  Duplicate IDs: {}", audit.duplicate_ids);
 }
 
 fn train(manifest_path: Option<&str>, models_dir: Option<&str>) {

@@ -8,8 +8,9 @@ use sentinel_features::FeatureEngine;
 use sentinel_map::loader;
 use sentinel_memory::{MatchObservation, Memory};
 use sentinel_report::{
-    AnalysisProvenance, ConfidenceAssessment, Encounter, MatchMetadata, MatchReport, PlayerReport,
-    RosterKill, RoundContext, RoundStory, SupportingMatch,
+    AnalysisProvenance, ConfidenceAssessment, Encounter, MatchMetadata, MatchReport,
+    ObservedDamage, ObservedShot, PlayerReport, RosterKill, RoundContext, RoundStory,
+    SupportingMatch,
 };
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
@@ -171,6 +172,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         }
     }
     println!("  Game events: {}", game_events.len());
+    let (_, observed_damage) = observed_combat_events(&game_events);
 
     // Step 4: Reconstruct world state with real telemetry data
     println!("[4/7] Reconstructing world state...");
@@ -323,7 +325,13 @@ fn run_analysis(path: &PathBuf, learn: bool) {
     };
 
     let mut report = MatchReport::new(report_meta);
-    report.rounds = build_round_contexts(&adapter, ctx.states(), ctx.kills(), &game_events);
+    report.rounds = build_round_contexts(
+        &adapter,
+        ctx.states(),
+        ctx.kills(),
+        &game_events,
+        &observed_damage,
+    );
     report.provenance = AnalysisProvenance {
         engine_version: format!("sentinel-cli@{}", env!("CARGO_PKG_VERSION")),
         demo_parser_version: sentinel_source2::DEMO_PARSER_VERSION.to_string(),
@@ -484,6 +492,7 @@ pub(crate) fn build_round_contexts(
     states: &[TickState],
     kills: &[sentinel_core::KillEvent],
     events: &[sentinel_events::kinds::GameEvent],
+    damage: &[ObservedDamage],
 ) -> Vec<RoundContext> {
     adapter
         .rounds()
@@ -570,7 +579,19 @@ pub(crate) fn build_round_contexts(
             );
             let encounters = kills
                 .iter()
-                .map(|kill| Encounter::from_kill(round.number(), kill))
+                .map(|kill| {
+                    let direct_damage = damage
+                        .iter()
+                        .filter(|entry| {
+                            entry.tick >= start_tick
+                                && entry.tick <= kill.tick
+                                && entry.attacker_id == Some(kill.attacker_id)
+                                && entry.victim_id == kill.victim_id
+                        })
+                        .cloned()
+                        .collect();
+                    Encounter::from_kill_with_damage(round.number(), kill, direct_damage)
+                })
                 .collect();
             RoundContext {
                 round_number: round.number(),
@@ -590,6 +611,43 @@ pub(crate) fn build_round_contexts(
             }
         })
         .collect()
+}
+
+/// Collect facts exposed by Source2's weapon_fire and player_hurt events. Shot target identity is
+/// deliberately not inferred because the source event does not provide one.
+pub(crate) fn observed_combat_events(
+    events: &[sentinel_events::kinds::GameEvent],
+) -> (Vec<ObservedShot>, Vec<ObservedDamage>) {
+    use sentinel_events::{EventKind, damage_from_game_event, shot_from_game_event};
+
+    let shots = events
+        .iter()
+        .filter(|event| event.kind == EventKind::WeaponFire)
+        .map(shot_from_game_event)
+        .map(|shot| ObservedShot {
+            tick: shot.tick.0,
+            shooter_id: shot.shooter_id,
+            weapon: shot.weapon,
+            penetrated: shot.penetrated,
+            is_alt_fire: shot.is_alt_fire,
+        })
+        .collect();
+    let damage = events
+        .iter()
+        .filter(|event| event.kind == EventKind::PlayerHurt)
+        .map(damage_from_game_event)
+        .map(|entry| ObservedDamage {
+            tick: entry.tick.0,
+            victim_id: entry.victim_id,
+            attacker_id: entry.attacker_id,
+            weapon: entry.weapon,
+            dmg_health: entry.dmg_health,
+            dmg_armor: entry.dmg_armor,
+            hitgroup: format!("{:?}", entry.hitgroup).to_lowercase(),
+            dmg_health_real: entry.dmg_health_real,
+        })
+        .collect();
+    (shots, damage)
 }
 
 /// Run validation on a directory of demo files

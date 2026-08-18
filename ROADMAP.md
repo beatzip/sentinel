@@ -70,6 +70,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Economy-based decision analysis
 - [x] Versioned utility-lineup library and geometry matching contract
 - [x] Mode-aware calibration gate that refuses cross-mode threshold reuse
+- [x] Reviewed-lineup JSON import and audit; unreviewed coordinates cannot match
 - [ ] Populate reviewed lineups and connect real grenade trajectory extraction
 - [x] Clutch situation analysis
 
@@ -126,6 +127,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Round context in reports and replay sidecars, including score progression, survivors, outcome fields and roster-resolved kill/assist feed
 - [x] Kill-context fields for weapon, headshot, wallbang and through-smoke events
 - [x] Terminal Encounter/Duel Ledger exported through round context and replay JSON; shot history/TTD stay absent until verified event streams are exported
+- [x] Replay-wide normalized `weapon_fire` and `player_hurt` facts; Encounter stores only direct attacker-to-victim damage and an observed damage-to-death interval
 - [x] Audited review manifest and explicit `sentinel dataset promote-reviews` workflow; unverified, ambiguous or evidence-less labels cannot promote training data
 - [x] Empty versioned utility lineup manifest, preventing fabricated production lineups
 

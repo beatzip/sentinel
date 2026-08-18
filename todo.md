@@ -31,3 +31,5 @@
 - [x] Добавить optional structured AI summary, ограниченный facts-only evidence schema и retryable status.
 - [ ] Расширить Encounter Ledger реальными shot/damage sequences и TTD после экспорта верифицируемого event stream.
 - [ ] Подтвердить AI summary end-to-end на admin account и реальном report после подключения API в production.
+- [x] Экспортировать наблюдаемые shot/damage events и использовать их в Encounter Ledger без синтетического TTD.
+- [x] Добавить import validation для human-verified corpus и reviewed utility lineup coordinates.

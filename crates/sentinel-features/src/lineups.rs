@@ -2,6 +2,8 @@
 //! every entry must be sourced and reviewed outside of code before being loaded.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::path::Path;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -46,6 +48,10 @@ pub struct UtilityLineup {
     pub landing: LineupPoint,
     pub tags: Vec<String>,
     pub source: String,
+    #[serde(default)]
+    pub reviewed: bool,
+    #[serde(default)]
+    pub review_ref: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +70,15 @@ impl Default for UtilityLineupLibrary {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct UtilityLineupAudit {
+    pub total: usize,
+    pub unreviewed: usize,
+    pub missing_review_ref: usize,
+    pub missing_source: usize,
+    pub duplicate_ids: usize,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct UtilityLineupMatch<'a> {
     pub lineup: &'a UtilityLineup,
@@ -72,6 +87,39 @@ pub struct UtilityLineupMatch<'a> {
 }
 
 impl UtilityLineupLibrary {
+    pub fn load(path: &Path) -> Result<Self, std::io::Error> {
+        let json = std::fs::read_to_string(path)?;
+        serde_json::from_str(&json).map_err(std::io::Error::other)
+    }
+
+    pub fn save(&self, path: &Path) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(self).map_err(std::io::Error::other)?;
+        std::fs::write(path, json)
+    }
+
+    pub fn audit(&self) -> UtilityLineupAudit {
+        let mut ids = HashSet::new();
+        let mut audit = UtilityLineupAudit {
+            total: self.lineups.len(),
+            ..Default::default()
+        };
+        for lineup in &self.lineups {
+            if !lineup.reviewed {
+                audit.unreviewed += 1;
+            }
+            if lineup.review_ref.trim().is_empty() {
+                audit.missing_review_ref += 1;
+            }
+            if lineup.source.trim().is_empty() {
+                audit.missing_source += 1;
+            }
+            if !ids.insert(&lineup.id) {
+                audit.duplicate_ids += 1;
+            }
+        }
+        audit
+    }
+
     /// Returns the nearest reviewed lineup only when both origin and landing are within tolerance.
     pub fn match_lineup(
         &self,
@@ -85,7 +133,11 @@ impl UtilityLineupLibrary {
         self.lineups
             .iter()
             .filter(|lineup| {
-                lineup.map_name == map_name && lineup.side == side && lineup.grenade == grenade
+                lineup.reviewed
+                    && !lineup.review_ref.trim().is_empty()
+                    && lineup.map_name == map_name
+                    && lineup.side == side
+                    && lineup.grenade == grenade
             })
             .filter_map(|lineup| {
                 let origin_distance = lineup.origin.distance_to(origin);
@@ -125,6 +177,8 @@ mod tests {
                 },
                 tags: Vec::new(),
                 source: "test".into(),
+                reviewed: true,
+                review_ref: "test:review-1".into(),
             }],
         };
         assert!(
@@ -159,6 +213,38 @@ mod tests {
                         x: 10.5,
                         ..Default::default()
                     },
+                    1.0,
+                )
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn audit_rejects_unreviewed_coordinates_for_matching() {
+        let library = UtilityLineupLibrary {
+            version: 1,
+            lineups: vec![UtilityLineup {
+                id: "unreviewed".into(),
+                map_name: "de_fixture".into(),
+                side: UtilitySide::Terrorist,
+                grenade: UtilityGrenade::Flash,
+                origin: LineupPoint::default(),
+                landing: LineupPoint::default(),
+                tags: Vec::new(),
+                source: "manual".into(),
+                reviewed: false,
+                review_ref: String::new(),
+            }],
+        };
+        assert_eq!(library.audit().unreviewed, 1);
+        assert!(
+            library
+                .match_lineup(
+                    "de_fixture",
+                    UtilitySide::Terrorist,
+                    UtilityGrenade::Flash,
+                    LineupPoint::default(),
+                    LineupPoint::default(),
                     1.0,
                 )
                 .is_none()

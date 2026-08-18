@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use sentinel_core::Tick;
 
-use crate::kinds::EventValue;
+use crate::kinds::{EventValue, GameEvent};
 
 /// A parsed shot event from weapon_fire
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,6 +130,16 @@ pub fn shot_from_event(tick: Tick, data: &[(String, EventValue)]) -> ShotEvent {
     }
 }
 
+/// Normalize a converted game event without repeating key/value parsing in callers.
+pub fn shot_from_game_event(event: &GameEvent) -> ShotEvent {
+    let data = event
+        .data
+        .iter()
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect::<Vec<_>>();
+    shot_from_event(event.tick, &data)
+}
+
 /// Helper to create a DamageEvent from raw GameEvent data
 pub fn damage_from_event(tick: Tick, data: &[(String, EventValue)]) -> DamageEvent {
     let victim_id = data
@@ -206,6 +216,16 @@ pub fn damage_from_event(tick: Tick, data: &[(String, EventValue)]) -> DamageEve
         victim_armor,
         dmg_health_real,
     }
+}
+
+/// Normalize a converted game event without repeating key/value parsing in callers.
+pub fn damage_from_game_event(event: &GameEvent) -> DamageEvent {
+    let data = event
+        .data
+        .iter()
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect::<Vec<_>>();
+    damage_from_event(event.tick, &data)
 }
 
 #[cfg(test)]

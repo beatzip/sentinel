@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::RoundContext;
+use super::{ObservedDamage, ObservedShot, RoundContext};
 
 /// Browser-friendly replay data, produced alongside a Sentinel report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,6 +12,12 @@ pub struct ReplayData {
     /// Same round contexts as the match report for viewer-side evidence drill-down.
     #[serde(default)]
     pub rounds: Vec<RoundContext>,
+    /// Every normalized weapon_fire event observed in this demo.
+    #[serde(default)]
+    pub shots: Vec<ObservedShot>,
+    /// Every normalized player_hurt event observed in this demo.
+    #[serde(default)]
+    pub damage: Vec<ObservedDamage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -23,6 +23,7 @@ pub fn export_adapter(
         .iter()
         .filter_map(super::convert_demo_event)
         .collect::<Vec<_>>();
+    let (shots, damage) = super::observed_combat_events(&game_events);
     let mut rebuilder = WorldRebuilder::new();
     let states = rebuilder.process_events_with_snapshots(&game_events, &adapter.player_snapshots());
     let kills = rebuilder.take_kills();
@@ -81,11 +82,13 @@ pub fn export_adapter(
         })
         .collect();
     let replay = ReplayData {
-        version: "1.0.0".to_string(),
+        version: "1.1.0".to_string(),
         map: metadata.map_name,
         tick_rate: metadata.tick_rate,
         frames,
-        rounds: super::build_round_contexts(adapter, &states, &kills, &game_events),
+        rounds: super::build_round_contexts(adapter, &states, &kills, &game_events, &damage),
+        shots,
+        damage,
     };
     let json = serde_json::to_string_pretty(&replay).map_err(|error| error.to_string())?;
     std::fs::write(output_path, json).map_err(|error| error.to_string())
@@ -108,6 +111,8 @@ mod tests {
                 visible_pairs: Vec::new(),
             }],
             rounds: Vec::new(),
+            shots: Vec::new(),
+            damage: Vec::new(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));
     }
