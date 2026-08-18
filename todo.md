@@ -36,4 +36,6 @@
 - [x] Обработать предоставленные Nuke/Mirage demo, сохранить sidecars и зарегистрировать их как unknown до human review.
 - [x] Исправить смешение event user IDs и roster Steam IDs в Source2Adapter, блокирующее анализ предоставленной Nuke demo.
 - [x] Ограничить удержание feature vectors при анализе длинной demo, сохраняя детерминированную tick sampling семантику.
-- [ ] Исправить Source2 map metadata и event-to-Steam kill resolution до использования score этих демо для calibration или verdict.
+- [x] Исправить Source2 map metadata и event-to-Steam kill resolution до использования score этих демо для calibration или verdict.
+- [x] Исправить map metadata и event slot-ID-to-Steam-ID resolution на предоставленных Nuke/Mirage demos.
+- [x] Повторно обработать локальные Nuke/Mirage после parser fixes и подтвердить корректность report/replay artifacts.

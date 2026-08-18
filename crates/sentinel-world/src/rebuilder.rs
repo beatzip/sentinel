@@ -315,7 +315,7 @@ impl WorldRebuilder {
                 })
                 .unwrap_or(false);
 
-            self.world.add_kill(KillEvent {
+            let kill = KillEvent {
                 tick: event.tick,
                 attacker: PlayerId::new(attacker_id),
                 victim: PlayerId::new(victim_id),
@@ -325,7 +325,9 @@ impl WorldRebuilder {
                 assist_player,
                 wallbang,
                 through_smoke,
-            });
+            };
+            self.kills.push(kill.clone());
+            self.world.add_kill(kill);
         }
     }
 
@@ -507,6 +509,10 @@ mod tests {
             .find(|p| p.id == PlayerId::new(1));
         assert!(player.is_some());
         assert!(!player.unwrap().alive);
+
+        let kills = rebuilder.take_kills();
+        assert_eq!(kills.len(), 1);
+        assert_eq!(kills[0].victim, PlayerId::new(1));
     }
 
     #[test]

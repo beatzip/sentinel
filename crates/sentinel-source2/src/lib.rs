@@ -9,6 +9,7 @@ use sentinel_core::source::{
 };
 use sentinel_core::{PlayerId, Tick};
 use source2_demo::prelude::*;
+use source2_demo::proto::CDemoFileHeader;
 
 /// Parser identity written into Sentinel report provenance.
 pub const DEMO_PARSER_VERSION: &str =
@@ -69,11 +70,21 @@ struct DemoCollector {
     player_snapshots: Vec<Source2PlayerSnapshot>,
     current_tick: u32,
     entity_to_player: HashMap<u32, PlayerId>,
+    event_user_to_player: HashMap<i64, PlayerId>,
+    map_name: String,
+    server_name: String,
 }
 
 #[observer]
 #[uses_all]
 impl DemoCollector {
+    #[on_message]
+    fn handle_demo_header(&mut self, header: CDemoFileHeader) -> ObserverResult {
+        self.map_name = header.map_name.unwrap_or_default();
+        self.server_name = header.server_name.unwrap_or_default();
+        Ok(())
+    }
+
     #[on_tick_start]
     fn handle_tick_start(&mut self, ctx: &Context) -> ObserverResult {
         self.current_tick = ctx.tick();
@@ -129,6 +140,19 @@ impl DemoCollector {
                     EventValue::Byte(v) => EventData::Int(*v as i64),
                 };
                 data.push((key.to_string(), event_val));
+            }
+        }
+
+        for (key, value) in &mut data {
+            if matches!(key.as_str(), "attacker" | "userid" | "assister")
+                && let EventData::Int(slot) = value
+                && let Some(player_id) = self.event_user_to_player.get(slot).or_else(|| {
+                    u32::try_from(*slot)
+                        .ok()
+                        .and_then(|slot| self.entity_to_player.get(&slot))
+                })
+            {
+                *value = EventData::PlayerId(*player_id);
             }
         }
 
@@ -209,8 +233,8 @@ impl DemoCollector {
         event: EntityEvents,
         entity: &Entity,
     ) -> ObserverResult {
-        // Only process entity updates
-        if event != EntityEvents::Updated {
+        // Controller identity fields are often populated on creation; pawn telemetry stays update-only.
+        if event == EntityEvents::Deleted {
             return Ok(());
         }
 
@@ -224,6 +248,13 @@ impl DemoCollector {
         {
             let player_id = PlayerId::new(steam_id);
             self.entity_to_player.insert(entity.index(), player_id);
+            if let Ok(user_id_value) = entity.get_property("m_iUserID") {
+                let user_id: i32 = user_id_value.try_into().unwrap_or(0);
+                if user_id > 0 {
+                    self.event_user_to_player
+                        .insert(i64::from(user_id), player_id);
+                }
+            }
 
             // Get player name
             if let Ok(name_val) = entity.get_property("m_iszPlayerName") {
@@ -246,7 +277,7 @@ impl DemoCollector {
         }
 
         // Player pawn - extract position, health, etc.
-        if class_name == "CCSPlayerPawn" {
+        if class_name == "CCSPlayerPawn" && event == EntityEvents::Updated {
             // Get player ID from entity-to-player mapping or from steamID
             let player_id = if let Some(&id) = self.entity_to_player.get(&entity.index()) {
                 id
@@ -416,8 +447,8 @@ impl Source2Adapter {
 
         let metadata = MatchMetadata {
             demo_path: path.to_string_lossy().to_string(),
-            map_name: String::new(),
-            server_name: String::new(),
+            map_name: c.map_name.clone(),
+            server_name: c.server_name.clone(),
             total_ticks: c.current_tick,
             tick_rate: 64,
             duration_seconds: c.current_tick as f64 / 64.0,
