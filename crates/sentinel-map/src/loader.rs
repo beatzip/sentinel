@@ -684,6 +684,7 @@ mod tri_tests {
         );
 
         let before_wall = Vec3::new(50.0, -10.0, 50.0);
+        let on_wall = Vec3::new(50.0, 0.0, 50.0);
         let beyond_wall = Vec3::new(50.0, 50.0, 50.0);
         assert!(
             map.segment_blocked_3d(origin, beyond_wall),
@@ -692,6 +693,45 @@ mod tri_tests {
         assert!(
             !map.segment_blocked_3d(origin, before_wall),
             "Finite segment ending before the wall must remain clear"
+        );
+        assert!(
+            map.segment_blocked_3d(origin, on_wall),
+            "Target on the wall surface must be treated as blocked"
+        );
+        assert!(
+            !map.segment_blocked_3d(origin, origin),
+            "Coinciding positions must remain clear without a zero-length raycast"
+        );
+        assert!(
+            map.segment_blocked_3d(
+                Vec3::new(50.0, -1_000_000.0, 50.0),
+                Vec3::new(50.0, 1_000_000.0, 50.0),
+            ),
+            "Long segment crossing the wall should be blocked"
+        );
+
+        let empty_file = NamedTempFile::new().expect("Failed to create empty tri file");
+        let empty_map =
+            load_map_from_tri(empty_file.path()).expect("Failed to load empty tri file");
+        assert!(
+            !empty_map.segment_blocked_3d(origin, beyond_wall),
+            "Empty geometry must remain clear"
+        );
+    }
+
+    #[test]
+    fn test_bvh_segment_ignores_degenerate_triangle() {
+        let mut file = NamedTempFile::new().expect("Failed to create tri file");
+        for value in [0.0_f32; 9] {
+            file.write_all(&value.to_le_bytes())
+                .expect("Failed to write degenerate triangle");
+        }
+        file.flush().expect("Failed to flush tri file");
+
+        let map = load_map_from_tri(file.path()).expect("Failed to load degenerate triangle");
+        assert!(
+            !map.segment_blocked_3d(Vec3::new(0.0, -50.0, 0.0), Vec3::new(0.0, 50.0, 0.0),),
+            "Degenerate triangle must not block a segment"
         );
     }
 }

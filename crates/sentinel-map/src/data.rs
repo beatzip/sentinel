@@ -504,7 +504,7 @@ impl MapData {
         if let Some(ref bvh) = self.bvh {
             return self
                 .ray_intersect_bvh(from, direction, bvh)
-                .is_some_and(|hit_distance| hit_distance < distance - 0.0001);
+                .is_some_and(|hit_distance| hit_distance <= distance + 0.0001);
         }
         self.line_blocked(Vec2::new(from.x, from.y), Vec2::new(to.x, to.y))
     }
