@@ -1,6 +1,6 @@
 use sentinel_core::source::PlayerSnapshot;
 use sentinel_core::{
-    Angles, KillEvent, PlayerId, PlayerState, RoundPhase, Tick, TickState, Vec3, Weapon,
+    Angles, KillEvent, PlayerId, PlayerState, RoundPhase, SourceTeam, Tick, TickState, Vec3, Weapon,
 };
 use sentinel_events::kinds::{EventKind, EventValue, GameEvent};
 
@@ -128,12 +128,20 @@ impl WorldRebuilder {
                 let (x, y, z) = snap.position();
                 let (vx, vy, vz) = snap.velocity();
                 let (pitch, yaw, roll) = snap.view_angles();
+                let snapshot_team = match snap.team() {
+                    SourceTeam::Terrorist => sentinel_core::Team::Terrorist,
+                    SourceTeam::CounterTerrorist => sentinel_core::Team::CounterTerrorist,
+                    SourceTeam::Unassigned => sentinel_core::Team::Unassigned,
+                };
 
                 if let Some(player) = self.world.players.get_mut(&pid) {
                     // Update with real telemetry data
                     player.position = Vec3::new(x, y, z);
                     player.velocity = Vec3::new(vx, vy, vz);
                     player.view_angles = Angles { pitch, yaw, roll };
+                    if snapshot_team != sentinel_core::Team::Unassigned {
+                        player.team = snapshot_team;
+                    }
                     player.health = snap.health();
                     player.armor = snap.armor();
                     player.alive = snap.alive();
@@ -141,13 +149,7 @@ impl WorldRebuilder {
                 } else {
                     // Player not yet in world state (spawn event may not have been processed yet)
                     // Create a basic player state from the snapshot
-                    let team = self
-                        .world
-                        .players
-                        .values()
-                        .find(|p| p.id == pid)
-                        .map(|p| p.team)
-                        .unwrap_or(sentinel_core::Team::Unassigned);
+                    let team = snapshot_team;
 
                     let name = self
                         .world

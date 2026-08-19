@@ -114,6 +114,9 @@ pub enum EventData {
 pub trait PlayerSnapshot {
     fn id(&self) -> PlayerId;
     fn tick(&self) -> Tick;
+    fn team(&self) -> Team {
+        Team::Unassigned
+    }
     fn position(&self) -> (f32, f32, f32);
     fn velocity(&self) -> (f32, f32, f32);
     fn view_angles(&self) -> (f32, f32, f32);

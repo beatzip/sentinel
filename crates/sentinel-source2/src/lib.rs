@@ -17,6 +17,17 @@ pub const DEMO_PARSER_VERSION: &str =
 
 // Source2 game-event `userid` fields can be short-lived slot IDs, not Steam IDs.
 const MIN_STEAM_ID: u64 = 1_000_000_000_000;
+const ENTITY_INDEX_MASK: u32 = 0x3fff;
+const ORIGIN_CELL_SIZE: f32 = 512.0;
+const ORIGIN_WORLD_OFFSET: f32 = 16_384.0;
+
+fn controller_index_from_handle(handle: u32) -> u32 {
+    handle & ENTITY_INDEX_MASK
+}
+
+fn coordinate_from_cell(cell: u16, offset: f32) -> f32 {
+    f32::from(cell) * ORIGIN_CELL_SIZE - ORIGIN_WORLD_OFFSET + offset
+}
 
 pub struct Source2Adapter {
     metadata: MatchMetadata,
@@ -47,6 +58,7 @@ pub struct Source2PlayerSnapshot {
     pitch: f32,
     yaw: f32,
     roll: f32,
+    team: Team,
     health: i32,
     armor: i32,
     weapon: WeaponKind,
@@ -73,6 +85,9 @@ struct DemoCollector {
     event_user_to_player: HashMap<i64, PlayerId>,
     map_name: String,
     server_name: String,
+    trace_properties: bool,
+    trace_max_tick: u32,
+    trace_samples: usize,
 }
 
 #[observer]
@@ -241,6 +256,32 @@ impl DemoCollector {
         let class_name = entity.class().name();
         let tick = Tick(self.current_tick);
 
+        if self.trace_properties
+            && self.current_tick <= self.trace_max_tick
+            && self.trace_samples < 20
+            && matches!(class_name, "CCSPlayerController" | "CCSPlayerPawn")
+        {
+            self.trace_samples += 1;
+            let fields = entity
+                .fields()
+                .into_iter()
+                .filter(|field| {
+                    let name = field.name.to_ascii_lowercase();
+                    [
+                        "origin", "cell", "angle", "rotation", "team", "pawn", "steam", "user",
+                    ]
+                    .iter()
+                    .any(|needle| name.contains(needle))
+                })
+                .filter_map(|field| field.value.map(|value| format!("{}={value:?}", field.name)))
+                .collect::<Vec<_>>();
+            eprintln!(
+                "SOURCE2_TRACE tick={} event={event:?} class={class_name} index={} fields={fields:?}",
+                self.current_tick,
+                entity.index(),
+            );
+        }
+
         // Player controller - extract name and team
         if class_name == "CCSPlayerController"
             && let Ok(val) = entity.get_property("m_steamID")
@@ -276,10 +317,18 @@ impl DemoCollector {
             }
         }
 
-        // Player pawn - extract position, health, etc.
-        if class_name == "CCSPlayerPawn" && event == EntityEvents::Updated {
-            // Get player ID from entity-to-player mapping or from steamID
-            let player_id = if let Some(&id) = self.entity_to_player.get(&entity.index()) {
+        // Player pawn - extract position, health, etc. Creation has populated telemetry in CS2
+        // demos, so it must be retained alongside later updates.
+        if class_name == "CCSPlayerPawn" {
+            // Pawns and controllers have different entity indexes. The pawn handle resolves to
+            // its controller index in the Source 2 entity list.
+            let player_id = if let Some(controller_index) = self
+                .get_u32(entity, "m_hOriginalController")
+                .map(controller_index_from_handle)
+                && let Some(&id) = self.entity_to_player.get(&controller_index)
+            {
+                id
+            } else if let Some(&id) = self.entity_to_player.get(&entity.index()) {
                 id
             } else if let Ok(val) = entity.get_property("m_steamID") {
                 if let Ok(steam_id) = val.try_into() {
@@ -291,29 +340,21 @@ impl DemoCollector {
                 return Ok(());
             };
 
-            // Extract position (try multiple property paths)
-            let x = self
-                .get_f32(entity, "CBodyComponent.m_vecAbsOrigin.x")
-                .or_else(|| self.get_f32(entity, "m_vecAbsOrigin.x"))
-                .unwrap_or(0.0);
-            let y = self
-                .get_f32(entity, "CBodyComponent.m_vecAbsOrigin.y")
-                .or_else(|| self.get_f32(entity, "m_vecAbsOrigin.y"))
-                .unwrap_or(0.0);
-            let z = self
-                .get_f32(entity, "CBodyComponent.m_vecAbsOrigin.z")
-                .or_else(|| self.get_f32(entity, "m_vecAbsOrigin.z"))
-                .unwrap_or(0.0);
+            // CS2 stores origin as a 9-bit cell plus a per-cell float offset.
+            let (x, y, z) = self.cell_origin(entity).unwrap_or((0.0, 0.0, 0.0));
 
             // Extract velocity
             let vx = self.get_f32(entity, "m_vecVelocity.x").unwrap_or(0.0);
             let vy = self.get_f32(entity, "m_vecVelocity.y").unwrap_or(0.0);
             let vz = self.get_f32(entity, "m_vecVelocity.z").unwrap_or(0.0);
 
-            // Extract view angles
-            let pitch = self.get_f32(entity, "m_angEyeAngles.x").unwrap_or(0.0);
-            let yaw = self.get_f32(entity, "m_angEyeAngles.y").unwrap_or(0.0);
-            let roll = self.get_f32(entity, "m_angEyeAngles.z").unwrap_or(0.0);
+            // Eye angles are encoded as one Vector3D, not three dot-addressable scalar fields.
+            let (pitch, yaw, roll) = self
+                .get_vec3(entity, "m_angEyeAngles")
+                .or_else(|| {
+                    self.get_vec3(entity, "CBodyComponent.m_skeletonInstance.m_angRotation")
+                })
+                .unwrap_or((0.0, 0.0, 0.0));
 
             // Extract health
             let health = self.get_i32(entity, "m_iHealth").unwrap_or(100);
@@ -330,6 +371,16 @@ impl DemoCollector {
                 .map(|v| v == 0)
                 .unwrap_or(true);
 
+            let team = self
+                .get_i32(entity, "m_iTeamNum")
+                .map(|team_num| match team_num {
+                    2 => Team::Terrorist,
+                    3 => Team::CounterTerrorist,
+                    _ => Team::Unassigned,
+                })
+                .unwrap_or(Team::Unassigned);
+            self.player_teams.insert(player_id, team);
+
             // Create snapshot
             self.player_snapshots.push(Source2PlayerSnapshot {
                 player_id,
@@ -343,6 +394,7 @@ impl DemoCollector {
                 pitch,
                 yaw,
                 roll,
+                team,
                 health,
                 armor,
                 weapon: WeaponKind::Unknown,
@@ -359,9 +411,54 @@ impl DemoCollector {
         entity.get_property(name).ok()?.try_into().ok()
     }
 
+    fn get_vec3(&self, entity: &Entity, name: &str) -> Option<(f32, f32, f32)> {
+        entity.get_property(name).ok()?.try_into().ok()
+    }
+
+    fn get_u16(&self, entity: &Entity, name: &str) -> Option<u16> {
+        match entity.get_property(name).ok()? {
+            FieldValue::Unsigned16(value) => Some(*value),
+            FieldValue::Unsigned8(value) => Some(u16::from(*value)),
+            _ => None,
+        }
+    }
+
+    fn get_u32(&self, entity: &Entity, name: &str) -> Option<u32> {
+        match entity.get_property(name).ok()? {
+            FieldValue::Unsigned32(value) => Some(*value),
+            FieldValue::Unsigned16(value) => Some(u32::from(*value)),
+            _ => None,
+        }
+    }
+
+    fn cell_origin(&self, entity: &Entity) -> Option<(f32, f32, f32)> {
+        let prefix = "CBodyComponent.m_skeletonInstance.m_vecOrigin";
+        Some((
+            coordinate_from_cell(
+                self.get_u16(entity, &format!("{prefix}.m_cellX"))?,
+                self.get_f32(entity, &format!("{prefix}.m_vecX"))?,
+            ),
+            coordinate_from_cell(
+                self.get_u16(entity, &format!("{prefix}.m_cellY"))?,
+                self.get_f32(entity, &format!("{prefix}.m_vecY"))?,
+            ),
+            coordinate_from_cell(
+                self.get_u16(entity, &format!("{prefix}.m_cellZ"))?,
+                self.get_f32(entity, &format!("{prefix}.m_vecZ"))?,
+            ),
+        ))
+    }
+
     /// Safely get an i32 property from an entity
     fn get_i32(&self, entity: &Entity, name: &str) -> Option<i32> {
-        entity.get_property(name).ok()?.try_into().ok()
+        match entity.get_property(name).ok()? {
+            FieldValue::Signed8(value) => Some(i32::from(*value)),
+            FieldValue::Signed16(value) => Some(i32::from(*value)),
+            FieldValue::Signed32(value) => Some(*value),
+            FieldValue::Unsigned8(value) => Some(i32::from(*value)),
+            FieldValue::Unsigned16(value) => Some(i32::from(*value)),
+            _ => None,
+        }
     }
 
     /// Safely get a bool property from an entity
@@ -385,6 +482,15 @@ impl Source2Adapter {
     pub fn from_bytes(bytes: &[u8], path: &Path) -> Result<Self, String> {
         let mut parser = Parser::new(bytes).map_err(|e| format!("Parser error: {e}"))?;
         let rc: Rc<RefCell<DemoCollector>> = parser.register_observer();
+        {
+            let mut collector = rc.borrow_mut();
+            collector.trace_properties = std::env::var_os("SENTINEL_SOURCE2_TRACE_PROPERTIES")
+                .is_some_and(|value| value != "0");
+            collector.trace_max_tick = std::env::var("SENTINEL_SOURCE2_TRACE_TICKS")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(100);
+        }
         parser
             .run_to_end()
             .map_err(|e| format!("Parse error: {e}"))?;
@@ -525,6 +631,9 @@ impl PlayerSnapshot for Source2PlayerSnapshot {
     fn tick(&self) -> Tick {
         self.tick
     }
+    fn team(&self) -> Team {
+        self.team
+    }
     fn position(&self) -> (f32, f32, f32) {
         (self.x, self.y, self.z)
     }
@@ -643,5 +752,11 @@ mod tests {
             player_teams: HashMap::new(),
         };
         assert_eq!(a.tick_count(), 6400);
+    }
+
+    #[test]
+    fn decodes_quantized_cell_origin_and_controller_handle() {
+        assert!((coordinate_from_cell(30, 566.0233) + 457.9767).abs() < 0.001);
+        assert_eq!(controller_index_from_handle(0x008b_4455), 0x0455);
     }
 }
