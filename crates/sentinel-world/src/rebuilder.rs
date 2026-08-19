@@ -1,6 +1,7 @@
 use sentinel_core::source::PlayerSnapshot;
 use sentinel_core::{
-    Angles, KillEvent, PlayerId, PlayerState, RoundPhase, SourceTeam, Tick, TickState, Vec3, Weapon,
+    Angles, KillEvent, PlayerId, PlayerState, RoundPhase, SkeletonMetadata, SourceTeam, Tick,
+    TickState, Vec3, Weapon,
 };
 use sentinel_events::kinds::{EventKind, EventValue, GameEvent};
 
@@ -146,6 +147,7 @@ impl WorldRebuilder {
                     player.armor = snap.armor();
                     player.alive = snap.alive();
                     player.scoped = snap.scoped();
+                    player.skeleton = snap.skeleton_metadata();
                 } else {
                     // Player not yet in world state (spawn event may not have been processed yet)
                     // Create a basic player state from the snapshot
@@ -174,6 +176,7 @@ impl WorldRebuilder {
                         scoped: snap.scoped(),
                         reloading: false,
                         alive: snap.alive(),
+                        skeleton: snap.skeleton_metadata(),
                     };
                     self.world.players.insert(pid, player);
                 }
@@ -263,6 +266,7 @@ impl WorldRebuilder {
                 scoped: false,
                 reloading: false,
                 alive: true,
+                skeleton: SkeletonMetadata::default(),
             };
 
             self.world.players.insert(player.id, player);

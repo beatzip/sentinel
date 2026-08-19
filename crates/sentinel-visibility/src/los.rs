@@ -515,7 +515,7 @@ mod tests {
     use sentinel_core::bomb::BombState;
     use sentinel_core::grenade::GrenadeState;
     use sentinel_core::round::RoundState;
-    use sentinel_core::{Angles, Tick, TickState, Vec3, Weapon};
+    use sentinel_core::{Angles, SkeletonMetadata, Tick, TickState, Vec3, Weapon};
     use sentinel_map::{MapData, Vec2};
 
     fn create_test_state() -> TickState {
@@ -538,6 +538,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         let player2 = PlayerState {
@@ -559,6 +560,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         TickState {
@@ -702,6 +704,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         let player2 = PlayerState {
@@ -723,6 +726,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         let state = TickState {
@@ -777,6 +781,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         let player2 = PlayerState {
@@ -798,6 +803,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         let state = TickState {

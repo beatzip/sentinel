@@ -45,6 +45,22 @@ pub struct PlayerState {
     pub scoped: bool,
     pub reloading: bool,
     pub alive: bool,
+    /// Observed Source2 model metadata. It does not contain decoded bone transforms or hitbox geometry.
+    pub skeleton: SkeletonMetadata,
+}
+
+/// Observed Source2 skeleton metadata available in entity properties.
+///
+/// This is intentionally metadata only: exact hitbox intersection remains unavailable until
+/// bone transforms and model hitbox geometry are decoded from verified game assets.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct SkeletonMetadata {
+    pub eye_offset_z: Option<f32>,
+    pub duck_amount: Option<f32>,
+    pub hitbox_set: Option<u8>,
+    pub model_handle: Option<u64>,
+    pub anim_graph_id: Option<u64>,
+    pub pose_recipe_version: Option<i32>,
 }
 
 /// 3D position vector

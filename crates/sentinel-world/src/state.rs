@@ -149,7 +149,7 @@ impl Default for WorldState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sentinel_core::{Team, Vec3};
+    use sentinel_core::{SkeletonMetadata, Team, Vec3};
 
     fn create_test_world() -> WorldState {
         let mut world = WorldState::new(Tick(100));
@@ -169,6 +169,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         let player2 = PlayerState {
@@ -186,6 +187,7 @@ mod tests {
             scoped: false,
             reloading: false,
             alive: true,
+            skeleton: SkeletonMetadata::default(),
         };
 
         world.players.insert(player1.id, player1);

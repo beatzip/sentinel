@@ -15,7 +15,7 @@ pub use evidence::Evidence;
 pub use feature::{FeatureCategory, FeatureResult, FeatureVector};
 pub use grenade::{GrenadeState, GrenadeType};
 pub use kill::KillEvent;
-pub use player::{Angles, PlayerId, PlayerState, Team, Vec3, Weapon};
+pub use player::{Angles, PlayerId, PlayerState, SkeletonMetadata, Team, Vec3, Weapon};
 pub use round::{RoundPhase, RoundState};
 pub use score::BehaviorScore;
 pub use source::{

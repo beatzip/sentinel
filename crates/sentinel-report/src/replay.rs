@@ -22,6 +22,7 @@ pub enum OriginLineOfSight {
 #[serde(rename_all = "snake_case")]
 pub enum SpatialEvidenceReason {
     OriginToOriginLosOnly,
+    EyeToEyeLineOfSight,
     MissingMapCollision,
     MissingPlayerSnapshot,
     InvalidPosition,
@@ -39,8 +40,8 @@ pub enum UnsupportedSpatialCapability {
 
 /// A quality-gated world trace for a candidate linked shot and damage event.
 ///
-/// It intentionally traces player origins only. This is neither a hitbox intersection nor a
-/// bullet-penetration calculation and cannot create a cheat verdict by itself.
+/// It traces observed eye positions when the source exposes them. This is neither a hitbox
+/// intersection nor a bullet-penetration calculation and cannot create a cheat verdict by itself.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SpatialShotEvidence {
     pub shot_tick: u32,
@@ -207,6 +208,18 @@ pub struct ReplayPlayer {
     pub alive: bool,
     pub yaw: f32,
     pub pitch: f32,
+    #[serde(default)]
+    pub eye_offset_z: Option<f32>,
+    #[serde(default)]
+    pub duck_amount: Option<f32>,
+    #[serde(default)]
+    pub hitbox_set: Option<u8>,
+    #[serde(default)]
+    pub model_handle: Option<u64>,
+    #[serde(default)]
+    pub anim_graph_id: Option<u64>,
+    #[serde(default)]
+    pub pose_recipe_version: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,6 +283,12 @@ mod tests {
             alive: true,
             yaw: 0.0,
             pitch: 0.0,
+            eye_offset_z: None,
+            duck_amount: None,
+            hitbox_set: None,
+            model_handle: None,
+            anim_graph_id: None,
+            pose_recipe_version: None,
         })
         .assess_quality();
         assert_eq!(quality.status, ReplayQualityStatus::InsufficientEvidence);
@@ -294,6 +313,12 @@ mod tests {
             alive: true,
             yaw: 1.0,
             pitch: 1.0,
+            eye_offset_z: None,
+            duck_amount: None,
+            hitbox_set: None,
+            model_handle: None,
+            anim_graph_id: None,
+            pose_recipe_version: None,
         })
         .assess_quality();
         assert_eq!(quality.status, ReplayQualityStatus::Sufficient);

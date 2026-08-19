@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use sentinel_core::{TickState, source::DemoSource};
-use sentinel_map::{MapData, loader};
+use sentinel_map::{MapData, Vec3 as MapVec3, loader};
 use sentinel_report::{
     DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, LinkedShotDamage, link_observed_shot_damage,
     replay::{
@@ -23,7 +23,6 @@ fn spatial_evidence_for_links(
         .iter()
         .map(|link| {
             let unsupported_capabilities = vec![
-                UnsupportedSpatialCapability::EyePosition,
                 UnsupportedSpatialCapability::Hitboxes,
                 UnsupportedSpatialCapability::PenetrationModel,
             ];
@@ -120,15 +119,69 @@ fn spatial_evidence_for_links(
                     unsupported_capabilities,
                 };
             }
+            let (Some(attacker_eye_offset), Some(victim_eye_offset)) =
+                (attacker.skeleton.eye_offset_z, victim.skeleton.eye_offset_z)
+            else {
+                let mut unsupported_capabilities = unsupported_capabilities;
+                unsupported_capabilities.push(UnsupportedSpatialCapability::EyePosition);
+                return SpatialShotEvidence {
+                    shot_tick: link.shot_tick,
+                    damage_tick: link.damage_tick,
+                    snapshot_tick: Some(state.tick.0),
+                    attacker_id: link.attacker_id,
+                    victim_id: link.victim_id,
+                    status: SpatialEvidenceStatus::Unavailable,
+                    reason: SpatialEvidenceReason::MissingEyePosition,
+                    line_of_sight: OriginLineOfSight::Unknown,
+                    attacker_origin: Some(attacker_origin),
+                    victim_origin: Some(victim_origin),
+                    unsupported_capabilities,
+                };
+            };
+            if !attacker_eye_offset.is_finite()
+                || !victim_eye_offset.is_finite()
+                || attacker_eye_offset < 0.0
+                || victim_eye_offset < 0.0
+            {
+                let mut unsupported_capabilities = unsupported_capabilities;
+                unsupported_capabilities.push(UnsupportedSpatialCapability::EyePosition);
+                return SpatialShotEvidence {
+                    shot_tick: link.shot_tick,
+                    damage_tick: link.damage_tick,
+                    snapshot_tick: Some(state.tick.0),
+                    attacker_id: link.attacker_id,
+                    victim_id: link.victim_id,
+                    status: SpatialEvidenceStatus::Unavailable,
+                    reason: SpatialEvidenceReason::MissingEyePosition,
+                    line_of_sight: OriginLineOfSight::Unknown,
+                    attacker_origin: Some(attacker_origin),
+                    victim_origin: Some(victim_origin),
+                    unsupported_capabilities,
+                };
+            }
+            let attacker_eye = MapVec3::new(
+                attacker.position.x,
+                attacker.position.y,
+                attacker.position.z + attacker_eye_offset,
+            );
+            let victim_eye = MapVec3::new(
+                victim.position.x,
+                victim.position.y,
+                victim.position.z + victim_eye_offset,
+            );
             SpatialShotEvidence {
                 shot_tick: link.shot_tick,
                 damage_tick: link.damage_tick,
                 snapshot_tick: Some(state.tick.0),
                 attacker_id: link.attacker_id,
                 victim_id: link.victim_id,
-                status: SpatialEvidenceStatus::Unavailable,
-                reason: SpatialEvidenceReason::MissingEyePosition,
-                line_of_sight: OriginLineOfSight::Unknown,
+                status: SpatialEvidenceStatus::Available,
+                reason: SpatialEvidenceReason::EyeToEyeLineOfSight,
+                line_of_sight: if map.segment_blocked_3d(attacker_eye, victim_eye) {
+                    OriginLineOfSight::BlockedByWorld
+                } else {
+                    OriginLineOfSight::Clear
+                },
                 attacker_origin: Some(attacker_origin),
                 victim_origin: Some(victim_origin),
                 unsupported_capabilities,
@@ -180,6 +233,12 @@ pub fn export_adapter(
                     alive: player.alive,
                     yaw: player.view_angles.yaw,
                     pitch: player.view_angles.pitch,
+                    eye_offset_z: player.skeleton.eye_offset_z,
+                    duck_amount: player.skeleton.duck_amount,
+                    hitbox_set: player.skeleton.hitbox_set,
+                    model_handle: player.skeleton.model_handle,
+                    anim_graph_id: player.skeleton.anim_graph_id,
+                    pose_recipe_version: player.skeleton.pose_recipe_version,
                 })
                 .collect::<Vec<_>>();
             let visible_pairs = state

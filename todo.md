@@ -72,8 +72,11 @@
 - [x] Аудировать предлагаемый raycast/hitbox spatial module против текущих telemetry, VPhys/tri geometry и replay quality gate.
 - [x] Добавить явный spatial evidence status: available или unavailable с наблюдаемой причиной, без hitbox/penetration verdicts.
 - [x] Экспортировать quality-gated LOS evidence только для candidate shot-to-damage links с валидными snapshot и map geometry.
-- [ ] Извлечь наблюдаемую Source2 eye position/duck state до включения world LOS для linked shot/damage evidence.
+- [x] Извлечь наблюдаемую Source2 eye position/duck state до включения world LOS для linked shot/damage evidence.
 - [ ] Извлечь hitbox/bone telemetry и добавить intersection evidence; не использовать приблизительные capsules для cheat verdict.
+- [x] Аудировать Source2 entity props и parser capability для observed skeleton, bones и hitbox telemetry.
+- [x] Извлечь и экспортировать только подтверждённые Source2 bone/hitbox fields; сохранять unavailable при их отсутствии.
+- [ ] Декодировать AG2 pose-recipe bytes и model hitbox resources в bone transforms/hitbox geometry до intersection evidence.
 - [ ] Добавить material-aware bullet penetration contract только после верифицированной map-material telemetry.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.

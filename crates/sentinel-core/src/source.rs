@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::player::SkeletonMetadata;
 use crate::{PlayerId, Tick};
 
 /// A unified interface for demo file sources.
@@ -128,6 +129,11 @@ pub trait PlayerSnapshot {
     fn weapon(&self) -> WeaponKind;
     fn alive(&self) -> bool;
     fn scoped(&self) -> bool;
+    /// Observed model metadata, if the demo source exposes it. Bone transforms remain unavailable
+    /// unless a source explicitly decodes them from verified model data.
+    fn skeleton_metadata(&self) -> SkeletonMetadata {
+        SkeletonMetadata::default()
+    }
 }
 
 /// Round information

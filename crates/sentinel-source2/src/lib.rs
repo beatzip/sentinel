@@ -7,7 +7,7 @@ use sentinel_core::source::{
     DemoEvent, DemoSource, EventData, EventKind, MatchMetadata, PlayerSnapshot, RoundInfo, Team,
     WeaponKind,
 };
-use sentinel_core::{PlayerId, Tick};
+use sentinel_core::{PlayerId, SkeletonMetadata, Tick};
 use source2_demo::prelude::*;
 use source2_demo::proto::CDemoFileHeader;
 
@@ -105,6 +105,7 @@ pub struct Source2PlayerSnapshot {
     weapon: WeaponKind,
     alive: bool,
     scoped: bool,
+    skeleton: SkeletonMetadata,
 }
 
 #[derive(Debug, Clone)]
@@ -128,6 +129,7 @@ struct DemoCollector {
     server_name: String,
     trace_properties: bool,
     trace_max_tick: u32,
+    trace_max_samples: usize,
     trace_samples: usize,
     trace_game_rules_samples: usize,
     game_rules_phase: Option<GameRulesPhase>,
@@ -304,7 +306,7 @@ impl DemoCollector {
 
         let is_player_entity = matches!(class_name, "CCSPlayerController" | "CCSPlayerPawn");
         let is_game_rules = class_name == "CCSGameRulesProxy";
-        let trace_allowed = (is_player_entity && self.trace_samples < 20)
+        let trace_allowed = (is_player_entity && self.trace_samples < self.trace_max_samples)
             || (is_game_rules && self.trace_game_rules_samples < 5);
         if self.trace_properties && self.current_tick <= self.trace_max_tick && trace_allowed {
             if is_game_rules {
@@ -319,7 +321,8 @@ impl DemoCollector {
                     let name = field.name.to_ascii_lowercase();
                     [
                         "origin", "cell", "angle", "rotation", "team", "pawn", "steam", "user",
-                        "phase", "warm", "freeze", "buy", "round",
+                        "phase", "warm", "freeze", "buy", "round", "bone", "hitbox", "skeleton",
+                        "model", "scene", "anim", "duck", "view",
                     ]
                     .iter()
                     .any(|needle| name.contains(needle))
@@ -420,6 +423,28 @@ impl DemoCollector {
             // Extract scoped state
             let scoped = self.get_bool(entity, "m_bIsScoped").unwrap_or(false);
 
+            // Directly observed Source2 metadata. This identifies the active model/hitbox set but
+            // does not decode bone transforms or hitbox geometry from game resources.
+            let skeleton = SkeletonMetadata {
+                eye_offset_z: self.get_f32(entity, "m_vecViewOffset.m_vecZ"),
+                duck_amount: self.get_f32(entity, "m_pMovementServices.m_flDuckAmount"),
+                hitbox_set: self
+                    .get_u16(entity, "CBodyComponent.m_skeletonInstance.m_nHitboxSet")
+                    .and_then(|value| u8::try_from(value).ok()),
+                model_handle: self.get_u64(
+                    entity,
+                    "CBodyComponent.m_skeletonInstance.m_modelState.m_hModel",
+                ),
+                anim_graph_id: self.get_u64(
+                    entity,
+                    "CBodyComponent.m_animationController.m_primaryGraphId",
+                ),
+                pose_recipe_version: self.get_i32(
+                    entity,
+                    "CBodyComponent.m_animationController.m_nSerializePoseRecipeVersionAG2",
+                ),
+            };
+
             // Extract alive state (m_lifeState: 0 = alive, others = dead)
             let alive = self
                 .get_i32(entity, "m_lifeState")
@@ -455,6 +480,7 @@ impl DemoCollector {
                 weapon: WeaponKind::Unknown,
                 alive,
                 scoped,
+                skeleton,
             });
         }
 
@@ -518,6 +544,15 @@ impl DemoCollector {
         }
     }
 
+    fn get_u64(&self, entity: &Entity, name: &str) -> Option<u64> {
+        match entity.get_property(name).ok()? {
+            FieldValue::Unsigned64(value) => Some(*value),
+            FieldValue::Unsigned32(value) => Some(u64::from(*value)),
+            FieldValue::Unsigned16(value) => Some(u64::from(*value)),
+            _ => None,
+        }
+    }
+
     fn cell_origin(&self, entity: &Entity) -> Option<(f32, f32, f32)> {
         let prefix = "CBodyComponent.m_skeletonInstance.m_vecOrigin";
         Some((
@@ -577,6 +612,10 @@ impl Source2Adapter {
                 .ok()
                 .and_then(|value| value.parse().ok())
                 .unwrap_or(100);
+            collector.trace_max_samples = std::env::var("SENTINEL_SOURCE2_TRACE_SAMPLES")
+                .ok()
+                .and_then(|value| value.parse().ok())
+                .unwrap_or(20);
         }
         parser
             .run_to_end()
@@ -744,6 +783,9 @@ impl PlayerSnapshot for Source2PlayerSnapshot {
     }
     fn scoped(&self) -> bool {
         self.scoped
+    }
+    fn skeleton_metadata(&self) -> SkeletonMetadata {
+        self.skeleton.clone()
     }
 }
 
