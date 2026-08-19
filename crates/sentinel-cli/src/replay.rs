@@ -47,6 +47,7 @@ pub fn export_adapter(
                     health: player.health,
                     alive: player.alive,
                     yaw: player.view_angles.yaw,
+                    pitch: player.view_angles.pitch,
                 })
                 .collect::<Vec<_>>();
             let visible_pairs = state
@@ -81,7 +82,7 @@ pub fn export_adapter(
             }
         })
         .collect();
-    let replay = ReplayData {
+    let mut replay = ReplayData {
         version: "1.1.0".to_string(),
         map: metadata.map_name,
         tick_rate: metadata.tick_rate,
@@ -89,7 +90,9 @@ pub fn export_adapter(
         rounds: super::build_round_contexts(adapter, &states, &kills, &game_events, &damage),
         shots,
         damage,
+        quality: Default::default(),
     };
+    replay.quality = replay.assess_quality();
     let json = serde_json::to_string_pretty(&replay).map_err(|error| error.to_string())?;
     std::fs::write(output_path, json).map_err(|error| error.to_string())
 }
@@ -113,6 +116,7 @@ mod tests {
             rounds: Vec::new(),
             shots: Vec::new(),
             damage: Vec::new(),
+            quality: Default::default(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));
     }

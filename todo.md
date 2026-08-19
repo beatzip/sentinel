@@ -50,6 +50,9 @@
 - [x] Зафиксировать утверждённый пользователем match-level review label `legit` для demo 1 с limitation о невалидной player-specific evidence.
 - [x] Аудировать и исправить shared fallback paths aim_velocity, wall и round tracking после подтверждения в коде.
 - [x] Провести одинаковый evidence audit для reports demo 2 и demo 3 перед любыми review labels.
+- [x] Провести evidence-only replay review demo 2 и demo 3 с roster-resolved combat facts.
+- [x] Подготовить pending reviews.json для demo 2 и demo 3 без verified promotion до явного одобрения пользователя.
+- [x] Проверить предложения из приложенного файла по текущему коду Sentinel и применить только подтверждённые минимальные исправления.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).
