@@ -66,7 +66,9 @@
 - [x] Аудировать Source2 inputs для counter-strafe, TTD, crosshair placement, triggerbot, aim-assist и wallhack/ESP evidence.
 - [x] Обнулить confidence placeholder aim/movement/wall metrics при отсутствии observed shots, hitboxes, keys или target attribution.
 - [x] Исправить wrap-around yaw velocity и availability gate для angular trajectory evidence.
-- [ ] Спроектировать event-linked TTD contract после добавления shot/damage stream в MatchContext; не выводить triggerbot verdict без hitbox crossings.
+- [x] Спроектировать event-linked TTD contract после добавления shot/damage stream в MatchContext; не выводить triggerbot verdict без hitbox crossings.
+- [x] Добавить детерминированное matching observed shot → damage по attacker, normalised weapon и bounded tick window без назначения triggerbot verdict.
+- [x] Экспортировать linked TTD engagements с linkage confidence и проверить на реальной Source2 demo.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).

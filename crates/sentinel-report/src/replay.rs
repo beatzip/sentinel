@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ObservedDamage, ObservedShot, RoundContext};
+use super::{LinkedShotDamage, ObservedDamage, ObservedShot, RoundContext};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -52,6 +52,9 @@ pub struct ReplayData {
     /// Every normalized player_hurt event observed in this demo.
     #[serde(default)]
     pub damage: Vec<ObservedDamage>,
+    /// Candidate nearest-prior observed shot links for each observed damage event.
+    #[serde(default)]
+    pub linked_shot_damage: Vec<LinkedShotDamage>,
     /// Gate that prevents anti-cheat interpretation when essential replay telemetry is absent.
     #[serde(default)]
     pub quality: ReplayQuality,
@@ -190,6 +193,7 @@ mod tests {
                 hitgroup: "chest".into(),
                 dmg_health_real: 10,
             }],
+            linked_shot_damage: vec![],
             quality: ReplayQuality::default(),
         }
     }

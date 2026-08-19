@@ -2,7 +2,10 @@ use std::path::Path;
 
 use sentinel_core::source::DemoSource;
 use sentinel_map::{MapData, loader};
-use sentinel_report::replay::{ReplayData, ReplayFrame, ReplayPlayer, VisibilityPair};
+use sentinel_report::{
+    DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, link_observed_shot_damage,
+    replay::{ReplayData, ReplayFrame, ReplayPlayer, VisibilityPair},
+};
 use sentinel_visibility::VisibilityEngine;
 use sentinel_world::WorldRebuilder;
 
@@ -24,6 +27,8 @@ pub fn export_adapter(
         .filter_map(super::convert_demo_event)
         .collect::<Vec<_>>();
     let (shots, damage) = super::observed_combat_events(&game_events);
+    let linked_shot_damage =
+        link_observed_shot_damage(&shots, &damage, DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS);
     let mut rebuilder = WorldRebuilder::new();
     let states = rebuilder.process_events_with_snapshots(&game_events, &adapter.player_snapshots());
     let kills = rebuilder.take_kills();
@@ -87,9 +92,17 @@ pub fn export_adapter(
         map: metadata.map_name,
         tick_rate: metadata.tick_rate,
         frames,
-        rounds: super::build_round_contexts(adapter, &states, &kills, &game_events, &damage),
+        rounds: super::build_round_contexts(
+            adapter,
+            &states,
+            &kills,
+            &game_events,
+            &damage,
+            &linked_shot_damage,
+        ),
         shots,
         damage,
+        linked_shot_damage,
         quality: Default::default(),
     };
     replay.quality = replay.assess_quality();
@@ -116,6 +129,7 @@ mod tests {
             rounds: Vec::new(),
             shots: Vec::new(),
             damage: Vec::new(),
+            linked_shot_damage: Vec::new(),
             quality: Default::default(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));

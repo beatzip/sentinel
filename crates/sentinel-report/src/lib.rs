@@ -291,6 +291,88 @@ pub struct ObservedDamage {
     pub dmg_health_real: i64,
 }
 
+/// The maximum window for a candidate link between a `weapon_fire` and a later `player_hurt`.
+pub const DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS: u32 = 128;
+
+/// A deterministic candidate link between observed `weapon_fire` and `player_hurt` facts.
+///
+/// `weapon_fire` has no target field, so this is never hitbox verification, visibility onset,
+/// reaction time, or triggerbot evidence. It only records the nearest unconsumed earlier shot by
+/// the same attacker with a normalised matching weapon in a bounded window.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LinkedShotDamage {
+    pub shot_tick: u32,
+    pub damage_tick: u32,
+    pub attacker_id: u64,
+    pub victim_id: u64,
+    pub weapon: String,
+    pub shot_to_damage_ticks: u32,
+    pub linkage_confidence: ShotDamageLinkConfidence,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ShotDamageLinkConfidence {
+    /// Same attacker and normalised weapon; the event source does not expose a direct shot ID.
+    CandidateNearestPriorShot,
+}
+
+fn normalise_weapon(weapon: &str) -> String {
+    let normalised = weapon.trim().to_ascii_lowercase();
+    normalised
+        .strip_prefix("weapon_")
+        .unwrap_or(&normalised)
+        .to_string()
+}
+
+/// Link each observed damage fact to the closest eligible preceding shot exactly once.
+pub fn link_observed_shot_damage(
+    shots: &[ObservedShot],
+    damage: &[ObservedDamage],
+    max_delay_ticks: u32,
+) -> Vec<LinkedShotDamage> {
+    let mut shots = shots.to_vec();
+    let mut damage = damage.to_vec();
+    shots.sort_by_key(|shot| shot.tick);
+    damage.sort_by_key(|entry| entry.tick);
+    let mut consumed = vec![false; shots.len()];
+
+    damage
+        .into_iter()
+        .filter_map(|entry| {
+            let attacker_id = entry.attacker_id?;
+            if attacker_id == 0 || entry.victim_id == 0 {
+                return None;
+            }
+            let damage_weapon = normalise_weapon(&entry.weapon);
+            for index in (0..shots.len()).rev() {
+                let shot = &shots[index];
+                if consumed[index] || shot.tick > entry.tick {
+                    continue;
+                }
+                let delay = entry.tick.saturating_sub(shot.tick);
+                if delay > max_delay_ticks {
+                    break;
+                }
+                if shot.shooter_id == attacker_id && normalise_weapon(&shot.weapon) == damage_weapon
+                {
+                    consumed[index] = true;
+                    return Some(LinkedShotDamage {
+                        shot_tick: shot.tick,
+                        damage_tick: entry.tick,
+                        attacker_id,
+                        victim_id: entry.victim_id,
+                        weapon: entry.weapon,
+                        shot_to_damage_ticks: delay,
+                        linkage_confidence: ShotDamageLinkConfidence::CandidateNearestPriorShot,
+                    });
+                }
+            }
+            None
+        })
+        .collect()
+}
+
 /// A terminal, roster-resolved duel. `direct_damage` contains only events whose attacker and
 /// victim match this terminal kill; weapon fire remains in the replay-wide observed stream.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -307,6 +389,9 @@ pub struct Encounter {
     pub death_facts: Vec<DeathFact>,
     #[serde(default)]
     pub direct_damage: Vec<ObservedDamage>,
+    /// Candidate shot-to-damage links for this terminal attacker/victim pair.
+    #[serde(default)]
+    pub linked_shot_damage: Vec<LinkedShotDamage>,
     /// Interval from the first observed direct damage to the terminal kill, never a guessed TTD.
     #[serde(default)]
     pub observed_damage_to_death_ticks: Option<u32>,
@@ -321,6 +406,15 @@ impl Encounter {
         round_number: u32,
         kill: &RosterKill,
         direct_damage: Vec<ObservedDamage>,
+    ) -> Self {
+        Self::from_kill_with_combat(round_number, kill, direct_damage, Vec::new())
+    }
+
+    pub fn from_kill_with_combat(
+        round_number: u32,
+        kill: &RosterKill,
+        direct_damage: Vec<ObservedDamage>,
+        linked_shot_damage: Vec<LinkedShotDamage>,
     ) -> Self {
         let explanation = DeathExplanation::from_kill(kill);
         let start_tick = direct_damage
@@ -341,6 +435,7 @@ impl Encounter {
             observed_damage_to_death_ticks: (!direct_damage.is_empty())
                 .then_some(kill.tick.saturating_sub(start_tick)),
             direct_damage,
+            linked_shot_damage,
         }
     }
 }
@@ -564,5 +659,87 @@ mod provenance_tests {
         assert_eq!(encounter.start_tick, 96);
         assert_eq!(encounter.observed_damage_to_death_ticks, Some(32));
         assert_eq!(encounter.direct_damage.len(), 1);
+    }
+
+    #[test]
+    fn links_nearest_matching_shot_once_within_window() {
+        let shots = vec![
+            ObservedShot {
+                tick: 80,
+                shooter_id: 1,
+                weapon: "weapon_ak47".into(),
+                penetrated: 0,
+                is_alt_fire: false,
+            },
+            ObservedShot {
+                tick: 96,
+                shooter_id: 1,
+                weapon: "ak47".into(),
+                penetrated: 0,
+                is_alt_fire: false,
+            },
+        ];
+        let damage = vec![ObservedDamage {
+            tick: 100,
+            victim_id: 2,
+            attacker_id: Some(1),
+            weapon: "ak47".into(),
+            dmg_health: 40,
+            dmg_armor: 0,
+            hitgroup: "chest".into(),
+            dmg_health_real: 40,
+        }];
+        let links = link_observed_shot_damage(&shots, &damage, 128);
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].shot_tick, 96);
+        assert_eq!(links[0].shot_to_damage_ticks, 4);
+        assert_eq!(
+            links[0].linkage_confidence,
+            ShotDamageLinkConfidence::CandidateNearestPriorShot
+        );
+    }
+
+    #[test]
+    fn does_not_link_wrong_weapon_or_stale_shot() {
+        let shots = vec![ObservedShot {
+            tick: 1,
+            shooter_id: 1,
+            weapon: "weapon_ak47".into(),
+            penetrated: 0,
+            is_alt_fire: false,
+        }];
+        let damage = vec![ObservedDamage {
+            tick: 200,
+            victim_id: 2,
+            attacker_id: Some(1),
+            weapon: "m4a1".into(),
+            dmg_health: 20,
+            dmg_armor: 0,
+            hitgroup: "chest".into(),
+            dmg_health_real: 20,
+        }];
+        assert!(link_observed_shot_damage(&shots, &damage, 128).is_empty());
+    }
+
+    #[test]
+    fn does_not_link_unresolved_roster_identity() {
+        let shots = vec![ObservedShot {
+            tick: 10,
+            shooter_id: 1,
+            weapon: "glock".into(),
+            penetrated: 0,
+            is_alt_fire: false,
+        }];
+        let damage = vec![ObservedDamage {
+            tick: 10,
+            victim_id: 0,
+            attacker_id: Some(1),
+            weapon: "glock".into(),
+            dmg_health: 1,
+            dmg_armor: 0,
+            hitgroup: "chest".into(),
+            dmg_health_real: 1,
+        }];
+        assert!(link_observed_shot_damage(&shots, &damage, 128).is_empty());
     }
 }

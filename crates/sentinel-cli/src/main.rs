@@ -8,9 +8,9 @@ use sentinel_features::FeatureEngine;
 use sentinel_map::loader;
 use sentinel_memory::{MatchObservation, Memory};
 use sentinel_report::{
-    AnalysisProvenance, ConfidenceAssessment, Encounter, MatchMetadata, MatchReport,
-    ObservedDamage, ObservedShot, PlayerReport, RosterKill, RoundContext, RoundStory,
-    SupportingMatch,
+    AnalysisProvenance, ConfidenceAssessment, DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, Encounter,
+    LinkedShotDamage, MatchMetadata, MatchReport, ObservedDamage, ObservedShot, PlayerReport,
+    RosterKill, RoundContext, RoundStory, SupportingMatch, link_observed_shot_damage,
 };
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
@@ -174,7 +174,12 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         }
     }
     println!("  Game events: {}", game_events.len());
-    let (_, observed_damage) = observed_combat_events(&game_events);
+    let (observed_shots, observed_damage) = observed_combat_events(&game_events);
+    let linked_shot_damage = link_observed_shot_damage(
+        &observed_shots,
+        &observed_damage,
+        DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS,
+    );
 
     // Step 4: Reconstruct world state with real telemetry data
     println!("[4/7] Reconstructing world state...");
@@ -342,6 +347,7 @@ fn run_analysis(path: &PathBuf, learn: bool) {
         ctx.kills(),
         &game_events,
         &observed_damage,
+        &linked_shot_damage,
     );
     report.provenance = AnalysisProvenance {
         engine_version: format!("sentinel-cli@{}", env!("CARGO_PKG_VERSION")),
@@ -507,6 +513,7 @@ pub(crate) fn build_round_contexts(
     kills: &[sentinel_core::KillEvent],
     events: &[sentinel_events::kinds::GameEvent],
     damage: &[ObservedDamage],
+    linked_shot_damage: &[LinkedShotDamage],
 ) -> Vec<RoundContext> {
     adapter
         .rounds()
@@ -604,7 +611,22 @@ pub(crate) fn build_round_contexts(
                         })
                         .cloned()
                         .collect();
-                    Encounter::from_kill_with_damage(round.number(), kill, direct_damage)
+                    let linked_shot_damage = linked_shot_damage
+                        .iter()
+                        .filter(|entry| {
+                            entry.shot_tick >= start_tick
+                                && entry.damage_tick <= kill.tick
+                                && entry.attacker_id == kill.attacker_id
+                                && entry.victim_id == kill.victim_id
+                        })
+                        .cloned()
+                        .collect();
+                    Encounter::from_kill_with_combat(
+                        round.number(),
+                        kill,
+                        direct_damage,
+                        linked_shot_damage,
+                    )
                 })
                 .collect();
             RoundContext {
