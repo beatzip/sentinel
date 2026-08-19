@@ -453,13 +453,12 @@ impl VisibilityEngine {
         }
 
         // Step 2: If we have a BVH (from .tri files), use 3D raycasting for accurate results
-        if let Some(ref _bvh) = map.bvh {
-            // Use 3D raycasting
+        if map.bvh.is_some() {
+            // Use a finite segment: an obstacle beyond the target must not block visibility.
             let from_map: sentinel_map::Vec3 = observer.position.into();
-            let direction: sentinel_map::Vec3 =
-                (target.position - observer.position).normalize().into();
+            let to_map: sentinel_map::Vec3 = target.position.into();
 
-            return map.line_blocked_3d(from_map, direction);
+            return map.segment_blocked_3d(from_map, to_map);
         }
 
         // Step 3: Fallback to 2D raycasting (ignore Z for wall checking)

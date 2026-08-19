@@ -489,6 +489,26 @@ impl MapData {
         self.line_blocked(from, to)
     }
 
+    /// Check whether the finite segment from `from` to `to` intersects map geometry.
+    /// Unlike [`line_blocked_3d`], an obstacle beyond the target does not block visibility.
+    pub fn segment_blocked_3d(&self, from: Vec3, to: Vec3) -> bool {
+        let distance = from.distance_to(&to);
+        if distance <= 0.0001 {
+            return false;
+        }
+        let direction = Vec3::new(
+            (to.x - from.x) / distance,
+            (to.y - from.y) / distance,
+            (to.z - from.z) / distance,
+        );
+        if let Some(ref bvh) = self.bvh {
+            return self
+                .ray_intersect_bvh(from, direction, bvh)
+                .is_some_and(|hit_distance| hit_distance < distance - 0.0001);
+        }
+        self.line_blocked(Vec2::new(from.x, from.y), Vec2::new(to.x, to.y))
+    }
+
     /// Ray-triangle intersection using BVH (returns hit distance if intersection)
     fn ray_intersect_bvh(&self, origin: Vec3, direction: Vec3, node: &BVHNode3D) -> Option<f32> {
         // Check if ray misses AABB

@@ -682,5 +682,16 @@ mod tri_tests {
             map.line_blocked_3d(origin, direction),
             "Ray should be blocked by wall BVH"
         );
+
+        let before_wall = Vec3::new(50.0, -10.0, 50.0);
+        let beyond_wall = Vec3::new(50.0, 50.0, 50.0);
+        assert!(
+            map.segment_blocked_3d(origin, beyond_wall),
+            "Segment crossing the wall should be blocked"
+        );
+        assert!(
+            !map.segment_blocked_3d(origin, before_wall),
+            "Finite segment ending before the wall must remain clear"
+        );
     }
 }

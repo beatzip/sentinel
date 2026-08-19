@@ -55,6 +55,8 @@
 - [x] Проверить предложения из приложенного файла по текущему коду Sentinel и применить только подтверждённые минимальные исправления.
 - [x] Диагностировать Source2 raw properties для позиции, углов, team и round boundaries на одной локальной CS2 demo.
 - [x] Исправить только подтверждённый Source2 property mapping и повторно проверить replay quality gate.
+- [x] Проверить coordinate-frame compatibility Source2 positions, map geometry и visibility raycast path.
+- [x] Исправить только подтверждённую причину пустых visible_pairs, добавить regression tests и проверить demo 3.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).
