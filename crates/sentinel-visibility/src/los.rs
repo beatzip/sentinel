@@ -36,6 +36,7 @@ pub struct RadarInfo {
     pub visible: bool,
     pub reason: String,
     pub spotted_by: Vec<PlayerId>,
+    pub spotted_enemies: Vec<PlayerId>,
 }
 
 /// Comprehensive visibility state for a player at a tick
@@ -156,6 +157,16 @@ impl VisibilityEngine {
 
     /// Check if observer can hear target
     pub fn can_hear(state: &TickState, observer: PlayerId, target: PlayerId) -> AudioResult {
+        Self::can_hear_with_map(state, observer, target, &MapData::dust2())
+    }
+
+    /// Check if observer can hear target using the active map geometry.
+    pub fn can_hear_with_map(
+        state: &TickState,
+        observer: PlayerId,
+        target: PlayerId,
+        map: &MapData,
+    ) -> AudioResult {
         let observer = match state.players.iter().find(|p| p.id == observer) {
             Some(p) => p,
             None => {
@@ -214,9 +225,8 @@ impl VisibilityEngine {
         // Calculate volume with distance attenuation
         let base_volume = 1.0 - (distance / max_distance);
 
-        // Wall attenuation - now uses proper raycasting
-        // Use a default map for backward compatibility
-        let wall_attenuation = if Self::is_line_blocked(observer, target, &MapData::dust2()) {
+        // Wall attenuation uses the active map's raycast geometry.
+        let wall_attenuation = if Self::is_line_blocked(observer, target, map) {
             0.3 // Walls reduce sound by ~70%
         } else {
             1.0
@@ -241,6 +251,7 @@ impl VisibilityEngine {
                     visible: false,
                     reason: "Player not found".to_string(),
                     spotted_by: Vec::new(),
+                    spotted_enemies: Vec::new(),
                 };
             }
         };
@@ -251,6 +262,7 @@ impl VisibilityEngine {
                 visible: false,
                 reason: "No team".to_string(),
                 spotted_by: Vec::new(),
+                spotted_enemies: Vec::new(),
             };
         }
 
@@ -264,6 +276,7 @@ impl VisibilityEngine {
         // (i.e., teammates that could provide intel to the player).
 
         let mut spotted_by = Vec::new();
+        let mut spotted_enemies = Vec::new();
         for teammate in &state.players {
             if teammate.team == my_team && teammate.id != player && teammate.alive {
                 // Check if this teammate can see any enemies
@@ -274,7 +287,9 @@ impl VisibilityEngine {
                             if !spotted_by.contains(&teammate.id) {
                                 spotted_by.push(teammate.id);
                             }
-                            break; // teammate spotted at least one enemy, move on
+                            if !spotted_enemies.contains(&other.id) {
+                                spotted_enemies.push(other.id);
+                            }
                         }
                     }
                 }
@@ -282,13 +297,18 @@ impl VisibilityEngine {
         }
 
         RadarInfo {
-            visible: !spotted_by.is_empty(),
-            reason: if spotted_by.is_empty() {
+            visible: !spotted_enemies.is_empty(),
+            reason: if spotted_enemies.is_empty() {
                 "No spotted enemies".to_string()
             } else {
-                format!("Spotted by {} teammates", spotted_by.len())
+                format!(
+                    "{} enemies spotted by {} teammates",
+                    spotted_enemies.len(),
+                    spotted_by.len()
+                )
             },
             spotted_by,
+            spotted_enemies,
         }
     }
 
@@ -310,7 +330,10 @@ impl VisibilityEngine {
             .map(|p| p.team);
 
         for other in &state.players {
-            if other.id == player || !other.alive {
+            if other.id == player
+                || !other.alive
+                || player_team.is_some_and(|team| other.team == team)
+            {
                 continue;
             }
 
@@ -321,29 +344,15 @@ impl VisibilityEngine {
             }
 
             // Check if audible
-            let audio_result = Self::can_hear(state, player, other.id);
+            let audio_result = Self::can_hear_with_map(state, player, other.id, map);
             if audio_result.audible {
                 audible_enemies.push(other.id);
             }
         }
 
-        // Check radar: teammates that can see enemies (intel) + all alive teammates
+        // Radar intel consists of enemies currently spotted by teammates.
         let radar_info = Self::radar_knowledge(state, player, map);
-        for teammate_id in &radar_info.spotted_by {
-            radar_visible.push(*teammate_id);
-        }
-        // Also add all alive teammates (always on radar in CS2)
-        if let Some(team) = player_team {
-            for other in &state.players {
-                if other.team == team
-                    && other.id != player
-                    && other.alive
-                    && !radar_visible.contains(&other.id)
-                {
-                    radar_visible.push(other.id);
-                }
-            }
-        }
+        radar_visible.extend(radar_info.spotted_enemies.iter().copied());
 
         // Use radar_knowledge result for spotted_by (teammates that spotted enemies)
         let spotted_by = radar_info.spotted_by;

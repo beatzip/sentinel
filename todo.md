@@ -39,3 +39,17 @@
 - [x] Исправить Source2 map metadata и event-to-Steam kill resolution до использования score этих демо для calibration или verdict.
 - [x] Исправить map metadata и event slot-ID-to-Steam-ID resolution на предоставленных Nuke/Mirage demos.
 - [x] Повторно обработать локальные Nuke/Mirage после parser fixes и подтвердить корректность report/replay artifacts.
+- [ ] Собрать описательную статистику feature vectors локальных Nuke/Mirage без использования их labels в обучении или evaluation metrics.
+- [x] Проверить CLI contracts для calibration, regression и A/B evaluation на unknown corpus и зафиксировать допустимый результат.
+- [ ] Получить human-review решение от пользователя до изменения unknown/verified labels локальных демо.
+- [x] Обработать предоставленные пользователем подозрительные demo как локальный unknown corpus с evidence-only отчётами.
+- [x] Сопоставить evidence между предоставленными demo после их полного поступления без автоматического cheat verdict.
+- [x] Выполнить технические A/B и regression contract-проверки по трём обработанным CS2 demo без использования unknown labels как ground truth.
+- [x] Подготовить human-review package для трёх обработанных CS2 demo с проверяемыми evidence references.
+- [ ] Применить только утверждённые пользователем review labels через promotion workflow, затем повторить corpus-backed evaluation.
+- [x] Зафиксировать утверждённый пользователем match-level review label `legit` для demo 1 с limitation о невалидной player-specific evidence.
+- [x] Аудировать и исправить shared fallback paths aim_velocity, wall и round tracking после подтверждения в коде.
+- [x] Провести одинаковый evidence audit для reports demo 2 и demo 3 перед любыми review labels.
+- [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
+- [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
+- [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).

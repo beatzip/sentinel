@@ -32,7 +32,7 @@ impl WorldState {
                 carrier: PlayerId::new(0),
             },
             round: RoundState {
-                round_number: 1,
+                round_number: 0,
                 phase: RoundPhase::Freezetime,
                 clock: 115.0,
                 t_score: 0,

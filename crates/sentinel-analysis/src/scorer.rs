@@ -103,6 +103,9 @@ impl Scorer {
         fv.features
             .iter()
             .filter_map(|(name, result)| {
+                if result.confidence <= 0.0 {
+                    return None;
+                }
                 self.config.baselines.get(name).map(|baseline| {
                     let z_score = baseline.z_score(result.value);
                     let anomaly_score = baseline.anomaly_score(result.value);
@@ -260,6 +263,9 @@ impl Scorer {
         let feature_categories = self.get_feature_categories();
 
         for (name, score) in feature_scores {
+            if !score.is_anomalous {
+                continue;
+            }
             if let Some(category) = feature_categories.get(name.as_str()) {
                 category_scores
                     .entry(category.to_string())
@@ -408,6 +414,24 @@ mod tests {
     }
 
     #[test]
+    fn test_unavailable_feature_does_not_create_score() {
+        let scorer = Scorer::default_cs2();
+        let mut features = BTreeMap::new();
+        features.insert(
+            "aim_velocity".to_string(),
+            FeatureResult::new(0.0).with_confidence(0.0),
+        );
+        let fv = FeatureVector {
+            tick: Tick(100),
+            round: 0,
+            player: PlayerId::new(1),
+            features,
+        };
+
+        assert!(scorer.score_feature_vector(&fv).is_empty());
+    }
+
+    #[test]
     fn test_score_player() {
         let scorer = Scorer::default_cs2();
 
@@ -423,6 +447,7 @@ mod tests {
 
         let result = scorer.score_player(PlayerId::new(1), &[&fv]);
         assert_eq!(result.player, PlayerId::new(1));
-        assert!(result.category_scores.contains_key("aim"));
+        assert!(result.category_scores.is_empty());
+        assert_eq!(result.overall_score.overall, 0.0);
     }
 }

@@ -75,7 +75,9 @@ impl FeatureEngine {
 
         FeatureVector {
             tick,
-            round: ctx.current_round(),
+            round: ctx
+                .state_at(tick)
+                .map_or(0, |state| state.round.round_number),
             player,
             features,
         }

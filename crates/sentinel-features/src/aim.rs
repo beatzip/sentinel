@@ -98,21 +98,38 @@ impl FeatureExt for AimVelocity {
     }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
-        let prev_tick = Tick(tick.0.saturating_sub(1));
         let current = ctx
             .state_at(tick)
             .and_then(|s| s.players.iter().find(|p| p.id == player));
-        let previous = ctx
-            .state_at(prev_tick)
-            .and_then(|s| s.players.iter().find(|p| p.id == player));
+        let previous = ctx.state_before(tick);
 
         let velocity = match (current, previous) {
-            (Some(curr), Some(prev)) => {
+            (Some(curr), Some(previous)) => {
+                let Some(prev) = previous.players.iter().find(|p| p.id == player) else {
+                    return FeatureResult::new(0.0)
+                        .with_confidence(0.0)
+                        .with_metadata("availability", "missing_history");
+                };
+                let tick_delta = tick.0.saturating_sub(previous.tick.0);
+                if tick_delta == 0
+                    || (curr.view_angles.pitch == 0.0
+                        && curr.view_angles.yaw == 0.0
+                        && prev.view_angles.pitch == 0.0
+                        && prev.view_angles.yaw == 0.0)
+                {
+                    return FeatureResult::new(0.0)
+                        .with_confidence(0.0)
+                        .with_metadata("availability", "unavailable_angles");
+                }
                 let yaw_diff = (curr.view_angles.yaw - prev.view_angles.yaw).abs() as f64;
                 let pitch_diff = (curr.view_angles.pitch - prev.view_angles.pitch).abs() as f64;
-                (yaw_diff + pitch_diff) * 64.0
+                (yaw_diff + pitch_diff) * 64.0 / f64::from(tick_delta)
             }
-            _ => 120.0,
+            _ => {
+                return FeatureResult::new(0.0)
+                    .with_confidence(0.0)
+                    .with_metadata("availability", "missing_history");
+            }
         };
         FeatureResult::new(velocity)
     }

@@ -68,6 +68,14 @@ impl MatchContext {
             .map(|idx| &self.states[idx])
     }
 
+    /// Get the latest available state strictly before a tick.
+    pub fn state_before(&self, tick: Tick) -> Option<&TickState> {
+        self.states
+            .partition_point(|state| state.tick.0 < tick.0)
+            .checked_sub(1)
+            .and_then(|index| self.states.get(index))
+    }
+
     /// Get all tick states in a range [from, to] (inclusive) using binary search
     pub fn states_in_range(&self, from: Tick, to: Tick) -> &[TickState] {
         if self.states.is_empty() {
@@ -268,5 +276,15 @@ mod tests {
         let ctx = MatchContext::new(vec![]);
         let slice = ctx.states_in_range(Tick(0), Tick(100));
         assert!(slice.is_empty());
+    }
+
+    #[test]
+    fn state_before_uses_previous_available_snapshot() {
+        let ctx = make_context();
+        assert_eq!(
+            ctx.state_before(Tick(250)).map(|state| state.tick),
+            Some(Tick(200))
+        );
+        assert!(ctx.state_before(Tick(0)).is_none());
     }
 }
