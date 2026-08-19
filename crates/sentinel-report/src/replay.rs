@@ -2,6 +2,61 @@ use serde::{Deserialize, Serialize};
 
 use super::{LinkedShotDamage, ObservedDamage, ObservedShot, RoundContext};
 
+/// Availability state for one candidate shot-to-damage spatial trace.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SpatialEvidenceStatus {
+    Available,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OriginLineOfSight {
+    Clear,
+    BlockedByWorld,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SpatialEvidenceReason {
+    OriginToOriginLosOnly,
+    MissingMapCollision,
+    MissingPlayerSnapshot,
+    InvalidPosition,
+    MissingEyePosition,
+    DeadPlayer,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum UnsupportedSpatialCapability {
+    EyePosition,
+    Hitboxes,
+    PenetrationModel,
+}
+
+/// A quality-gated world trace for a candidate linked shot and damage event.
+///
+/// It intentionally traces player origins only. This is neither a hitbox intersection nor a
+/// bullet-penetration calculation and cannot create a cheat verdict by itself.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SpatialShotEvidence {
+    pub shot_tick: u32,
+    pub damage_tick: u32,
+    pub snapshot_tick: Option<u32>,
+    pub attacker_id: u64,
+    pub victim_id: u64,
+    pub status: SpatialEvidenceStatus,
+    pub reason: SpatialEvidenceReason,
+    pub line_of_sight: OriginLineOfSight,
+    pub attacker_origin: Option<[f32; 3]>,
+    pub victim_origin: Option<[f32; 3]>,
+    #[serde(default)]
+    pub unsupported_capabilities: Vec<UnsupportedSpatialCapability>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ReplayQualityStatus {
@@ -55,6 +110,9 @@ pub struct ReplayData {
     /// Candidate nearest-prior observed shot links for each observed damage event.
     #[serde(default)]
     pub linked_shot_damage: Vec<LinkedShotDamage>,
+    /// Quality-gated origin-to-origin LOS facts for linked combat events.
+    #[serde(default)]
+    pub spatial_evidence: Vec<SpatialShotEvidence>,
     /// Gate that prevents anti-cheat interpretation when essential replay telemetry is absent.
     #[serde(default)]
     pub quality: ReplayQuality,
@@ -194,6 +252,7 @@ mod tests {
                 dmg_health_real: 10,
             }],
             linked_shot_damage: vec![],
+            spatial_evidence: vec![],
             quality: ReplayQuality::default(),
         }
     }
