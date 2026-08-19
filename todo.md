@@ -58,6 +58,7 @@
 - [x] Проверить coordinate-frame compatibility Source2 positions, map geometry и visibility raycast path.
 - [x] Исправить только подтверждённую причину пустых visible_pairs, добавить regression tests и проверить demo 3.
 - [x] Добавить edge-case regression tests bounded segment raycast: касание стены, совпадающие точки и пустая geometry.
+- [x] Добавить и измерить Criterion benchmark bounded segment raycast на фиксированных synthetic и production-map сценариях.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).
