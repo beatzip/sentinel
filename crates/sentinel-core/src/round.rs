@@ -5,6 +5,7 @@ use super::player::Team;
 /// Round phase
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RoundPhase {
+    Warmup,
     Freezetime,
     Live,
     Over,

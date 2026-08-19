@@ -395,6 +395,34 @@ fn are_collinear(p1: &Vec2, p2: &Vec2, point: &Vec2, tolerance: f32) -> bool {
 pub fn load_map_by_name(map_name: &str) -> Option<MapData> {
     let name_lower = map_name.to_lowercase();
 
+    let vphys_search_paths = [
+        std::path::Path::new("vphys"),
+        std::path::Path::new("data/vphys"),
+        std::path::Path::new("assets/vphys"),
+        std::path::Path::new("crates/sentinel-map/assets/vphys"),
+    ];
+    let vphys_names = if name_lower.starts_with("de_")
+        || name_lower.starts_with("cs_")
+        || name_lower.starts_with("ar_")
+    {
+        vec![format!("{name_lower}.vphys")]
+    } else {
+        vec![
+            format!("de_{name_lower}.vphys"),
+            format!("{name_lower}.vphys"),
+        ]
+    };
+    for search_path in &vphys_search_paths {
+        for name in &vphys_names {
+            let vphys_path = search_path.join(name);
+            if vphys_path.exists()
+                && let Ok(map_data) = load_map_from_vphys(&vphys_path)
+            {
+                return Some(map_data);
+            }
+        }
+    }
+
     // Check if it's one of our built-in maps
     if name_lower.contains("dust2") {
         return Some(MapData::dust2());

@@ -47,6 +47,8 @@ pub enum EventKind {
     RoundStart,
     RoundEnd,
     RoundFreezeEnd,
+    WarmupStart,
+    WarmupEnd,
     RoundMVP,
 
     // Kill events

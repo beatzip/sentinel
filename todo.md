@@ -59,6 +59,10 @@
 - [x] Исправить только подтверждённую причину пустых visible_pairs, добавить regression tests и проверить demo 3.
 - [x] Добавить edge-case regression tests bounded segment raycast: касание стены, совпадающие точки и пустая geometry.
 - [x] Добавить и измерить Criterion benchmark bounded segment raycast на фиксированных synthetic и production-map сценариях.
+- [x] Аудировать Source2 PacketEntities/Anim Graph 2 decoding, map geometry loading и game-state phase reconstruction на реальной demo.
+- [x] Сохранить Source2 entity-prop trace fixture для проверки pawn telemetry после обновлений формата demo.
+- [x] Расширить state machine подтверждёнными round-freeze/warmup событиями и исключить non-live ticks из feature analysis.
+- [x] Автоматически предпочитать локальные VPhys collision assets для map LOS, сохраняя `.tri` как совместимый fallback.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).

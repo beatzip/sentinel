@@ -91,12 +91,20 @@ impl FeatureEngine {
     ) -> Vec<FeatureVector> {
         let mut vectors = Vec::new();
 
-        for state in ctx.states() {
-            let fv = self.compute_all(ctx, state.tick, player);
+        for tick in Self::feature_ticks(ctx) {
+            let fv = self.compute_all(ctx, tick, player);
             vectors.push(fv);
         }
 
         vectors
+    }
+
+    fn feature_ticks(ctx: &MatchContext) -> impl Iterator<Item = Tick> + '_ {
+        let has_live_phase = ctx.states().iter().any(|state| state.round.is_live());
+        ctx.states()
+            .iter()
+            .filter(move |state| !has_live_phase || state.round.is_live())
+            .map(|state| state.tick)
     }
 }
 
@@ -109,10 +117,43 @@ impl Default for FeatureEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sentinel_core::{BombState, PlayerId, RoundPhase, RoundState, TickState};
 
     #[test]
     fn test_engine_creation() {
         let engine = FeatureEngine::new();
         assert!(!engine.features.is_empty());
+    }
+
+    #[test]
+    fn compute_match_skips_non_live_ticks_when_live_phase_is_known() {
+        let state = |tick, phase| TickState {
+            tick: Tick(tick),
+            players: Vec::new(),
+            grenades: Vec::new(),
+            bomb: BombState::Carried {
+                carrier: PlayerId::new(0),
+            },
+            round: RoundState {
+                round_number: 1,
+                phase,
+                clock: 0.0,
+                t_score: 0,
+                ct_score: 0,
+                winner: None,
+                start_tick: 0,
+            },
+        };
+        let ctx = MatchContext::new(vec![
+            state(10, RoundPhase::Warmup),
+            state(20, RoundPhase::Freezetime),
+            state(30, RoundPhase::Live),
+            state(40, RoundPhase::Over),
+        ]);
+
+        assert_eq!(
+            FeatureEngine::feature_ticks(&ctx).collect::<Vec<_>>(),
+            vec![Tick(30)]
+        );
     }
 }

@@ -29,6 +29,47 @@ fn coordinate_from_cell(cell: u16, offset: f32) -> f32 {
     f32::from(cell) * ORIGIN_CELL_SIZE - ORIGIN_WORLD_OFFSET + offset
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GameRulesPhase {
+    Warmup,
+    Freezetime,
+    Live,
+}
+
+fn game_rules_transition_events(
+    previous: Option<GameRulesPhase>,
+    current: GameRulesPhase,
+    tick: Tick,
+    round: Option<u32>,
+) -> Vec<Source2Event> {
+    let event = |kind, data| Source2Event { tick, kind, data };
+    let round_start = || {
+        event(
+            EventKind::RoundStart,
+            round
+                .map(|number| vec![("round".to_string(), EventData::Int(i64::from(number)))])
+                .unwrap_or_default(),
+        )
+    };
+
+    match (previous, current) {
+        (Some(previous), current) if previous == current => Vec::new(),
+        (_, GameRulesPhase::Warmup) => vec![event(EventKind::WarmupStart, Vec::new())],
+        (Some(GameRulesPhase::Warmup), GameRulesPhase::Freezetime) => {
+            vec![event(EventKind::WarmupEnd, Vec::new()), round_start()]
+        }
+        (Some(GameRulesPhase::Live), GameRulesPhase::Freezetime) => {
+            vec![event(EventKind::RoundEnd, Vec::new()), round_start()]
+        }
+        (None, GameRulesPhase::Freezetime) if round.is_none() => Vec::new(),
+        (_, GameRulesPhase::Freezetime) => vec![round_start()],
+        (Some(GameRulesPhase::Freezetime), GameRulesPhase::Live) => {
+            vec![event(EventKind::RoundFreezeEnd, Vec::new())]
+        }
+        (_, GameRulesPhase::Live) => Vec::new(),
+    }
+}
+
 pub struct Source2Adapter {
     metadata: MatchMetadata,
     events: Vec<Source2Event>,
@@ -88,6 +129,8 @@ struct DemoCollector {
     trace_properties: bool,
     trace_max_tick: u32,
     trace_samples: usize,
+    trace_game_rules_samples: usize,
+    game_rules_phase: Option<GameRulesPhase>,
 }
 
 #[observer]
@@ -115,7 +158,10 @@ impl DemoCollector {
             "player_sound" => EventKind::PlayerSound,
             "weapon_fire" => EventKind::WeaponFire,
             "round_start" => EventKind::RoundStart,
+            "round_freeze_end" => EventKind::RoundFreezeEnd,
             "round_end" => EventKind::RoundEnd,
+            "round_announce_warmup" => EventKind::WarmupStart,
+            "warmup_end" => EventKind::WarmupEnd,
             "bomb_plant" => EventKind::BombPlant,
             "bomb_defuse" => EventKind::BombDefuse,
             "smokegrenade_detonate" => EventKind::SmokeDetonate,
@@ -256,12 +302,16 @@ impl DemoCollector {
         let class_name = entity.class().name();
         let tick = Tick(self.current_tick);
 
-        if self.trace_properties
-            && self.current_tick <= self.trace_max_tick
-            && self.trace_samples < 20
-            && matches!(class_name, "CCSPlayerController" | "CCSPlayerPawn")
-        {
-            self.trace_samples += 1;
+        let is_player_entity = matches!(class_name, "CCSPlayerController" | "CCSPlayerPawn");
+        let is_game_rules = class_name == "CCSGameRulesProxy";
+        let trace_allowed = (is_player_entity && self.trace_samples < 20)
+            || (is_game_rules && self.trace_game_rules_samples < 5);
+        if self.trace_properties && self.current_tick <= self.trace_max_tick && trace_allowed {
+            if is_game_rules {
+                self.trace_game_rules_samples += 1;
+            } else {
+                self.trace_samples += 1;
+            }
             let fields = entity
                 .fields()
                 .into_iter()
@@ -269,6 +319,7 @@ impl DemoCollector {
                     let name = field.name.to_ascii_lowercase();
                     [
                         "origin", "cell", "angle", "rotation", "team", "pawn", "steam", "user",
+                        "phase", "warm", "freeze", "buy", "round",
                     ]
                     .iter()
                     .any(|needle| name.contains(needle))
@@ -280,6 +331,10 @@ impl DemoCollector {
                 self.current_tick,
                 entity.index(),
             );
+        }
+
+        if is_game_rules {
+            self.collect_game_rules_phase(entity, tick);
         }
 
         // Player controller - extract name and team
@@ -413,6 +468,38 @@ impl DemoCollector {
 
     fn get_vec3(&self, entity: &Entity, name: &str) -> Option<(f32, f32, f32)> {
         entity.get_property(name).ok()?.try_into().ok()
+    }
+
+    fn collect_game_rules_phase(&mut self, entity: &Entity, tick: Tick) {
+        let warmup = self.get_bool(entity, "m_pGameRules.m_bWarmupPeriod");
+        let freeze = self.get_bool(entity, "m_pGameRules.m_bFreezePeriod");
+        let Some((warmup, freeze)) = warmup.zip(freeze) else {
+            return;
+        };
+        let phase = if warmup {
+            GameRulesPhase::Warmup
+        } else if freeze {
+            GameRulesPhase::Freezetime
+        } else {
+            GameRulesPhase::Live
+        };
+        let round = self
+            .get_i32(entity, "m_pGameRules.m_iRoundStartRoundNumber")
+            .and_then(|number| u32::try_from(number).ok())
+            .filter(|number| *number > 0);
+        let transitions = game_rules_transition_events(self.game_rules_phase, phase, tick, round);
+        self.game_rules_phase = Some(phase);
+        for transition in transitions {
+            let duplicate = self
+                .events
+                .iter()
+                .rev()
+                .take_while(|event| event.tick == tick)
+                .any(|event| event.kind == transition.kind);
+            if !duplicate {
+                self.events.push(transition);
+            }
+        }
     }
 
     fn get_u16(&self, entity: &Entity, name: &str) -> Option<u16> {
@@ -758,5 +845,36 @@ mod tests {
     fn decodes_quantized_cell_origin_and_controller_handle() {
         assert!((coordinate_from_cell(30, 566.0233) + 457.9767).abs() < 0.001);
         assert_eq!(controller_index_from_handle(0x008b_4455), 0x0455);
+    }
+
+    #[test]
+    fn game_rules_phase_changes_produce_round_events() {
+        let kinds = |previous, current| {
+            game_rules_transition_events(previous, current, Tick(10), Some(3))
+                .into_iter()
+                .map(|event| event.kind)
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(
+            kinds(None, GameRulesPhase::Warmup),
+            vec![EventKind::WarmupStart]
+        );
+        assert_eq!(
+            kinds(Some(GameRulesPhase::Warmup), GameRulesPhase::Freezetime),
+            vec![EventKind::WarmupEnd, EventKind::RoundStart]
+        );
+        assert_eq!(
+            kinds(Some(GameRulesPhase::Freezetime), GameRulesPhase::Live),
+            vec![EventKind::RoundFreezeEnd]
+        );
+        assert_eq!(
+            kinds(Some(GameRulesPhase::Live), GameRulesPhase::Freezetime),
+            vec![EventKind::RoundEnd, EventKind::RoundStart]
+        );
+        assert!(
+            game_rules_transition_events(None, GameRulesPhase::Freezetime, Tick(10), None)
+                .is_empty()
+        );
     }
 }

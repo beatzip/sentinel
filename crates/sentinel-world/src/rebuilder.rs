@@ -194,7 +194,10 @@ impl WorldRebuilder {
             EventKind::MolotovDetonate => self.handle_grenade_detonate(event),
             EventKind::BombPlant => self.handle_bomb_plant(event),
             EventKind::BombDefuse => self.handle_bomb_defuse(event),
+            EventKind::WarmupStart => self.handle_warmup_start(),
+            EventKind::WarmupEnd => self.handle_warmup_end(),
             EventKind::RoundStart => self.handle_round_start(event),
+            EventKind::RoundFreezeEnd => self.handle_round_freeze_end(),
             EventKind::RoundEnd => self.handle_round_end(event),
             _ => {} // Other events don't affect world state directly
         }
@@ -414,12 +417,16 @@ impl WorldRebuilder {
 
     /// Handle round start event
     fn handle_round_start(&mut self, event: &GameEvent) {
-        if let Some(round_num) = event.data.get("round").and_then(|v| v.as_i64()) {
-            self.world.round.round_number = round_num as u32;
-            self.world.round.phase = RoundPhase::Live;
-            self.world.round.clock = 115.0;
-            self.world.round.start_tick = event.tick.0;
-        }
+        self.world.round.round_number = event
+            .data
+            .get("round")
+            .and_then(|value| value.as_i64())
+            .map(|number| number as u32)
+            .unwrap_or(self.world.round.round_number.saturating_add(1));
+        self.world.round.phase = RoundPhase::Freezetime;
+        self.world.round.clock = 115.0;
+        self.world.round.start_tick = event.tick.0;
+        self.world.round.winner = None;
 
         // Reset all players to alive
         for player in self.world.players.values_mut() {
@@ -429,6 +436,25 @@ impl WorldRebuilder {
 
         // Clear grenades
         self.world.grenades.clear();
+    }
+
+    /// A CS2 round becomes live only when the freeze/buy phase ends.
+    fn handle_round_freeze_end(&mut self) {
+        if self.world.round.phase != RoundPhase::Warmup {
+            self.world.round.phase = RoundPhase::Live;
+        }
+    }
+
+    fn handle_warmup_start(&mut self) {
+        self.world.round.round_number = 0;
+        self.world.round.phase = RoundPhase::Warmup;
+        self.world.round.winner = None;
+    }
+
+    fn handle_warmup_end(&mut self) {
+        if self.world.round.phase == RoundPhase::Warmup {
+            self.world.round.phase = RoundPhase::Freezetime;
+        }
     }
 
     /// Handle round end event
@@ -461,7 +487,7 @@ impl Default for WorldRebuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sentinel_events::kinds::{EventKind, player_death, round_start};
+    use sentinel_events::kinds::{EventKind, make_event, player_death, round_start};
 
     #[test]
     fn test_rebuilder_empty() {
@@ -480,6 +506,26 @@ mod tests {
         // Should have states for tick 0 (initial) and tick 100 (round start)
         assert_eq!(states.len(), 2);
         assert_eq!(states[1].round.round_number, 1);
+        assert_eq!(states[1].round.phase, RoundPhase::Freezetime);
+    }
+
+    #[test]
+    fn test_rebuilder_round_phase_transitions() {
+        let mut rebuilder = WorldRebuilder::new();
+        let events = vec![
+            make_event(EventKind::WarmupStart, Tick(10), vec![]),
+            make_event(EventKind::WarmupEnd, Tick(20), vec![]),
+            make_event(EventKind::RoundStart, Tick(30), vec![]),
+            make_event(EventKind::RoundFreezeEnd, Tick(40), vec![]),
+            make_event(EventKind::RoundEnd, Tick(50), vec![]),
+        ];
+
+        let states = rebuilder.process_events(&events);
+        assert_eq!(states[1].round.phase, RoundPhase::Warmup);
+        assert_eq!(states[2].round.phase, RoundPhase::Freezetime);
+        assert_eq!(states[3].round.phase, RoundPhase::Freezetime);
+        assert_eq!(states[4].round.phase, RoundPhase::Live);
+        assert_eq!(states[5].round.phase, RoundPhase::Over);
     }
 
     #[test]
