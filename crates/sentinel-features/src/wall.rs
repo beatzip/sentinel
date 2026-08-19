@@ -124,69 +124,10 @@ impl FeatureExt for PrefireRate {
     }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
-        let state = match ctx.state_at(tick) {
-            Some(s) => s,
-            None => return FeatureResult::new(0.0),
-        };
-        let observer = match state.players.iter().find(|p| p.id == player) {
-            Some(p) => p,
-            None => return FeatureResult::new(0.0),
-        };
-
-        // Check if player is shooting (has a gun and is active)
-        if !observer.weapon.is_gun() {
-            return FeatureResult::new(0.0);
-        }
-
-        // Look back 5 seconds for recent kills/shots
-        let window_start = tick.0.saturating_sub(5 * 64);
-        let window_states = ctx.states_in_range(Tick(window_start), tick);
-
-        if window_states.is_empty() {
-            return FeatureResult::new(0.0);
-        }
-
-        // Count shots where target was not visible
-        let mut prefire_shots = 0;
-        let mut total_shots = 0;
-
-        for state in window_states {
-            if let Some(obs) = state.players.iter().find(|p| p.id == player)
-                && obs.weapon.is_gun()
-            {
-                total_shots += 1;
-
-                // Check if any enemy was visible at this tick
-                let target_team = match obs.team {
-                    sentinel_core::Team::Terrorist => sentinel_core::Team::CounterTerrorist,
-                    sentinel_core::Team::CounterTerrorist => sentinel_core::Team::Terrorist,
-                    _ => continue,
-                };
-
-                let any_visible = state
-                    .players
-                    .iter()
-                    .filter(|p| p.team == target_team && p.alive)
-                    .any(|enemy| {
-                        VisibilityEngine::can_see_with_map(state, obs.id, enemy.id, ctx.map())
-                            .visible
-                    });
-
-                if !any_visible {
-                    prefire_shots += 1;
-                }
-            }
-        }
-
-        let prefire_rate = if total_shots > 0 {
-            prefire_shots as f64 / total_shots as f64
-        } else {
-            0.0
-        };
-
-        FeatureResult::new(prefire_rate.min(1.0))
-            .with_metadata("prefire_shots".to_string(), prefire_shots.to_string())
-            .with_metadata("total_shots".to_string(), total_shots.to_string())
+        let _ = (ctx, tick, player);
+        FeatureResult::new(0.0)
+            .with_confidence(0.0)
+            .with_metadata("availability", "requires_observed_shot_target_linkage")
     }
 }
 

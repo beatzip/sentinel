@@ -49,23 +49,10 @@ impl FeatureExt for CounterStrafeAccuracy {
     }
 
     fn compute(&self, ctx: &MatchContext, tick: Tick, player: PlayerId) -> FeatureResult {
-        let state = match ctx.state_at(tick) {
-            Some(s) => s,
-            None => return FeatureResult::new(0.7),
-        };
-        let p = match state.players.iter().find(|p| p.id == player) {
-            Some(p) => p,
-            None => return FeatureResult::new(0.7),
-        };
-        let speed = p.velocity.length() as f64;
-        let accuracy = if speed < 20.0 {
-            0.9
-        } else if speed < 50.0 {
-            0.6
-        } else {
-            0.2
-        };
-        FeatureResult::new(accuracy)
+        let _ = (ctx, tick, player);
+        FeatureResult::new(0.0)
+            .with_confidence(0.0)
+            .with_metadata("availability", "requires_shot_and_input_events")
     }
 }
 

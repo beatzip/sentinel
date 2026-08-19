@@ -63,6 +63,10 @@
 - [x] Сохранить Source2 entity-prop trace fixture для проверки pawn telemetry после обновлений формата demo.
 - [x] Расширить state machine подтверждёнными round-freeze/warmup событиями и исключить non-live ticks из feature analysis.
 - [x] Автоматически предпочитать локальные VPhys collision assets для map LOS, сохраняя `.tri` как совместимый fallback.
+- [x] Аудировать Source2 inputs для counter-strafe, TTD, crosshair placement, triggerbot, aim-assist и wallhack/ESP evidence.
+- [x] Обнулить confidence placeholder aim/movement/wall metrics при отсутствии observed shots, hitboxes, keys или target attribution.
+- [x] Исправить wrap-around yaw velocity и availability gate для angular trajectory evidence.
+- [ ] Спроектировать event-linked TTD contract после добавления shot/damage stream в MatchContext; не выводить triggerbot verdict без hitbox crossings.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).
