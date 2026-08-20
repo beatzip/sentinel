@@ -1,14 +1,20 @@
 use sha2::{Digest, Sha256};
-use std::{collections::BTreeSet, fs::File, io::Read, path::Path};
+use std::{
+    collections::BTreeSet,
+    fs::File,
+    io::Read,
+    path::{Component, Path, PathBuf},
+};
 
 use sentinel_core::{TickState, resolve_standard_player_fallback, source::DemoSource};
 use sentinel_map::{MapData, Vec3 as MapVec3, loader};
 use sentinel_report::{
     DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, LinkedShotDamage, link_observed_shot_damage,
     replay::{
-        ApproximateSpatialStatus, OriginLineOfSight, PlayerSpatialApproximate, ReplayData,
-        ReplayFrame, ReplayPlayer, SpatialEvidenceReason, SpatialEvidenceStatus,
-        SpatialShotEvidence, UnsupportedSpatialCapability, VerifiedModelMapping, VisibilityPair,
+        ApproximateSpatialStatus, ModelBuildVerification, ModelMappingCoverage, OriginLineOfSight,
+        PlayerSpatialApproximate, ReplayData, ReplayFrame, ReplayPlayer, SpatialEvidenceReason,
+        SpatialEvidenceStatus, SpatialShotEvidence, UnsupportedSpatialCapability,
+        VerifiedModelMapping, VisibilityPair,
     },
 };
 use sentinel_visibility::VisibilityEngine;
@@ -57,6 +63,59 @@ fn valid_sha256(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
+fn safe_relative_path(path: &Path) -> bool {
+    !path.as_os_str().is_empty()
+        && !path.is_absolute()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
+}
+
+fn compiled_resource_path(asset_path: &str) -> Result<PathBuf, String> {
+    let asset_path = Path::new(asset_path);
+    if !safe_relative_path(asset_path)
+        || asset_path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            != Some("vmdl")
+    {
+        return Err(
+            "Verified model mapping asset_path must be a safe relative .vmdl path".to_string(),
+        );
+    }
+    Ok(asset_path.with_extension("vmdl_c"))
+}
+
+fn verified_resource_file(manifest_root: &Path, resource_file: &str) -> Result<PathBuf, String> {
+    let relative = Path::new(resource_file);
+    if !safe_relative_path(relative)
+        || relative
+            .extension()
+            .and_then(|extension| extension.to_str())
+            != Some("vmdl_c")
+    {
+        return Err(
+            "Verified model mapping resource_file must be a safe relative .vmdl_c path".to_string(),
+        );
+    }
+    let root = manifest_root.canonicalize().map_err(|error| {
+        format!(
+            "Unable to canonicalize manifest root {}: {error}",
+            manifest_root.display()
+        )
+    })?;
+    let resource = root.join(relative).canonicalize().map_err(|error| {
+        format!(
+            "Unable to canonicalize manifest resource {}: {error}",
+            relative.display()
+        )
+    })?;
+    if !resource.starts_with(&root) {
+        return Err("Verified model mapping resource_file escapes manifest root".to_string());
+    }
+    Ok(resource)
+}
+
 fn verified_model_mappings(
     manifest_path: &Path,
     demo_path: &Path,
@@ -97,13 +156,12 @@ fn verified_model_mappings(
             if !seen.insert(identity) {
                 return Err(format!("Verified model manifest duplicates mapping {identity:?}"));
             }
-            if entry.asset_path.trim().is_empty()
-                || Path::new(&entry.asset_path).is_absolute()
-                || !valid_sha256(&entry.asset_sha256)
-            {
-                return Err("Verified model mapping requires a logical asset path and SHA-256 asset identity".to_string());
+            let expected_resource = compiled_resource_path(&entry.asset_path)?;
+            let supplied_resource = Path::new(&entry.resource_file);
+            if supplied_resource != expected_resource || !valid_sha256(&entry.asset_sha256) {
+                return Err("Verified model mapping requires a matching compiled .vmdl_c resource_file and SHA-256 asset identity".to_string());
             }
-            let resource_file = manifest_root.join(entry.resource_file);
+            let resource_file = verified_resource_file(manifest_root, &entry.resource_file)?;
             if sha256_file(&resource_file)? != entry.asset_sha256.to_ascii_lowercase() {
                 return Err(format!(
                     "Verified model mapping asset hash does not match {}",
@@ -117,6 +175,7 @@ fn verified_model_mappings(
                 game_build: manifest.game_build.clone(),
                 asset_path: entry.asset_path,
                 asset_sha256: entry.asset_sha256.to_ascii_lowercase(),
+                build_verification: ModelBuildVerification::ExternalManifestDeclaration,
                 mapping_source: "verified_manifest".to_string(),
             })
         })
@@ -127,6 +186,7 @@ fn observed_model_identities(frames: &[ReplayFrame]) -> BTreeSet<(u64, u8, i32)>
     frames
         .iter()
         .flat_map(|frame| frame.players.iter())
+        .filter(|player| player.steam_id != 0)
         .filter_map(|player| {
             Some((
                 player.model_handle?,
@@ -135,6 +195,19 @@ fn observed_model_identities(frames: &[ReplayFrame]) -> BTreeSet<(u64, u8, i32)>
             ))
         })
         .collect()
+}
+
+fn mapping_coverage(
+    observed: &BTreeSet<(u64, u8, i32)>,
+    mappings: &[VerifiedModelMapping],
+) -> ModelMappingCoverage {
+    if observed.is_empty() || mappings.is_empty() {
+        ModelMappingCoverage::Unavailable
+    } else if mappings.len() == observed.len() {
+        ModelMappingCoverage::Complete
+    } else {
+        ModelMappingCoverage::Partial
+    }
 }
 
 fn approximate_spatial_records(frames: &[ReplayFrame]) -> Vec<PlayerSpatialApproximate> {
@@ -447,10 +520,13 @@ fn export_adapter_with_verified_model_manifest(
         })
         .collect();
     let approximate_spatial = approximate_spatial_records(&frames);
+    let observed_model_identities = observed_model_identities(&frames);
     let verified_model_mappings = manifest_path
-        .map(|path| verified_model_mappings(path, demo_path, &observed_model_identities(&frames)))
+        .map(|path| verified_model_mappings(path, demo_path, &observed_model_identities))
         .transpose()?
         .unwrap_or_default();
+    let model_mapping_coverage =
+        mapping_coverage(&observed_model_identities, &verified_model_mappings);
     let mut replay = ReplayData {
         version: "1.3.0".to_string(),
         map: metadata.map_name,
@@ -470,6 +546,8 @@ fn export_adapter_with_verified_model_manifest(
         spatial_evidence,
         approximate_spatial,
         verified_model_mappings,
+        observed_model_identity_count: observed_model_identities.len(),
+        model_mapping_coverage,
         quality: Default::default(),
     };
     replay.quality = replay.assess_quality();
@@ -487,13 +565,14 @@ mod tests {
     use sentinel_report::{
         LinkedShotDamage, ShotDamageLinkConfidence,
         replay::{
-            ApproximateSpatialStatus, OriginLineOfSight, ReplayData, ReplayFrame, ReplayPlayer,
-            SpatialEvidenceReason, SpatialEvidenceStatus, UnsupportedSpatialCapability,
+            ApproximateSpatialStatus, ModelBuildVerification, ModelMappingCoverage,
+            OriginLineOfSight, ReplayData, ReplayFrame, ReplayPlayer, SpatialEvidenceReason,
+            SpatialEvidenceStatus, UnsupportedSpatialCapability,
         },
     };
 
     use super::{
-        approximate_spatial_records, sha256_file, spatial_evidence_for_links,
+        approximate_spatial_records, mapping_coverage, sha256_file, spatial_evidence_for_links,
         verified_model_mappings,
     };
 
@@ -516,6 +595,8 @@ mod tests {
             spatial_evidence: Vec::new(),
             approximate_spatial: Vec::new(),
             verified_model_mappings: Vec::new(),
+            observed_model_identity_count: 0,
+            model_mapping_coverage: ModelMappingCoverage::Unavailable,
             quality: Default::default(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));
@@ -596,8 +677,9 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
         let demo = root.join("match.dem");
-        let asset = root.join("player.vmdl_c");
+        let asset = root.join("models/player/test.vmdl_c");
         fs::write(&demo, b"observed demo bytes").unwrap();
+        fs::create_dir_all(asset.parent().unwrap()).unwrap();
         fs::write(&asset, b"verified asset bytes").unwrap();
         let manifest = root.join("mapping.json");
         fs::write(
@@ -610,9 +692,9 @@ mod tests {
                     "model_handle": 77,
                     "hitbox_set": 0,
                     "pose_recipe_version": 2,
-                    "asset_path": "models/player/test.vmdl_c",
+                    "asset_path": "models/player/test.vmdl",
                     "asset_sha256": sha256_file(&asset).unwrap(),
-                    "resource_file": "player.vmdl_c"
+                    "resource_file": "models/player/test.vmdl_c"
                 }]
             })
             .to_string(),
@@ -622,7 +704,25 @@ mod tests {
         let mappings = verified_model_mappings(&manifest, &demo, &observed).unwrap();
         assert_eq!(mappings.len(), 1);
         assert_eq!(mappings[0].mapping_source, "verified_manifest");
+        assert_eq!(
+            mappings[0].build_verification,
+            ModelBuildVerification::ExternalManifestDeclaration
+        );
         assert!(verified_model_mappings(&manifest, &demo, &BTreeSet::new()).is_err());
+        let mismatched_resource = fs::read_to_string(&manifest)
+            .unwrap()
+            .replace("models/player/test.vmdl_c", "models/player/other.vmdl_c");
+        fs::write(&manifest, mismatched_resource).unwrap();
+        assert!(verified_model_mappings(&manifest, &demo, &observed).is_err());
+        assert_eq!(
+            mapping_coverage(&observed, &mappings),
+            ModelMappingCoverage::Complete
+        );
+        let partial_observed = BTreeSet::from([(77, 0, 2), (88, 0, 2)]);
+        assert_eq!(
+            mapping_coverage(&partial_observed, &mappings),
+            ModelMappingCoverage::Partial
+        );
         fs::remove_dir_all(root).unwrap();
     }
 }

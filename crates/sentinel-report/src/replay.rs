@@ -94,7 +94,27 @@ pub struct VerifiedModelMapping {
     pub game_build: String,
     pub asset_path: String,
     pub asset_sha256: String,
+    /// Demo metadata does not yet expose a build identifier, so this value is
+    /// an externally declared manifest claim rather than a demo-verified fact.
+    pub build_verification: ModelBuildVerification,
     pub mapping_source: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ModelBuildVerification {
+    ExternalManifestDeclaration,
+}
+
+/// Coverage of observed player model identities by verified identity records.
+/// This is metadata-only and never enables exact geometry by itself.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ModelMappingCoverage {
+    #[default]
+    Unavailable,
+    Partial,
+    Complete,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -160,6 +180,13 @@ pub struct ReplayData {
     /// mapping manifest matches observed model metadata. No hitbox geometry is implied here.
     #[serde(default)]
     pub verified_model_mappings: Vec<VerifiedModelMapping>,
+    /// Number of unique non-zero-player `(model_handle, hitbox_set, pose_recipe_version)` tuples
+    /// observed in replay frames.
+    #[serde(default)]
+    pub observed_model_identity_count: usize,
+    /// Explicit verified identity coverage. `complete` is not an exact-geometry gate.
+    #[serde(default)]
+    pub model_mapping_coverage: ModelMappingCoverage,
     /// Gate that prevents anti-cheat interpretation when essential replay telemetry is absent.
     #[serde(default)]
     pub quality: ReplayQuality,
@@ -318,6 +345,8 @@ mod tests {
             spatial_evidence: vec![],
             approximate_spatial: vec![],
             verified_model_mappings: vec![],
+            observed_model_identity_count: 0,
+            model_mapping_coverage: ModelMappingCoverage::Unavailable,
             quality: ReplayQuality::default(),
         }
     }

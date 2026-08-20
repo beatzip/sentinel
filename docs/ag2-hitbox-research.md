@@ -76,7 +76,7 @@
 
 Следующий точный blocker: найти demo- или game-side model precache/resource manifest, который связывает runtime `CStrongHandle` с конкретным compiled model resource. До этого loader обязан возвращать `unavailable` для hitbox geometry, даже при наличии несвязанных VMDL geometry в archive.
 
-### Gate 1 verified-manifest gate — implemented
+### Gate 1 verified-manifest metadata gate — implemented
 
 `sentinel replay` now accepts an explicit local-only option:
 
@@ -84,11 +84,11 @@
 sentinel replay <match.dem> [output.replay.json] --verified-model-manifest mapping.json
 ```
 
-The manifest is accepted only when it uses `schema_version: 1`, contains the SHA-256 of that exact demo, gives a non-empty game-build identifier, and provides at least one unique observed `(model_handle, hitbox_set, pose_recipe_version)` triple. For each entry, Sentinel hashes the referenced local resource file and requires it to equal the declared asset SHA-256. A mismatch, unobserved handle, duplicate identity, missing resource, or unknown JSON field rejects the export rather than emitting an exact mapping.
+The manifest is accepted only when it uses `schema_version: 1`, contains the SHA-256 of that exact demo, gives a non-empty game-build declaration, and provides at least one unique observed non-zero-player `(model_handle, hitbox_set, pose_recipe_version)` triple. Each `asset_path` must be a safe relative `.vmdl` path and each `resource_file` must equal its compiled `.vmdl_c` path. Sentinel canonicalizes the resource file inside the manifest directory, rejects path traversal/symlink escape, and verifies the declared SHA-256. A mismatch, unobserved handle, duplicate identity, missing resource, unsafe path, unknown JSON field, or path/extension mismatch rejects the export rather than emitting verified identity metadata.
 
-Accepted entries are emitted only as `verified_model_mappings` replay metadata with `mapping_source=verified_manifest`. This is resource identity provenance, **not** model geometry, a decoded pose, hitbox intersection, LOS, penetration, or a verdict. Without an explicit valid manifest, `verified_model_mappings` is empty; generic fallback and `approximate_spatial` are unchanged.
+Accepted entries are emitted only as `verified_model_mappings` replay metadata with `mapping_source=verified_manifest` and `build_verification=external_manifest_declaration`. The adapter does not currently expose a verified CS2 build identity, so a manifest game-build value is not proof that the demo and resource build match. `observed_model_identity_count` and `model_mapping_coverage` explicitly report `unavailable`, `partial`, or `complete` identity coverage. `complete` means only that every currently observed player identity has a verified manifest record; it is **not** model geometry, a decoded pose, hitbox intersection, LOS, penetration, or a verdict. Without an explicit valid manifest, `verified_model_mappings` is empty; generic fallback and `approximate_spatial` are unchanged.
 
-The current uploaded VPK index, segments, and extracted descriptors still do not provide that manifest, so no real demo mapping has been promoted. Gate 2 requires a byte-level AG2 fixture bound to one of these verified mappings; Gate 3 then requires a golden expected bone-transform fixture. Neither decoder, world hitbox geometry, intersection evidence, nor approximate LOS is enabled by this gate.
+The current uploaded VPK index, segments, and extracted descriptors still do not provide that manifest, so no real demo mapping has been promoted. Exact geometry remains unavailable even after `complete` metadata coverage: Gate 1 geometry needs VMDL/mesh/skeleton parsing and verified hitbox sets; Gate 2 needs a byte-level AG2 fixture and decoder; Gate 3 needs golden expected bone transforms. Neither decoder, world hitbox geometry, intersection evidence, nor approximate LOS is enabled by this gate.
 
 ### Gate 1 string-table audit
 

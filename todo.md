@@ -99,3 +99,6 @@
 - [ ] Gate 3: добавить golden fixture с observed model/pose/tick/world transform и ожидаемыми bone transforms до включения hitbox-intersection evidence.
 - [ ] Экспортировать replay API exact spatial payload только при verified model mapping; сохранять functional fallback и approximate LOS отключёнными.
 - [x] Добавить explicit verified-model-manifest gate для replay metadata: сверять demo SHA-256, observed handle tuple и resource SHA-256; без валидного manifest не экспортировать exact model mapping.
+- [ ] Подготовить локальный ignored verified manifest для одной test demo и matching resource file; подтвердить export gate без включения pose decoder, hitbox intersection или approximate LOS.
+- [x] Аудировать supplied DemoFile.NET package и Cs2HitboxResolver: отделить реализованный parser path от unverifiable model mapping и определить минимально безопасное переиспользование.
+- [x] Усилить verified model manifest: canonical containment resource_file, compiled VMDL path consistency и явный coverage status для observed model identities; не повышать partial mapping metadata до geometry/evidence gate.

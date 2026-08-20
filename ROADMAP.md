@@ -101,7 +101,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Report and replay JSON export (`sentinel replay`)
 - [x] Interactive Replay Viewer (frames, playback controls, Visibility Engine layer)
 - [x] Automatic replay sidecar publication during `sentinel analyze`
-- [x] Conditional exact model-mapping metadata in replay JSON, emitted only after an explicit demo- and asset-hash-verified local manifest
+- [x] Conditional verified model-identity metadata in replay JSON, with safe compiled-resource path checks and explicit unavailable/partial/complete coverage; this is not exact geometry
 - [x] Round Story and roster-resolved kill/death explanations in report, replay and Radar Room
 - [x] Local player dossier with recurrence, confidence, supporting reports and reanalysis/provenance state
 - [x] Optional protected structured AI summary, restricted to supplied evidence facts and fact references
@@ -112,7 +112,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 
 - [x] REST API
 - [x] Replay frames endpoint (`GET /v1/replays/{id}`)
-- [x] Replay endpoint forwards exact model-mapping metadata only when the exporter has verified it; it does not synthesize mappings
+- [x] Replay endpoint forwards verified model-identity metadata only when the exporter validates it; it does not synthesize mappings or geometry
 - [x] Automatic report/replay publication to `SENTINEL_REPORTS_DIR`
 - [x] Local dossier endpoint (`GET /v1/players/{steam_id}/dossier`)
 - [ ] Discord bot
@@ -132,7 +132,8 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Replay-wide normalized `weapon_fire` and `player_hurt` facts; Encounter stores only direct attacker-to-victim damage and an observed damage-to-death interval
 - [x] Audited review manifest and explicit `sentinel dataset promote-reviews` workflow; unverified, ambiguous or evidence-less labels cannot promote training data
 - [x] Empty versioned utility lineup manifest, preventing fabricated production lineups
-- [x] Exact model-mapping manifest gate: demo SHA-256, observed handle tuple, resource SHA-256 and game-build identity are required before replay metadata can call a mapping verified
+- [x] Verified model-identity manifest gate: demo SHA-256, observed handle tuple, canonical compiled-resource path and resource SHA-256 are required; current build value is explicitly external-only until adapter build identity exists
+- [ ] Verified CS2 build identity in demo metadata plus VMDL/mesh/skeleton/hitbox-set parser before any exact geometry gate can be available
 - [ ] AG2 byte-level golden fixture, offline pose decoder and exact bone-transform fixture; do not enable hitbox intersection or approximate LOS beforehand
 
 ## Long-term Vision
