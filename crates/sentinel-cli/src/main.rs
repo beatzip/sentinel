@@ -96,15 +96,41 @@ fn main() {
         "dataset" => dataset::run(&args[2..]),
         "replay" => {
             if args.len() < 3 {
-                eprintln!("Usage: sentinel replay <match.dem> [output.replay.json]");
+                eprintln!(
+                    "Usage: sentinel replay <match.dem> [output.replay.json] [--verified-model-manifest manifest.json]"
+                );
                 return;
             }
             let input = PathBuf::from(&args[2]);
-            let output = args
-                .get(3)
-                .map(PathBuf::from)
-                .unwrap_or_else(|| input.with_extension("replay.json"));
-            match replay::export(&input, &output) {
+            let mut output = None;
+            let mut manifest = None;
+            let mut index = 3;
+            while index < args.len() {
+                if args[index] == "--verified-model-manifest" {
+                    index += 1;
+                    let Some(path) = args.get(index) else {
+                        eprintln!("Missing manifest after --verified-model-manifest");
+                        return;
+                    };
+                    manifest = Some(PathBuf::from(path));
+                } else if output.is_none() {
+                    output = Some(PathBuf::from(&args[index]));
+                } else {
+                    eprintln!(
+                        "Usage: sentinel replay <match.dem> [output.replay.json] [--verified-model-manifest manifest.json]"
+                    );
+                    return;
+                }
+                index += 1;
+            }
+            let output = output.unwrap_or_else(|| input.with_extension("replay.json"));
+            let result = match manifest.as_deref() {
+                Some(path) => {
+                    replay::export_with_verified_model_manifest(&input, &output, Some(path))
+                }
+                None => replay::export(&input, &output),
+            };
+            match result {
                 Ok(()) => println!("Replay export: {}", output.display()),
                 Err(error) => eprintln!("Replay export failed: {error}"),
             }

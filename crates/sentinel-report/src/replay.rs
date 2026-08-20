@@ -83,6 +83,20 @@ pub struct PlayerSpatialApproximate {
     pub hitboxes: ResolvedHitboxGeometry,
 }
 
+/// A verified identity link between one observed runtime model handle and one
+/// compiled Source 2 resource. It identifies a resource only; it is not
+/// decoded geometry, a bone transform, a hitbox intersection, or a verdict.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VerifiedModelMapping {
+    pub model_handle: u64,
+    pub hitbox_set: u8,
+    pub pose_recipe_version: i32,
+    pub game_build: String,
+    pub asset_path: String,
+    pub asset_sha256: String,
+    pub mapping_source: String,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ReplayQualityStatus {
@@ -142,6 +156,10 @@ pub struct ReplayData {
     /// Functional player geometry records. They are not part of shot-to-damage evidence.
     #[serde(default)]
     pub approximate_spatial: Vec<PlayerSpatialApproximate>,
+    /// Exact-only model identity records, emitted only after a demo- and asset-hash-verified
+    /// mapping manifest matches observed model metadata. No hitbox geometry is implied here.
+    #[serde(default)]
+    pub verified_model_mappings: Vec<VerifiedModelMapping>,
     /// Gate that prevents anti-cheat interpretation when essential replay telemetry is absent.
     #[serde(default)]
     pub quality: ReplayQuality,
@@ -299,6 +317,7 @@ mod tests {
             linked_shot_damage: vec![],
             spatial_evidence: vec![],
             approximate_spatial: vec![],
+            verified_model_mappings: vec![],
             quality: ReplayQuality::default(),
         }
     }

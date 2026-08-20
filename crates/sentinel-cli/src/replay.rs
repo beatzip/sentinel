@@ -1,4 +1,5 @@
-use std::path::Path;
+use sha2::{Digest, Sha256};
+use std::{collections::BTreeSet, fs::File, io::Read, path::Path};
 
 use sentinel_core::{TickState, resolve_standard_player_fallback, source::DemoSource};
 use sentinel_map::{MapData, Vec3 as MapVec3, loader};
@@ -7,13 +8,134 @@ use sentinel_report::{
     replay::{
         ApproximateSpatialStatus, OriginLineOfSight, PlayerSpatialApproximate, ReplayData,
         ReplayFrame, ReplayPlayer, SpatialEvidenceReason, SpatialEvidenceStatus,
-        SpatialShotEvidence, UnsupportedSpatialCapability, VisibilityPair,
+        SpatialShotEvidence, UnsupportedSpatialCapability, VerifiedModelMapping, VisibilityPair,
     },
 };
 use sentinel_visibility::VisibilityEngine;
 use sentinel_world::WorldRebuilder;
 
 const FRAME_INTERVAL_TICKS: usize = 32;
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct VerifiedModelMappingManifest {
+    schema_version: u8,
+    demo_sha256: String,
+    game_build: String,
+    mappings: Vec<VerifiedModelMappingManifestEntry>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct VerifiedModelMappingManifestEntry {
+    model_handle: u64,
+    hitbox_set: u8,
+    pose_recipe_version: i32,
+    asset_path: String,
+    asset_sha256: String,
+    resource_file: String,
+}
+
+fn sha256_file(path: &Path) -> Result<String, String> {
+    let mut file =
+        File::open(path).map_err(|error| format!("Unable to read {}: {error}", path.display()))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 65_536];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("Unable to hash {}: {error}", path.display()))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn verified_model_mappings(
+    manifest_path: &Path,
+    demo_path: &Path,
+    observed: &BTreeSet<(u64, u8, i32)>,
+) -> Result<Vec<VerifiedModelMapping>, String> {
+    let json = std::fs::read_to_string(manifest_path)
+        .map_err(|error| format!("Unable to read {}: {error}", manifest_path.display()))?;
+    let manifest: VerifiedModelMappingManifest = serde_json::from_str(&json)
+        .map_err(|error| format!("Invalid verified model manifest: {error}"))?;
+    if manifest.schema_version != 1 {
+        return Err("Verified model manifest must use schema_version 1".to_string());
+    }
+    if manifest.game_build.trim().is_empty() || !valid_sha256(&manifest.demo_sha256) {
+        return Err(
+            "Verified model manifest requires game_build and a SHA-256 demo identity".to_string(),
+        );
+    }
+    if sha256_file(demo_path)? != manifest.demo_sha256.to_ascii_lowercase() {
+        return Err(
+            "Verified model manifest demo_sha256 does not match the exported demo".to_string(),
+        );
+    }
+    if manifest.mappings.is_empty() {
+        return Err("Verified model manifest contains no mappings".to_string());
+    }
+    let manifest_root = manifest_path.parent().unwrap_or_else(|| Path::new("."));
+    let mut seen = BTreeSet::new();
+    manifest
+        .mappings
+        .into_iter()
+        .map(|entry| {
+            let identity = (entry.model_handle, entry.hitbox_set, entry.pose_recipe_version);
+            if !observed.contains(&identity) {
+                return Err(format!(
+                    "Verified model mapping {identity:?} was not observed in the exported replay"
+                ));
+            }
+            if !seen.insert(identity) {
+                return Err(format!("Verified model manifest duplicates mapping {identity:?}"));
+            }
+            if entry.asset_path.trim().is_empty()
+                || Path::new(&entry.asset_path).is_absolute()
+                || !valid_sha256(&entry.asset_sha256)
+            {
+                return Err("Verified model mapping requires a logical asset path and SHA-256 asset identity".to_string());
+            }
+            let resource_file = manifest_root.join(entry.resource_file);
+            if sha256_file(&resource_file)? != entry.asset_sha256.to_ascii_lowercase() {
+                return Err(format!(
+                    "Verified model mapping asset hash does not match {}",
+                    resource_file.display()
+                ));
+            }
+            Ok(VerifiedModelMapping {
+                model_handle: entry.model_handle,
+                hitbox_set: entry.hitbox_set,
+                pose_recipe_version: entry.pose_recipe_version,
+                game_build: manifest.game_build.clone(),
+                asset_path: entry.asset_path,
+                asset_sha256: entry.asset_sha256.to_ascii_lowercase(),
+                mapping_source: "verified_manifest".to_string(),
+            })
+        })
+        .collect()
+}
+
+fn observed_model_identities(frames: &[ReplayFrame]) -> BTreeSet<(u64, u8, i32)> {
+    frames
+        .iter()
+        .flat_map(|frame| frame.players.iter())
+        .filter_map(|player| {
+            Some((
+                player.model_handle?,
+                player.hitbox_set?,
+                player.pose_recipe_version?,
+            ))
+        })
+        .collect()
+}
 
 fn approximate_spatial_records(frames: &[ReplayFrame]) -> Vec<PlayerSpatialApproximate> {
     frames
@@ -215,14 +337,31 @@ fn spatial_evidence_for_links(
 }
 
 pub fn export(demo_path: &Path, output_path: &Path) -> Result<(), String> {
+    export_with_verified_model_manifest(demo_path, output_path, None)
+}
+
+pub fn export_with_verified_model_manifest(
+    demo_path: &Path,
+    output_path: &Path,
+    manifest_path: Option<&Path>,
+) -> Result<(), String> {
     let adapter = sentinel_source2::Source2Adapter::from_file(demo_path)
         .map_err(|error| format!("Unable to parse demo: {error}"))?;
-    export_adapter(&adapter, output_path)
+    export_adapter_with_verified_model_manifest(&adapter, output_path, demo_path, manifest_path)
 }
 
 pub fn export_adapter(
     adapter: &sentinel_source2::Source2Adapter,
     output_path: &Path,
+) -> Result<(), String> {
+    export_adapter_with_verified_model_manifest(adapter, output_path, Path::new(""), None)
+}
+
+fn export_adapter_with_verified_model_manifest(
+    adapter: &sentinel_source2::Source2Adapter,
+    output_path: &Path,
+    demo_path: &Path,
+    manifest_path: Option<&Path>,
 ) -> Result<(), String> {
     let events = adapter.events().collect::<Vec<_>>();
     let game_events = events
@@ -308,8 +447,12 @@ pub fn export_adapter(
         })
         .collect();
     let approximate_spatial = approximate_spatial_records(&frames);
+    let verified_model_mappings = manifest_path
+        .map(|path| verified_model_mappings(path, demo_path, &observed_model_identities(&frames)))
+        .transpose()?
+        .unwrap_or_default();
     let mut replay = ReplayData {
-        version: "1.2.0".to_string(),
+        version: "1.3.0".to_string(),
         map: metadata.map_name,
         tick_rate: metadata.tick_rate,
         frames,
@@ -326,6 +469,7 @@ pub fn export_adapter(
         linked_shot_damage,
         spatial_evidence,
         approximate_spatial,
+        verified_model_mappings,
         quality: Default::default(),
     };
     replay.quality = replay.assess_quality();
@@ -348,7 +492,10 @@ mod tests {
         },
     };
 
-    use super::{approximate_spatial_records, spatial_evidence_for_links};
+    use super::{
+        approximate_spatial_records, sha256_file, spatial_evidence_for_links,
+        verified_model_mappings,
+    };
 
     #[test]
     fn replay_contract_serializes() {
@@ -368,6 +515,7 @@ mod tests {
             linked_shot_damage: Vec::new(),
             spatial_evidence: Vec::new(),
             approximate_spatial: Vec::new(),
+            verified_model_mappings: Vec::new(),
             quality: Default::default(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));
@@ -437,5 +585,44 @@ mod tests {
         assert!(!records[0].evidence_allowed);
         assert_eq!(records[0].source, HitboxGeometrySource::GenericFallback);
         assert_eq!(records[0].confidence, HitboxGeometryConfidence::Approximate);
+    }
+
+    #[test]
+    fn verified_model_manifest_requires_matching_demo_asset_and_observed_identity() {
+        use std::{collections::BTreeSet, fs};
+
+        let root =
+            std::env::temp_dir().join(format!("sentinel-model-manifest-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        let demo = root.join("match.dem");
+        let asset = root.join("player.vmdl_c");
+        fs::write(&demo, b"observed demo bytes").unwrap();
+        fs::write(&asset, b"verified asset bytes").unwrap();
+        let manifest = root.join("mapping.json");
+        fs::write(
+            &manifest,
+            serde_json::json!({
+                "schema_version": 1,
+                "demo_sha256": sha256_file(&demo).unwrap(),
+                "game_build": "verified-test-build",
+                "mappings": [{
+                    "model_handle": 77,
+                    "hitbox_set": 0,
+                    "pose_recipe_version": 2,
+                    "asset_path": "models/player/test.vmdl_c",
+                    "asset_sha256": sha256_file(&asset).unwrap(),
+                    "resource_file": "player.vmdl_c"
+                }]
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let observed = BTreeSet::from([(77, 0, 2)]);
+        let mappings = verified_model_mappings(&manifest, &demo, &observed).unwrap();
+        assert_eq!(mappings.len(), 1);
+        assert_eq!(mappings[0].mapping_source, "verified_manifest");
+        assert!(verified_model_mappings(&manifest, &demo, &BTreeSet::new()).is_err());
+        fs::remove_dir_all(root).unwrap();
     }
 }

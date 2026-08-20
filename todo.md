@@ -94,3 +94,8 @@
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [ ] Обработать четвёртую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление (blocked: Source 1 `HL2DEMO`; текущий parser поддерживает только Source 2).
+- [ ] Gate 1: найти только доказуемый runtime/static `m_hModel` → player resource mapping той же build; не использовать VPK CRC или похожие asset paths как proof.
+- [ ] Gate 2: подготовить read-only exact model-resource loader и AG2 decoder только при наличии verified fixture; сохранить exact geometry unavailable до его появления.
+- [ ] Gate 3: добавить golden fixture с observed model/pose/tick/world transform и ожидаемыми bone transforms до включения hitbox-intersection evidence.
+- [ ] Экспортировать replay API exact spatial payload только при verified model mapping; сохранять functional fallback и approximate LOS отключёнными.
+- [x] Добавить explicit verified-model-manifest gate для replay metadata: сверять demo SHA-256, observed handle tuple и resource SHA-256; без валидного manifest не экспортировать exact model mapping.

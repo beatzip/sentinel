@@ -76,6 +76,20 @@
 
 Следующий точный blocker: найти demo- или game-side model precache/resource manifest, который связывает runtime `CStrongHandle` с конкретным compiled model resource. До этого loader обязан возвращать `unavailable` для hitbox geometry, даже при наличии несвязанных VMDL geometry в archive.
 
+### Gate 1 verified-manifest gate — implemented
+
+`sentinel replay` now accepts an explicit local-only option:
+
+```text
+sentinel replay <match.dem> [output.replay.json] --verified-model-manifest mapping.json
+```
+
+The manifest is accepted only when it uses `schema_version: 1`, contains the SHA-256 of that exact demo, gives a non-empty game-build identifier, and provides at least one unique observed `(model_handle, hitbox_set, pose_recipe_version)` triple. For each entry, Sentinel hashes the referenced local resource file and requires it to equal the declared asset SHA-256. A mismatch, unobserved handle, duplicate identity, missing resource, or unknown JSON field rejects the export rather than emitting an exact mapping.
+
+Accepted entries are emitted only as `verified_model_mappings` replay metadata with `mapping_source=verified_manifest`. This is resource identity provenance, **not** model geometry, a decoded pose, hitbox intersection, LOS, penetration, or a verdict. Without an explicit valid manifest, `verified_model_mappings` is empty; generic fallback and `approximate_spatial` are unchanged.
+
+The current uploaded VPK index, segments, and extracted descriptors still do not provide that manifest, so no real demo mapping has been promoted. Gate 2 requires a byte-level AG2 fixture bound to one of these verified mappings; Gate 3 then requires a golden expected bone-transform fixture. Neither decoder, world hitbox geometry, intersection evidence, nor approximate LOS is enabled by this gate.
+
 ### Gate 1 string-table audit
 
 В реальной demo `source2-demo` string-table callbacks подтвердили только `genericprecache`, `AnimAssetData`, `instancebaseline`, `userinfo` и служебные tables. `genericprecache` содержит пустой row; `AnimAssetData` содержит chicken/world/weapon animation graph и skeleton paths, но не player model path. `modelprecache` callback не получил entries. Следовательно, текущая demo не предоставляет доказуемый runtime `m_hModel -> player VMDL path` mapping через string tables.
