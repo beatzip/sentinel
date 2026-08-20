@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{LinkedShotDamage, ObservedDamage, ObservedShot, RoundContext};
+use sentinel_core::ResolvedHitboxGeometry;
 
 /// Availability state for one candidate shot-to-damage spatial trace.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -220,6 +221,10 @@ pub struct ReplayPlayer {
     pub anim_graph_id: Option<u64>,
     #[serde(default)]
     pub pose_recipe_version: Option<i32>,
+    /// Functional-only generic geometry. It is never exact model/bone proof and must not be
+    /// promoted to hitbox intersection, penetration, or verdict evidence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generic_hitbox_geometry: Option<ResolvedHitboxGeometry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -276,6 +281,7 @@ mod tests {
             steam_id: 1,
             name: "player".into(),
             team: "Unassigned".into(),
+            generic_hitbox_geometry: None,
             x: 0.0,
             y: 0.0,
             z: 0.0,
@@ -306,6 +312,7 @@ mod tests {
             steam_id: 1,
             name: "player".into(),
             team: "CounterTerrorist".into(),
+            generic_hitbox_geometry: None,
             x: 1.0,
             y: 0.0,
             z: 0.0,

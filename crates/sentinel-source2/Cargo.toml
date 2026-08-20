@@ -9,3 +9,4 @@ description = "Source 2 demo adapter using source2-demo for CS2"
 sentinel-core = { path = "../sentinel-core" }
 sentinel-common = { path = "../sentinel-common" }
 source2-demo = { version = "0.5", features = ["cs2"] }
+sha2.workspace = true

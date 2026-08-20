@@ -1,0 +1,83 @@
+# AG2 Pose и Source2 Hitbox Resources — исследовательские ориентиры
+
+Дата: 2026-08-19.
+
+## Подтверждённое внешними источниками
+
+- Valve Developer Community описывает hitbox sets как данные Source 2 VMDL, но сайт защищён Anubis и не дал прочитать подробную документацию из sandbox: https://developer.valvesoftware.com/wiki/VMDL/Hitboxes
+- ValveResourceFormat — открытая библиотека для разбора Source 2 resource files; её список поддерживаемых типов включает `vmdl`, `vanim`, `vagrp`, `vphys` и `vnmskel`: https://github.com/ValveResourceFormat/ValveResourceFormat
+
+## Ограничение Sentinel
+
+Наблюдаемые props demo дают `model_handle`, `hitbox_set`, `anim_graph_id` и AG2 pose recipe version, но не дают resource path, decoded hitbox geometry или world-space bone transforms. До сопоставления `model_handle -> compiled model resource` и независимой проверки pose decode Sentinel обязан выдавать `hitboxes` как unavailable/unsupported.
+
+## Проверяемый минимальный следующий шаг
+
+Не писать общий Source2 asset engine. Сначала добыть одну локальную, воспроизводимую пару: snapshot из demo с pose bytes и соответствующий compiled player model asset из той же версии игры. Использовать её как golden fixture для reverse engineering и unit tests.
+
+## Минимальная geometry, которую должен отдавать loader
+
+Открытая реализация ValveResourceFormat читает hitbox sets в mesh resource из `m_hitboxsets`; внутри встречаются оба варианта ключа: `m_HitBoxes` и `m_hitboxes`. Каждый `CHitBox` содержит `m_sBoneName`, `m_vMinBounds`, `m_vMaxBounds`, `m_flShapeRadius`, `m_nShapeType`, `m_nGroupId`, `m_bTranslationOnly` и surface property. Model resource может получить hitbox sets из подключённого external mesh resource.
+
+Следовательно, первый контракт Sentinel должен хранить immutable local-space hitbox geometry плюс `bone_name`, но не вычислять world-space shape, пока не получена проверенная матрица именно этой кости на точно совпадающем tick.
+
+Источник кода: https://github.com/ValveResourceFormat/ValveResourceFormat/blob/master/ValveResourceFormat/Resource/ResourceTypes/Mesh.cs и https://github.com/ValveResourceFormat/ValveResourceFormat/blob/master/ValveResourceFormat/Resource/ResourceTypes/ModelData/Hitbox.cs
+
+## Текущее parser ограничение
+
+`source2-demo` 0.5.8 в `FieldValue` поддерживает только scalar integer/float, boolean, string и Vector2D/3D/4D; bytes или variable arrays отсутствуют. Поэтому текущий `Entity::get_property()` не позволяет извлечь `m_SerializePoseRecipeAG2Dynamic` как raw byte payload. Первый engineering gate — доказать, что нужное поле существует в raw PacketEntities и расширить или заменить слой decoding entity fields, а не писать AG2 decoder поверх несуществующих байтов.
+
+Источник: https://docs.rs/source2-demo/0.5.8/source2_demo/enum.FieldValue.html
+
+## Предлагаемый минимальный data contract
+
+1. `ObservedPoseRecipe`: `demo_hash`, `tick`, `pawn_entity_index`, `model_handle`, `hitbox_set`, `anim_graph_id`, `pose_recipe_version`, `raw_bytes_sha256`, `raw_bytes` (только в локальном artifact; не сериализовать в публичный replay по умолчанию).
+2. `ModelHitboxSet`: `asset_hash`, `asset_path`, `set_index_or_name`, `skeleton_hash`, `hitboxes[]`. Каждый hitbox — локальная geometry из ресурса с `bone_name`, shape type, bounds/radius, group и surface property.
+3. `DecodedPose`: `decoder_version`, ссылки на `ObservedPoseRecipe` и `ModelHitboxSet`, `bone_local_transforms[]`, `validation_status`. До успешной validation world transforms отсутствуют.
+4. `WorldHitboxSnapshot`: `tick`, `player_id`, `origin`, `orientation`, `bone_world_transforms[]`, `hitboxes[]`, `availability`. Создаётся только после exact version/identity match всех предыдущих слоёв.
+
+## Обязательные quality gates
+
+- Отклонять запись, если отсутствует raw AG2 payload, asset path/hash, выбранный hitbox set, bone из skeleton, одинаковый tick или подтверждённый world transform.
+- Сверять decoded bone count/names с skeleton model resource и затем сверять минимум одну воспроизводимую позу с независимым визуальным Source2 reference.
+- Помечать любой mismatch как `unavailable`; никогда не заменять его standing/ducking capsule или inference из eye offset.
+
+## Порядок реализации
+
+### Gate 0 — сделать pose bytes доступными
+
+Сначала воспроизводимо вывести property type, размер и SHA-256 `m_SerializePoseRecipeAG2Dynamic` на одном pawn/tick в локальный ignored trace. Если `source2-demo` не предоставляет variable array, минимальное изменение — fork/patch только его entity-field decoding, чтобы сохранить `Vec<u8>` для этого поля. Не менять replay schema и не писать AG2 math до этого gate.
+
+### Gate 1 — получить model resource fixture
+
+Сопоставить зафиксированный `model_handle` с конкретным `.vmdl_c`/external `.vmesh_c` asset из локальной CS2 install той же версии. Добавить local-only fixture manifest с SHA-256 demo, asset и pose bytes; не коммитить game assets. Asset loader должен вернуть только local-space hitbox sets и skeleton names.
+
+### Gate 2 — offline decode и validation
+
+Создать pure decoder `bytes + model skeleton -> bone-local transforms` без доступа к demo/replay. Golden test должен проверять byte hash, decoder version, bone count, bone-name mapping и хотя бы одну independently inspected pose. Невалидные и незнакомые версии должны возвращать structured unavailable result.
+
+### Gate 3 — world transforms и hit test
+
+Сочетать local bone transform с игроковым origin/orientation только на matching tick. После matrix composition преобразовать geometry из `ModelHitboxSet` и применить segment-vs-box/sphere/capsule test. Сохранять hitbox ID, bone name, tick, asset hash, pose hash и exact intersection parameter как evidence.
+
+### Gate 4 — включить evidence, не verdict
+
+Только после regression fixtures из Gate 2–3 разрешить `hitbox_intersection` как отдельный available spatial capability. Сначала его использовать для объяснения linkage/TTD; не использовать самостоятельно для triggerbot/aimbot/cheat verdict.
+
+## Gate 1 asset audit — 2026-08-20
+
+Проверка предоставленных assets дала следующие факты:
+
+- `pak01_dir.vpk` и `ctm_diver_varianta.vmdl_c` согласованы по CRC-32 `086fed19`; это подтверждает происхождение descriptor из данного VPK index.
+- Index показывает 83 player descriptor в `pak01_262.vpk` и 2 в `pak01_407.vpk`; оба segment files предоставлены и read-only extraction подтверждён.
+- Все извлечённые `characters/models/ctm_*` и `tm_*` player descriptor имеют размер примерно 4.8 KiB. Проверенный `ctm_diver_varianta.vmdl_c` содержит один `dummy` bone и пустой `m_hitboxsets`.
+- Archive содержит другие VMDL с non-empty hitbox keys, но без independently proven `m_hModel -> asset path` они не являются допустимым geometry source для player snapshots.
+- Три наблюдаемых `m_hModel` values не совпадают с низшими 32 битами VPK CRC; такая эвристика не используется как mapping.
+
+Следующий точный blocker: найти demo- или game-side model precache/resource manifest, который связывает runtime `CStrongHandle` с конкретным compiled model resource. До этого loader обязан возвращать `unavailable` для hitbox geometry, даже при наличии несвязанных VMDL geometry в archive.
+
+### Gate 1 string-table audit
+
+В реальной demo `source2-demo` string-table callbacks подтвердили только `genericprecache`, `AnimAssetData`, `instancebaseline`, `userinfo` и служебные tables. `genericprecache` содержит пустой row; `AnimAssetData` содержит chicken/world/weapon animation graph и skeleton paths, но не player model path. `modelprecache` callback не получил entries. Следовательно, текущая demo не предоставляет доказуемый runtime `m_hModel -> player VMDL path` mapping через string tables.
+
+Это отрицательное наблюдение важно: index строки, VPK CRC и похожие geometry не должны использоваться как replacement mapping. Для продолжения Gate 1 нужен отдельно сохранённый resource-handle manifest от той же CS2 game build либо независимый reference, который связывает каждый observed 64-bit handle с конкретным compiled model resource.

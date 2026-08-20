@@ -77,6 +77,17 @@
 - [x] Аудировать Source2 entity props и parser capability для observed skeleton, bones и hitbox telemetry.
 - [x] Извлечь и экспортировать только подтверждённые Source2 bone/hitbox fields; сохранять unavailable при их отсутствии.
 - [ ] Декодировать AG2 pose-recipe bytes и model hitbox resources в bone transforms/hitbox geometry до intersection evidence.
+- [x] Gate 0: захватить type, length и SHA-256 raw `m_SerializePoseRecipeAG2Dynamic` из PacketEntities; при необходимости минимально расширить field decoder до byte arrays.
+- [ ] Зафиксировать verified sample AG2 pose-recipe bytes, model handle и ожидаемые bone transforms как regression fixture.
+- [ ] Сопоставить observed `model_handle` с full player VMDL/VMESH/VNMSKEL той же game build; uploaded descriptor-only VMDL без hitbox set не использовать как geometry source.
+- [ ] Добавить read-only loader Source2 model resources, извлекающий geometry активного hitbox set по model handle без fallback capsules.
+- [x] Определить `Cs2HitboxResolver` provenance contract: `exact_demo`, `generic_fallback`, `unresolved` и confidence, без implicit upgrade fallback до exact.
+- [x] Реализовать generic standard-player hitbox fallback и observed duck modifier только для functional/exploratory output.
+- [ ] Добавить отдельно маркированные generic chicken/weapon/prop fallback profiles только после появления non-player snapshot consumer.
+- [x] Запретить generic fallback geometry для exact-only hitbox crossing, cheat verdict и penetration evidence.
+- [ ] Реализовать AG2 pose-recipe decoder только после byte-level fixture и сверки bone transforms с известным Source2 reference.
+- [ ] Добавить quality gate: hitbox-intersection evidence доступен только при совпадении model, hitbox set, pose, tick и world transform.
+- [x] Gate 5: проверить AG2/model/hitbox pipeline на локальной demo, прогнать workspace lint/tests и отправить только верифицированный patch.
 - [ ] Добавить material-aware bullet penetration contract только после верифицированной map-material telemetry.
 - [x] Обработать вторую предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.
 - [x] Обработать третью предоставленную demo как unknown corpus и добавить её в межматчевое сопоставление.

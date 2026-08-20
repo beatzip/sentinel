@@ -2,6 +2,7 @@ pub mod bomb;
 pub mod evidence;
 pub mod feature;
 pub mod grenade;
+pub mod hitbox;
 pub mod kill;
 pub mod player;
 pub mod round;
@@ -14,6 +15,10 @@ pub use bomb::BombState;
 pub use evidence::Evidence;
 pub use feature::{FeatureCategory, FeatureResult, FeatureVector};
 pub use grenade::{GrenadeState, GrenadeType};
+pub use hitbox::{
+    HitboxGeometryConfidence, HitboxGeometrySource, ResolvedHitboxCapsule, ResolvedHitboxGeometry,
+    resolve_standard_player_fallback,
+};
 pub use kill::KillEvent;
 pub use player::{Angles, PlayerId, PlayerState, SkeletonMetadata, Team, Vec3, Weapon};
 pub use round::{RoundPhase, RoundState};

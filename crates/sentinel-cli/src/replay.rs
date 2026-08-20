@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use sentinel_core::{TickState, source::DemoSource};
+use sentinel_core::{TickState, resolve_standard_player_fallback, source::DemoSource};
 use sentinel_map::{MapData, Vec3 as MapVec3, loader};
 use sentinel_report::{
     DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, LinkedShotDamage, link_observed_shot_damage,
@@ -239,6 +239,16 @@ pub fn export_adapter(
                     model_handle: player.skeleton.model_handle,
                     anim_graph_id: player.skeleton.anim_graph_id,
                     pose_recipe_version: player.skeleton.pose_recipe_version,
+                    generic_hitbox_geometry: (player.id.as_u64() != 0
+                        && [player.position.x, player.position.y, player.position.z]
+                            != [0.0, 0.0, 0.0])
+                    .then(|| {
+                        resolve_standard_player_fallback(
+                            player.position,
+                            player.view_angles.yaw,
+                            &player.skeleton,
+                        )
+                    }),
                 })
                 .collect::<Vec<_>>();
             let visible_pairs = state
@@ -304,7 +314,7 @@ mod tests {
         LinkedShotDamage, ShotDamageLinkConfidence,
         replay::{
             OriginLineOfSight, ReplayData, ReplayFrame, SpatialEvidenceReason,
-            SpatialEvidenceStatus,
+            SpatialEvidenceStatus, UnsupportedSpatialCapability,
         },
     };
 
@@ -351,5 +361,10 @@ mod tests {
             SpatialEvidenceReason::MissingMapCollision
         );
         assert_eq!(evidence[0].line_of_sight, OriginLineOfSight::Unknown);
+        assert!(
+            evidence[0]
+                .unsupported_capabilities
+                .contains(&UnsupportedSpatialCapability::Hitboxes)
+        );
     }
 }

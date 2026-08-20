@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::fmt::Write as _;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -8,6 +9,7 @@ use sentinel_core::source::{
     WeaponKind,
 };
 use sentinel_core::{PlayerId, SkeletonMetadata, Tick};
+use sha2::{Digest, Sha256};
 use source2_demo::prelude::*;
 use source2_demo::proto::CDemoFileHeader;
 
@@ -20,6 +22,8 @@ const MIN_STEAM_ID: u64 = 1_000_000_000_000;
 const ENTITY_INDEX_MASK: u32 = 0x3fff;
 const ORIGIN_CELL_SIZE: f32 = 512.0;
 const ORIGIN_WORLD_OFFSET: f32 = 16_384.0;
+const AG2_POSE_RECIPE_FIELD: &str =
+    "CBodyComponent.m_animationController.m_SerializePoseRecipeAG2Dynamic";
 
 fn controller_index_from_handle(handle: u32) -> u32 {
     handle & ENTITY_INDEX_MASK
@@ -27,6 +31,18 @@ fn controller_index_from_handle(handle: u32) -> u32 {
 
 fn coordinate_from_cell(cell: u16, offset: f32) -> f32 {
     f32::from(cell) * ORIGIN_CELL_SIZE - ORIGIN_WORLD_OFFSET + offset
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
+}
+
+fn pose_recipe_sha256(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -131,6 +147,15 @@ struct DemoCollector {
     trace_max_tick: u32,
     trace_max_samples: usize,
     trace_samples: usize,
+    trace_pose_recipe: bool,
+    trace_pose_recipe_samples: usize,
+    trace_pose_recipe_max_samples: usize,
+    trace_model_precache: bool,
+    trace_model_precache_samples: usize,
+    trace_model_precache_max_samples: usize,
+    trace_string_tables: bool,
+    trace_string_table_samples: usize,
+    trace_string_table_max_samples: usize,
     trace_game_rules_samples: usize,
     game_rules_phase: Option<GameRulesPhase>,
 }
@@ -148,6 +173,93 @@ impl DemoCollector {
     #[on_tick_start]
     fn handle_tick_start(&mut self, ctx: &Context) -> ObserverResult {
         self.current_tick = ctx.tick();
+        Ok(())
+    }
+
+    /// Local discovery trace for table names only. It must run before any assumption about
+    /// the availability or naming of a model-precache table.
+    #[on_string_table]
+    fn trace_string_table_catalog(
+        &mut self,
+        _ctx: &Context,
+        table: &StringTable,
+        modified: &[i32],
+    ) -> ObserverResult {
+        if self.trace_string_tables
+            && self.trace_string_table_samples < self.trace_string_table_max_samples
+        {
+            self.trace_string_table_samples += 1;
+            eprintln!(
+                "SOURCE2_STRING_TABLE tick={} table={:?} table_index={} rows={} modified={}",
+                self.current_tick,
+                table.name(),
+                table.index(),
+                table.iter().count(),
+                modified.len(),
+            );
+        }
+        Ok(())
+    }
+
+    /// Gate 1 discovery trace. A model-precache row index is not treated as an
+    /// `m_hModel` mapping until a matching runtime contract is independently verified.
+    #[on_string_table("modelprecache")]
+    fn trace_model_precache(
+        &mut self,
+        _ctx: &Context,
+        table: &StringTable,
+        modified: &[i32],
+    ) -> ObserverResult {
+        if !self.trace_model_precache
+            || self.trace_model_precache_samples >= self.trace_model_precache_max_samples
+        {
+            return Ok(());
+        }
+
+        for row_index in modified {
+            if self.trace_model_precache_samples >= self.trace_model_precache_max_samples {
+                break;
+            }
+            let Ok(index) = usize::try_from(*row_index) else {
+                continue;
+            };
+            let Ok(row) = table.get_row(index) else {
+                continue;
+            };
+            self.trace_model_precache_samples += 1;
+            let value = row.value().unwrap_or_default();
+            eprintln!(
+                "SOURCE2_MODEL_PRECACHE tick={} table={} row={} key={:?} value_len={} value_sha256={}",
+                self.current_tick,
+                table.name(),
+                row.index(),
+                row.key(),
+                value.len(),
+                pose_recipe_sha256(value),
+            );
+        }
+        Ok(())
+    }
+
+    #[on_string_table("genericprecache")]
+    fn trace_generic_precache(
+        &mut self,
+        _ctx: &Context,
+        table: &StringTable,
+        modified: &[i32],
+    ) -> ObserverResult {
+        self.trace_resource_table_rows(table, modified);
+        Ok(())
+    }
+
+    #[on_string_table("AnimAssetData")]
+    fn trace_anim_asset_data(
+        &mut self,
+        _ctx: &Context,
+        table: &StringTable,
+        modified: &[i32],
+    ) -> ObserverResult {
+        self.trace_resource_table_rows(table, modified);
         Ok(())
     }
 
@@ -338,6 +450,25 @@ impl DemoCollector {
 
         if is_game_rules {
             self.collect_game_rules_phase(entity, tick);
+        }
+
+        // Gate 0 is opt-in and local-only: it retains the exact AG2 payload as an audit
+        // artifact, never as public replay data or hitbox evidence.
+        if class_name == "CCSPlayerPawn"
+            && self.trace_pose_recipe
+            && self.current_tick <= self.trace_max_tick
+            && self.trace_pose_recipe_samples < self.trace_pose_recipe_max_samples
+            && let Some(bytes) = self.get_u8_vec(entity, AG2_POSE_RECIPE_FIELD)
+        {
+            self.trace_pose_recipe_samples += 1;
+            eprintln!(
+                "SOURCE2_AG2_POSE tick={} entity={} bytes_len={} sha256={} raw_hex={}",
+                self.current_tick,
+                entity.index(),
+                bytes.len(),
+                pose_recipe_sha256(&bytes),
+                hex_bytes(&bytes),
+            );
         }
 
         // Player controller - extract name and team
@@ -553,6 +684,50 @@ impl DemoCollector {
         }
     }
 
+    /// Reads a dynamic `uint8` entity vector without lossy string conversion.
+    fn get_u8_vec(&self, entity: &Entity, name: &str) -> Option<Vec<u8>> {
+        let values = entity
+            .get_iter(name)
+            .ok()?
+            .map(|value| match value {
+                Some(FieldValue::Unsigned8(byte)) => Some(*byte),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()?;
+        (!values.is_empty()).then_some(values)
+    }
+
+    fn trace_resource_table_rows(&mut self, table: &StringTable, modified: &[i32]) {
+        if !self.trace_model_precache
+            || self.trace_model_precache_samples >= self.trace_model_precache_max_samples
+        {
+            return;
+        }
+
+        for row_index in modified {
+            if self.trace_model_precache_samples >= self.trace_model_precache_max_samples {
+                break;
+            }
+            let Ok(index) = usize::try_from(*row_index) else {
+                continue;
+            };
+            let Ok(row) = table.get_row(index) else {
+                continue;
+            };
+            self.trace_model_precache_samples += 1;
+            let value = row.value().unwrap_or_default();
+            eprintln!(
+                "SOURCE2_RESOURCE_TABLE tick={} table={} row={} key={:?} value_len={} value_sha256={}",
+                self.current_tick,
+                table.name(),
+                row.index(),
+                row.key(),
+                value.len(),
+                pose_recipe_sha256(value),
+            );
+        }
+    }
+
     fn cell_origin(&self, entity: &Entity) -> Option<(f32, f32, f32)> {
         let prefix = "CBodyComponent.m_skeletonInstance.m_vecOrigin";
         Some((
@@ -616,6 +791,29 @@ impl Source2Adapter {
                 .ok()
                 .and_then(|value| value.parse().ok())
                 .unwrap_or(20);
+            collector.trace_pose_recipe = std::env::var_os("SENTINEL_SOURCE2_TRACE_POSE_RECIPE")
+                .is_some_and(|value| value != "0");
+            collector.trace_pose_recipe_max_samples =
+                std::env::var("SENTINEL_SOURCE2_TRACE_POSE_RECIPE_SAMPLES")
+                    .ok()
+                    .and_then(|value| value.parse().ok())
+                    .unwrap_or(1);
+            collector.trace_model_precache =
+                std::env::var_os("SENTINEL_SOURCE2_TRACE_MODEL_PRECACHE")
+                    .is_some_and(|value| value != "0");
+            collector.trace_model_precache_max_samples =
+                std::env::var("SENTINEL_SOURCE2_TRACE_MODEL_PRECACHE_SAMPLES")
+                    .ok()
+                    .and_then(|value| value.parse().ok())
+                    .unwrap_or(32);
+            collector.trace_string_tables =
+                std::env::var_os("SENTINEL_SOURCE2_TRACE_STRING_TABLES")
+                    .is_some_and(|value| value != "0");
+            collector.trace_string_table_max_samples =
+                std::env::var("SENTINEL_SOURCE2_TRACE_STRING_TABLE_SAMPLES")
+                    .ok()
+                    .and_then(|value| value.parse().ok())
+                    .unwrap_or(64);
         }
         parser
             .run_to_end()
@@ -887,6 +1085,15 @@ mod tests {
     fn decodes_quantized_cell_origin_and_controller_handle() {
         assert!((coordinate_from_cell(30, 566.0233) + 457.9767).abs() < 0.001);
         assert_eq!(controller_index_from_handle(0x008b_4455), 0x0455);
+    }
+
+    #[test]
+    fn pose_recipe_fingerprint_is_stable_and_byte_sensitive() {
+        let first = [0xc2, 0x05, 0x00, 0x00];
+        let second = [0xc2, 0x05, 0x00, 0x01];
+        assert_eq!(hex_bytes(&first), "c2050000");
+        assert_eq!(pose_recipe_sha256(&first).len(), 64);
+        assert_ne!(pose_recipe_sha256(&first), pose_recipe_sha256(&second));
     }
 
     #[test]
