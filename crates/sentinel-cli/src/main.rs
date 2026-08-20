@@ -94,6 +94,7 @@ fn main() {
             }
         }
         "dataset" => dataset::run(&args[2..]),
+        "model-describe" => run_model_describe(&args[2..]),
         "replay" => {
             if args.len() < 3 {
                 eprintln!(
@@ -1000,6 +1001,68 @@ fn api_report_id(path: &std::path::Path) -> String {
         .collect()
 }
 
+fn run_model_describe(args: &[String]) {
+    if args.is_empty() {
+        eprintln!(
+            "Usage: sentinel model-describe <player.vmdl_c> [output.json] [--asset-root directory]"
+        );
+        return;
+    }
+    let input = PathBuf::from(&args[0]);
+    let mut output = None;
+    let mut asset_root = input.parent().map(PathBuf::from);
+    let mut index = 1;
+    while index < args.len() {
+        if args[index] == "--asset-root" {
+            index += 1;
+            let Some(root) = args.get(index) else {
+                eprintln!("Missing directory after --asset-root");
+                return;
+            };
+            asset_root = Some(PathBuf::from(root));
+        } else if output.is_none() {
+            output = Some(PathBuf::from(&args[index]));
+        } else {
+            eprintln!(
+                "Usage: sentinel model-describe <player.vmdl_c> [output.json] [--asset-root directory]"
+            );
+            return;
+        }
+        index += 1;
+    }
+    let descriptor = match sentinel_model::describe_vmdl_file(&input) {
+        Ok(descriptor) => descriptor,
+        Err(error) => {
+            eprintln!("Model discovery failed: {error}");
+            return;
+        }
+    };
+    let dependencies = match asset_root {
+        Some(root) => match sentinel_model::resolve_dependencies(&descriptor, &root) {
+            Ok(dependencies) => dependencies,
+            Err(error) => {
+                eprintln!("Dependency discovery failed: {error}");
+                return;
+            }
+        },
+        None => Vec::new(),
+    };
+    let output = output.unwrap_or_else(|| input.with_extension("resource.json"));
+    let artifact = serde_json::json!({
+        "schema_version": 1,
+        "descriptor": descriptor,
+        "dependency_resolution": dependencies,
+        "exact_geometry_available": false,
+        "note": "Resource discovery only: no VMDL geometry, AG2 pose, world transform, or spatial evidence is produced."
+    });
+    match serde_json::to_string_pretty(&artifact)
+        .and_then(|json| std::fs::write(&output, json).map_err(serde_json::Error::io))
+    {
+        Ok(()) => println!("Model resource descriptor: {}", output.display()),
+        Err(error) => eprintln!("Unable to write model resource descriptor: {error}"),
+    }
+}
+
 fn print_usage() {
     println!("Usage: sentinel <command> [options]");
     println!();
@@ -1014,5 +1077,6 @@ fn print_usage() {
         "  dataset <init|audit|train>    Create, audit, or train from a labeled dataset manifest"
     );
     println!("  replay <match.dem> [output]   Export sampled replay frames with visibility pairs");
+    println!("  model-describe <vmdl_c> [out] Discover Source 2 VMDL blocks and RERL dependencies");
     println!("  verify                        Run verification checks");
 }

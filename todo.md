@@ -102,3 +102,6 @@
 - [ ] Подготовить локальный ignored verified manifest для одной test demo и matching resource file; подтвердить export gate без включения pose decoder, hitbox intersection или approximate LOS.
 - [x] Аудировать supplied DemoFile.NET package и Cs2HitboxResolver: отделить реализованный parser path от unverifiable model mapping и определить минимально безопасное переиспользование.
 - [x] Усилить verified model manifest: canonical containment resource_file, compiled VMDL path consistency и явный coverage status для observed model identities; не повышать partial mapping metadata до geometry/evidence gate.
+- [ ] Этап A: реализовать isolated deterministic VMDL parser для verified local `.vmdl_c`, serializing skeleton/hitbox-set artifact без AG2, world transforms, fallback geometry или spatial evidence.
+- [x] Gate 1B: добавить isolated VMDL resource discovery — block directory, RED2/RERL external dependency manifest, SHA-256 и explicit unresolved dependencies; без VMDL geometry parsing или fallback.
+- [x] Gate 1B: добавить isolated VMDL resource discovery — block directory, RED2/RERL external dependency manifest, SHA-256 и explicit unresolved dependencies; без VMDL geometry parsing или fallback.

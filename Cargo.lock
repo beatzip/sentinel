@@ -1268,6 +1268,7 @@ dependencies = [
  "sentinel-features",
  "sentinel-map",
  "sentinel-memory",
+ "sentinel-model",
  "sentinel-report",
  "sentinel-source2",
  "sentinel-validation",
@@ -1381,6 +1382,15 @@ dependencies = [
  "sentinel-core",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sentinel-model"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "sha2",
  "thiserror 2.0.18",
 ]
 

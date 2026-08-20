@@ -95,3 +95,29 @@ The current uploaded VPK index, segments, and extracted descriptors still do not
 В реальной demo `source2-demo` string-table callbacks подтвердили только `genericprecache`, `AnimAssetData`, `instancebaseline`, `userinfo` и служебные tables. `genericprecache` содержит пустой row; `AnimAssetData` содержит chicken/world/weapon animation graph и skeleton paths, но не player model path. `modelprecache` callback не получил entries. Следовательно, текущая demo не предоставляет доказуемый runtime `m_hModel -> player VMDL path` mapping через string tables.
 
 Это отрицательное наблюдение важно: index строки, VPK CRC и похожие geometry не должны использоваться как replacement mapping. Для продолжения Gate 1 нужен отдельно сохранённый resource-handle manifest от той же CS2 game build либо независимый reference, который связывает каждый observed 64-bit handle с конкретным compiled model resource.
+
+### Gate 1B resource dependency discovery — implemented
+
+`sentinel-model` now parses the documented Source 2 compiled-resource header and block directory for a local `.vmdl_c`. It deterministically records the resource SHA-256, `header`, every block tag/offset/size, and the external references declared by the `RERL` block. `REDI`/`RED2` are exposed as container blocks but their Binary KV3 payload is not decoded in this slice. The read-only command is:
+
+```text
+sentinel model-describe player.vmdl_c [output.resource.json] [--asset-root directory]
+```
+
+Dependency paths are canonicalized below `--asset-root`; missing, path-traversing, and symlink-escaping inputs serialize as explicit `missing` or `unsafe_path` statuses. No generic skeleton, generic hitboxes, or inferred model dependency is ever substituted.
+
+Validation on the supplied `ctm_diver_varianta.vmdl_c` discovered `MVTX`, `MIDX`, `MDAT`, `CTRL`, `RERL`, `RED2`, and `DATA` blocks and one missing material reference. It did not discover a mesh or skeleton dependency, so the artifact truthfully remains geometry-unavailable.
+
+The capabilities are intentionally separate:
+
+```text
+Gate 1A: model identity resolution (handle -> resource identity)      metadata-only
+Gate 1B: VMDL container/dependency discovery                          implemented
+Gate 1C: deterministic VMDL/mesh/skeleton/hitbox-set parsing          requires fixture bundle
+Gate 1D: exact local-space model geometry snapshot                     requires Gate 1C
+Gate 2:  AG2 pose decoding and bone-local transforms                   unavailable
+Gate 3:  exact world-space hitboxes                                    unavailable
+Gate 4:  exact hitbox spatial evidence                                 unavailable
+```
+
+Model identity resolution is not exact geometry, and exact geometry is not exact spatial evidence. `sentinel-model` is isolated from `generic_fallback`, `approximate_spatial`, `SpatialShotEvidence`, and verdict code until later gates have verified fixtures.

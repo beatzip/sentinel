@@ -133,6 +133,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Audited review manifest and explicit `sentinel dataset promote-reviews` workflow; unverified, ambiguous or evidence-less labels cannot promote training data
 - [x] Empty versioned utility lineup manifest, preventing fabricated production lineups
 - [x] Verified model-identity manifest gate: demo SHA-256, observed handle tuple, canonical compiled-resource path and resource SHA-256 are required; current build value is explicitly external-only until adapter build identity exists
+- [x] Gate 1B VMDL resource discovery: deterministic compiled-resource header/block directory, RERL dependencies, SHA-256 and explicit unresolved dependency statuses; no geometry or fallback promotion
 - [ ] Verified CS2 build identity in demo metadata plus VMDL/mesh/skeleton/hitbox-set parser before any exact geometry gate can be available
 - [ ] AG2 byte-level golden fixture, offline pose decoder and exact bone-transform fixture; do not enable hitbox intersection or approximate LOS beforehand
 
