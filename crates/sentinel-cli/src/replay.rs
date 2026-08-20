@@ -5,14 +5,38 @@ use sentinel_map::{MapData, Vec3 as MapVec3, loader};
 use sentinel_report::{
     DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, LinkedShotDamage, link_observed_shot_damage,
     replay::{
-        OriginLineOfSight, ReplayData, ReplayFrame, ReplayPlayer, SpatialEvidenceReason,
-        SpatialEvidenceStatus, SpatialShotEvidence, UnsupportedSpatialCapability, VisibilityPair,
+        ApproximateSpatialStatus, OriginLineOfSight, PlayerSpatialApproximate, ReplayData,
+        ReplayFrame, ReplayPlayer, SpatialEvidenceReason, SpatialEvidenceStatus,
+        SpatialShotEvidence, UnsupportedSpatialCapability, VisibilityPair,
     },
 };
 use sentinel_visibility::VisibilityEngine;
 use sentinel_world::WorldRebuilder;
 
 const FRAME_INTERVAL_TICKS: usize = 32;
+
+fn approximate_spatial_records(frames: &[ReplayFrame]) -> Vec<PlayerSpatialApproximate> {
+    frames
+        .iter()
+        .flat_map(|frame| {
+            frame.players.iter().filter_map(move |player| {
+                let hitboxes = player.generic_hitbox_geometry.clone()?;
+                Some(PlayerSpatialApproximate {
+                    record_type: "player_spatial_approximate".to_string(),
+                    tick: frame.tick,
+                    round: frame.round,
+                    player_id: player.steam_id,
+                    status: ApproximateSpatialStatus::Available,
+                    usage_scope: "exploratory_functional".to_string(),
+                    evidence_allowed: false,
+                    source: hitboxes.source,
+                    confidence: hitboxes.confidence,
+                    hitboxes,
+                })
+            })
+        })
+        .collect()
+}
 
 fn spatial_evidence_for_links(
     states: &[TickState],
@@ -215,7 +239,7 @@ pub fn export_adapter(
     let map = loader::load_map_by_name(&metadata.map_name).unwrap_or_else(MapData::dust2);
     let map_ref = &map;
     let spatial_evidence = spatial_evidence_for_links(&states, map_ref, &linked_shot_damage);
-    let frames = states
+    let frames: Vec<ReplayFrame> = states
         .iter()
         .step_by(FRAME_INTERVAL_TICKS)
         .map(|state| {
@@ -283,8 +307,9 @@ pub fn export_adapter(
             }
         })
         .collect();
+    let approximate_spatial = approximate_spatial_records(&frames);
     let mut replay = ReplayData {
-        version: "1.1.0".to_string(),
+        version: "1.2.0".to_string(),
         map: metadata.map_name,
         tick_rate: metadata.tick_rate,
         frames,
@@ -300,6 +325,7 @@ pub fn export_adapter(
         damage,
         linked_shot_damage,
         spatial_evidence,
+        approximate_spatial,
         quality: Default::default(),
     };
     replay.quality = replay.assess_quality();
@@ -309,16 +335,20 @@ pub fn export_adapter(
 
 #[cfg(test)]
 mod tests {
+    use sentinel_core::{
+        HitboxGeometryConfidence, HitboxGeometrySource, SkeletonMetadata, Vec3,
+        resolve_standard_player_fallback,
+    };
     use sentinel_map::MapData;
     use sentinel_report::{
         LinkedShotDamage, ShotDamageLinkConfidence,
         replay::{
-            OriginLineOfSight, ReplayData, ReplayFrame, SpatialEvidenceReason,
-            SpatialEvidenceStatus, UnsupportedSpatialCapability,
+            ApproximateSpatialStatus, OriginLineOfSight, ReplayData, ReplayFrame, ReplayPlayer,
+            SpatialEvidenceReason, SpatialEvidenceStatus, UnsupportedSpatialCapability,
         },
     };
 
-    use super::spatial_evidence_for_links;
+    use super::{approximate_spatial_records, spatial_evidence_for_links};
 
     #[test]
     fn replay_contract_serializes() {
@@ -337,6 +367,7 @@ mod tests {
             damage: Vec::new(),
             linked_shot_damage: Vec::new(),
             spatial_evidence: Vec::new(),
+            approximate_spatial: Vec::new(),
             quality: Default::default(),
         };
         assert!(serde_json::to_string(&replay).unwrap().contains("de_dust2"));
@@ -366,5 +397,45 @@ mod tests {
                 .unsupported_capabilities
                 .contains(&UnsupportedSpatialCapability::Hitboxes)
         );
+    }
+
+    #[test]
+    fn approximate_records_are_isolated_from_evidence_contract() {
+        let hitboxes = resolve_standard_player_fallback(
+            Vec3::new(1.0, 2.0, 3.0),
+            90.0,
+            &SkeletonMetadata::default(),
+        );
+        let records = approximate_spatial_records(&[ReplayFrame {
+            tick: 64,
+            round: 2,
+            players: vec![ReplayPlayer {
+                steam_id: 1,
+                name: "player".into(),
+                team: "CounterTerrorist".into(),
+                x: 1.0,
+                y: 2.0,
+                z: 3.0,
+                health: 100,
+                alive: true,
+                yaw: 90.0,
+                pitch: 0.0,
+                eye_offset_z: None,
+                duck_amount: None,
+                hitbox_set: None,
+                model_handle: None,
+                anim_graph_id: None,
+                pose_recipe_version: None,
+                generic_hitbox_geometry: Some(hitboxes),
+            }],
+            visible_pairs: Vec::new(),
+        }]);
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].record_type, "player_spatial_approximate");
+        assert_eq!(records[0].status, ApproximateSpatialStatus::Available);
+        assert_eq!(records[0].usage_scope, "exploratory_functional");
+        assert!(!records[0].evidence_allowed);
+        assert_eq!(records[0].source, HitboxGeometrySource::GenericFallback);
+        assert_eq!(records[0].confidence, HitboxGeometryConfidence::Approximate);
     }
 }

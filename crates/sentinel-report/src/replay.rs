@@ -59,6 +59,30 @@ pub struct SpatialShotEvidence {
     pub unsupported_capabilities: Vec<UnsupportedSpatialCapability>,
 }
 
+/// Availability state for a functional spatial record. It is intentionally separate from
+/// `SpatialEvidenceStatus`, which belongs exclusively to the exact-evidence path.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ApproximateSpatialStatus {
+    Available,
+    Unavailable,
+}
+
+/// One non-evidentiary player geometry snapshot for exploratory consumers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlayerSpatialApproximate {
+    pub record_type: String,
+    pub tick: u32,
+    pub round: u32,
+    pub player_id: u64,
+    pub status: ApproximateSpatialStatus,
+    pub usage_scope: String,
+    pub evidence_allowed: bool,
+    pub source: sentinel_core::HitboxGeometrySource,
+    pub confidence: sentinel_core::HitboxGeometryConfidence,
+    pub hitboxes: ResolvedHitboxGeometry,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ReplayQualityStatus {
@@ -115,6 +139,9 @@ pub struct ReplayData {
     /// Quality-gated origin-to-origin LOS facts for linked combat events.
     #[serde(default)]
     pub spatial_evidence: Vec<SpatialShotEvidence>,
+    /// Functional player geometry records. They are not part of shot-to-damage evidence.
+    #[serde(default)]
+    pub approximate_spatial: Vec<PlayerSpatialApproximate>,
     /// Gate that prevents anti-cheat interpretation when essential replay telemetry is absent.
     #[serde(default)]
     pub quality: ReplayQuality,
@@ -271,6 +298,7 @@ mod tests {
             }],
             linked_shot_damage: vec![],
             spatial_evidence: vec![],
+            approximate_spatial: vec![],
             quality: ReplayQuality::default(),
         }
     }

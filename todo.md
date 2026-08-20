@@ -85,6 +85,8 @@
 - [x] Реализовать generic standard-player hitbox fallback и observed duck modifier только для functional/exploratory output.
 - [ ] Добавить отдельно маркированные generic chicken/weapon/prop fallback profiles только после появления non-player snapshot consumer.
 - [x] Запретить generic fallback geometry для exact-only hitbox crossing, cheat verdict и penetration evidence.
+- [x] Добавить `player_spatial_approximate` records для `exploratory_functional` usage с `evidence_allowed=false`, отдельно от `SpatialShotEvidence`.
+- [x] Проверить на demo 3, что approximate records доступны, а exact LOS 53/78 и `unsupported_capabilities` не изменены.
 - [ ] Реализовать AG2 pose-recipe decoder только после byte-level fixture и сверки bone transforms с известным Source2 reference.
 - [ ] Добавить quality gate: hitbox-intersection evidence доступен только при совпадении model, hitbox set, pose, tick и world transform.
 - [x] Gate 5: проверить AG2/model/hitbox pipeline на локальной demo, прогнать workspace lint/tests и отправить только верифицированный patch.
