@@ -127,5 +127,7 @@
 - [x] Gate 1 observed asset: validate supplied `pak01_003.vpk`, extract telemetry-resolved `ctm_fbi_variantb.vmdl_c` by VPK index location, and record exact container/RERL facts without fixture qualification promotion.
 - [ ] Gate 1D.1 candidate: accept `DATA.root.m_modelSkeleton` only after documented demo-to-VPK build provenance; then parse its 94-name/parent/local-transform arrays on that literal path.
 - [ ] Gate 1D.1 hitbox source: locate a qualified explicit hitbox-set path or a verified required dependency; do not interpret the generic PHYS block as hitboxes.
+- [x] Variant B: подготовить target-demo header/telemetry record и ignored proof-bundle template для независимой historical depot/VPK reconstruction without credentials.
+- [ ] Variant B acceptance: проверить supplied depot manifest metadata, Downloader log, VPK/resource SHA-256 and demo-to-content provenance only after user-side reconstruction artifacts are provided.
 - [x] Gate 1 correction: verify build-specific `items_game.txt` from indexed VPK chunk and record that pawn `m_iItemDefinitionIndex` is equipment-only when it resolves to a non-`customplayer` item.
 - [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.
