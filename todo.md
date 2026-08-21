@@ -129,6 +129,7 @@
 - [ ] Gate 1D.1 hitbox source: locate a qualified explicit hitbox-set path or a verified required dependency; do not interpret the generic PHYS block as hitboxes.
 - [x] Variant B: подготовить target-demo header/telemetry record и ignored proof-bundle template для независимой historical depot/VPK reconstruction without credentials.
 - [ ] Variant B acceptance: проверить supplied depot manifest metadata, Downloader log, VPK/resource SHA-256 and demo-to-content provenance only after user-side reconstruction artifacts are provided.
+- [x] Variant B reconstruction: attempt constrained DepotDownloader retrieval for app 730, depot 2347771, manifest 358563799254497787 without user credentials; collect provenance or record authentication block (anonymous manifest request returned no code; CDN returned HTTP 401).
 - [x] Variant B candidate: публично проверить SteamDB metadata для build `24701871` и записать его только как candidate for patch `14175`, без manifest/build-match claim.
 - [x] Gate 1 correction: verify build-specific `items_game.txt` from indexed VPK chunk and record that pawn `m_iItemDefinitionIndex` is equipment-only when it resolves to a non-`customplayer` item.
 - [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.
