@@ -137,6 +137,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Gate 1C.1 Binary KV3 v5 generic tree decoder: bounded uncompressed/LZ4 buffers, explicit rejection of Zstd/binary blobs, and local-oracle regression for MDAT/CTRL/RED2/DATA; no VMDL geometry semantics
 - [x] Gate 1C.2 Read-only semantic-key inspection for decoded VMDL-shaped KV3: class/key/collection observations only, with `exact_geometry_available=false`
 - [x] Gate 1D.0 Local fixture qualification: full KV3 review classifies supplied `ctm_diver_varianta.vmdl_c` as `not_geometry_fixture`; no verified handle mapping and no player hitbox-set source
+- [ ] Gate 1D.1 requires a telemetry-derived qualified verified player-model fixture bundle with exact block-qualified schema paths; do not search VPK assets by name or parse global KV3 key matches
 - [ ] Verified CS2 build identity in demo metadata plus VMDL/mesh/skeleton/hitbox-set parser before any exact geometry gate can be available
 - [ ] AG2 byte-level golden fixture, offline pose decoder and exact bone-transform fixture; do not enable hitbox intersection or approximate LOS beforehand
 

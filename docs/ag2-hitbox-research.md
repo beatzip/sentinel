@@ -137,3 +137,43 @@ The decoder was independently compared with the ValveResourceFormat oracle on th
 The full decoded local JSON for `MDAT`, `CTRL`, `RED2`, and `DATA` was reviewed, rather than relying on the bounded key summary. The concrete paths are `MDAT.root._class = CRenderMesh`, `MDAT.root.m_skeleton.m_bones[0]` with one `dummy` bone, `MDAT.root.m_hitboxsets = []`, and `DATA.root.m_modelSkeleton` with one `dummy` name, parent `-1`, zero translation, identity rotation, and unit scale. `DATA.root.m_refMeshes`, `m_refPhysicsHitboxData`, `m_vecNmSkeletonRefs`, and `m_refAnimGroups` are all empty. `CTRL` declares an embedded mesh table only. `RED2` identifies the VMDL compiler input and reports one bone with zero NM-skeleton and AG2 references.
 
 The `RERL` list contains only the missing material `materials/pbr_defaults/default_orange001.vmat`; it declares no mesh, skeleton, or hitbox dependency. Independently, no local verified mapping artifact binds an observed demo `(model_handle, hitbox_set, pose_recipe_version)` tuple to this resource. Consequently this artifact is classified as `not_geometry_fixture`, not as a qualified skeleton or hitbox parser fixture. Gate 1D.1 must not treat a global key match as a parser schema, and is blocked for this resource. The ignored `fixture-qualification.json` records the exact reviewed paths and raw block hashes.
+
+### Gate 1D.1 intake — qualified verified player-model fixture bundle
+
+Gate 1D.1 does not accept a VMDL chosen by filename, a similar VPK asset, a CRC match, or a resource discovered by an asset-name search. Its only permitted intake is a local ignored bundle derived in this order: observed Sentinel player telemetry, the observed `(model_handle, hitbox_set, pose_recipe_version)` tuple, an existing verified-manifest acceptance for that exact demo, the mapped exact VMDL path, deterministic extraction, `model-describe`, `model-kv3-inspect`, and qualification.
+
+```text
+fixture/
+├── manifest.json
+├── model.vmdl_c
+├── dependencies/
+│   └── every actually declared resource
+├── sha256.json
+└── expected/
+    └── qualification.json
+```
+
+`manifest.json` must preserve the accepted manifest’s demo SHA-256, declared game build, the one observed identity tuple, mapped asset path, asset SHA-256, and the fact that its mapping source is `verified_manifest`. It is not enough to restate those values: the source manifest must already have passed the existing `sentinel replay --verified-model-manifest` acceptance checks for the exact demo, which include the observed identity and compiled-resource hash checks. `model.vmdl_c` must hash to the mapped asset SHA-256. `sha256.json` lists the SHA-256 for `model.vmdl_c` and every extracted declared dependency. A missing declared dependency produces `requires_dependency`; a raw string hint never creates a dependency.
+
+The required `expected/qualification.json` records the concrete typed context rather than a global key search:
+
+```json
+{
+  "observed_identity": {
+    "model_handle": "...",
+    "hitbox_set": "...",
+    "pose_recipe_version": "..."
+  },
+  "verified_asset": {
+    "path": "...",
+    "sha256": "..."
+  },
+  "qualification": {
+    "resource_class": "...",
+    "skeleton_schema_path": "MDAT.root.<typed object>.<field>",
+    "hitbox_sets_schema_path": "<block>.root.<typed object>.<field>"
+  }
+}
+```
+
+Each non-null path is literal and block-qualified. It must resolve from the named decoded block’s root through the declared object fields, and not by recursively finding a matching key anywhere in the generic KV3 tree. The qualified skeleton path must lead to a real bone collection with its parent graph and bind/local transforms; the qualified hitbox-set path must lead to real hitbox definitions with a bone reference and bounds or capsule radius. Qualification may yield only `qualified_for_skeleton_parser`, `qualified_for_hitbox_parser`, `requires_dependency`, or `not_geometry_fixture`. The first two statuses permit a future parser scoped to those exact paths; the latter two do not.
