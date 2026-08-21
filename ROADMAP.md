@@ -141,6 +141,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Gate 0 local pose-capture trace: emits one non-empty AG2 byte payload with observed pawn identity, model handle, hitbox set and SHA-256; raw bytes remain local-only and never enter replay/evidence paths
 - [x] Gate 1 raw telemetry prerequisite: local Gate 0 trace emits controller `m_nPawnCharacterDefIndex` alongside the same pawn/tick AG2 record; pawn `m_iItemDefinitionIndex` is recorded separately as equipment-only and never used for agent identity
 - [x] Gate 1 observed asset extraction: same-tick controller character definition `5308` resolves through extracted `items_game.txt` to `ctm_fbi_variantb.vmdl_c`, which is deterministically extracted and hashed; build-match provenance remains unproven
+- [x] Variant B 19-Aug content check: reconstructed `game/csgo/pak01_dir.vpk` from depot `2347770` manifest `4814468113142569832` does not match the supplied local directory index; individual chunks remain untested
 - [ ] Gate 1 documented non-handle identity chain: requires demo-derived agent/econ/loadout identity plus build-matched schema/VPK provenance before mapping to a VMDL; no handle, CRC or filename inference
 - [ ] Verified CS2 build identity in demo metadata plus VMDL/mesh/skeleton/hitbox-set parser before any exact geometry gate can be available
 - [ ] AG2 byte-level golden fixture, offline pose decoder and exact bone-transform fixture; do not enable hitbox intersection or approximate LOS beforehand
