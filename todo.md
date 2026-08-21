@@ -123,6 +123,9 @@
 - [x] Gate 1 prerequisite: trace raw controller `m_nPawnCharacterDefIndex` at the same resolved pawn/tick as AG2 bytes.
 - [x] Gate 1: audit supplied items_game manifest approach and require demo-to-VPK build matching before accepting any agent def_index → model_player path.
 - [ ] Gate 1 unblock: document demo-to-VPK build matching, then verify raw controller `m_nPawnCharacterDefIndex` → `model_player` → extracted VMDL/dependencies with hashes.
-- [ ] Gate 1 asset stage: obtain `pak01_003.vpk` to extract observed `agents/models/ctm_fbi/ctm_fbi_variantb.vmdl_c`, then hash and inspect declared dependencies; retain build match as separately unproven until documented.
+- [x] Gate 1 asset stage: obtain `pak01_003.vpk` to extract observed `agents/models/ctm_fbi/ctm_fbi_variantb.vmdl_c`, then hash and inspect declared dependencies; retain build match as separately unproven until documented.
+- [x] Gate 1 observed asset: validate supplied `pak01_003.vpk`, extract telemetry-resolved `ctm_fbi_variantb.vmdl_c` by VPK index location, and record exact container/RERL facts without fixture qualification promotion.
+- [ ] Gate 1D.1 candidate: accept `DATA.root.m_modelSkeleton` only after documented demo-to-VPK build provenance; then parse its 94-name/parent/local-transform arrays on that literal path.
+- [ ] Gate 1D.1 hitbox source: locate a qualified explicit hitbox-set path or a verified required dependency; do not interpret the generic PHYS block as hitboxes.
 - [x] Gate 1 correction: verify build-specific `items_game.txt` from indexed VPK chunk and record that pawn `m_iItemDefinitionIndex` is equipment-only when it resolves to a non-`customplayer` item.
 - [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.
