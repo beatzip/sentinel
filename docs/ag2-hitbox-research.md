@@ -98,13 +98,15 @@ The current uploaded VPK index, segments, and extracted descriptors still do not
 
 ### Gate 1B resource dependency discovery — implemented
 
-`sentinel-model` now parses the documented Source 2 compiled-resource header and block directory for a local `.vmdl_c`. It deterministically records the resource SHA-256, `header`, every block tag/offset/size, and the external references declared by the `RERL` block. `REDI`/`RED2` are exposed as container blocks but their Binary KV3 payload is not decoded in this slice. The read-only command is:
+`sentinel-model` now parses the documented Source 2 compiled-resource header and block directory for a local `.vmdl_c`. It deterministically records the resource SHA-256, `header`, and for every block its tag, offset, raw stored size, raw SHA-256, bounded structural signatures, and bounded raw resource-path-like strings. The read-only command is:
 
 ```text
 sentinel model-describe player.vmdl_c [output.resource.json] [--asset-root directory]
 ```
 
-Dependency paths are canonicalized below `--asset-root`; missing, path-traversing, and symlink-escaping inputs serialize as explicit `missing` or `unsafe_path` statuses. No generic skeleton, generic hitboxes, or inferred model dependency is ever substituted.
+`RERL` is parsed structurally as the authoritative external-reference list and each listed resource receives a dependency type/path plus explicit `resolved`, `missing`, or `unsafe_path` status below `--asset-root`. `REDI`/`RED2` and `DATA` remain non-semantic: the implementation only recognizes a bounded Binary KV3 header signature and, if a complete header is present, its declared compression mode and declared compressed/uncompressed byte counts. It scans at most 8 KiB and returns at most 32 printable path-like byte strings; those strings are diagnostic hints, not dependencies or proof of embedded geometry.
+
+No generic skeleton, generic hitboxes, inferred model dependency, semantic KV3 decoding, AG2 pose, world transform, or geometry claim is substituted.
 
 Validation on the supplied `ctm_diver_varianta.vmdl_c` discovered `MVTX`, `MIDX`, `MDAT`, `CTRL`, `RERL`, `RED2`, and `DATA` blocks and one missing material reference. It did not discover a mesh or skeleton dependency, so the artifact truthfully remains geometry-unavailable.
 

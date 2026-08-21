@@ -12,6 +12,15 @@ const BLOCK_INDEX_ENTRY_SIZE: usize = 12;
 const RERL_HEADER_SIZE: usize = 8;
 const RERL_ENTRY_SIZE: usize = 16;
 const EXPECTED_HEADER_VERSION: u16 = 12;
+const MAX_SIGNATURE_SCAN_BYTES: usize = 8 * 1024;
+const MAX_REFERENCE_LIKE_STRINGS: usize = 32;
+const KV3_HEADER_MINIMUM_SIZE: usize = 64;
+const KV3_MAGIC0: u32 = 0x03564B56;
+const KV3_MAGIC1: u32 = 0x4B563301;
+const KV3_MAGIC2: u32 = 0x4B563302;
+const KV3_MAGIC3: u32 = 0x4B563303;
+const KV3_MAGIC4: u32 = 0x4B563304;
+const KV3_MAGIC5: u32 = 0x4B563305;
 
 #[derive(Debug, Error)]
 pub enum ResourceDescriptorError {
@@ -54,7 +63,21 @@ pub struct ResourceHeader {
 pub struct ResourceBlock {
     pub tag: String,
     pub offset: u32,
-    pub size: u32,
+    /// Byte count recorded in the Source 2 block directory. This is the raw
+    /// payload size, not a claim about any inner compression format.
+    pub stored_size: u32,
+    pub raw_sha256: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub declared_uncompressed_size: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub declared_compressed_size: Option<u32>,
+    pub compression: String,
+    /// Bounded, non-semantic signatures. Values here never establish geometry,
+    /// dependency resolution, or model identity.
+    pub structural_signatures: Vec<String>,
+    /// Printable, path-like strings observed in at most the first 8 KiB of the
+    /// raw block. These are diagnostic hints only, never dependencies.
+    pub raw_reference_like_strings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -144,6 +167,104 @@ fn sha256_bytes(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
+fn optional_u32(bytes: &[u8], offset: usize) -> Option<u32> {
+    bytes
+        .get(offset..offset + 4)
+        .map(|value| u32::from_le_bytes([value[0], value[1], value[2], value[3]]))
+}
+
+fn is_resource_path_like(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    value.contains('/')
+        && [
+            ".vmdl",
+            ".vmdl_c",
+            ".vmesh",
+            ".vmesh_c",
+            ".vnmskel",
+            ".vnmskel_c",
+            ".vskel",
+            ".vskel_c",
+            ".vmat",
+            ".vmat_c",
+            ".vanim",
+            ".vanim_c",
+        ]
+        .iter()
+        .any(|suffix| lower.ends_with(suffix))
+}
+
+fn raw_reference_like_strings(bytes: &[u8]) -> Vec<String> {
+    let scanned = &bytes[..bytes.len().min(MAX_SIGNATURE_SCAN_BYTES)];
+    let mut matches = Vec::new();
+    let mut start = None;
+    for (index, byte) in scanned
+        .iter()
+        .copied()
+        .chain(std::iter::once(0))
+        .enumerate()
+    {
+        if byte.is_ascii_graphic() || byte == b' ' {
+            start.get_or_insert(index);
+            continue;
+        }
+        if let Some(begin) = start.take() {
+            let value = String::from_utf8_lossy(&scanned[begin..index]).into_owned();
+            if is_resource_path_like(&value) && !matches.contains(&value) {
+                matches.push(value);
+                if matches.len() == MAX_REFERENCE_LIKE_STRINGS {
+                    break;
+                }
+            }
+        }
+    }
+    matches
+}
+
+fn inspect_block(tag: String, offset: u32, stored_size: u32, bytes: &[u8]) -> ResourceBlock {
+    let magic = optional_u32(bytes, 0);
+    let mut structural_signatures = Vec::new();
+    let mut declared_uncompressed_size = None;
+    let mut declared_compressed_size = None;
+    let mut compression = "not_declared".to_string();
+    match magic {
+        Some(KV3_MAGIC0) => structural_signatures.push("binary_kv3_v0".to_string()),
+        Some(KV3_MAGIC1 | KV3_MAGIC2 | KV3_MAGIC3 | KV3_MAGIC4 | KV3_MAGIC5) => {
+            let version = magic.unwrap() as u8;
+            structural_signatures.push(format!("binary_kv3_v{version}"));
+            if bytes.len() >= KV3_HEADER_MINIMUM_SIZE {
+                compression = match optional_u32(bytes, 20) {
+                    Some(0) => "uncompressed".to_string(),
+                    Some(1) => "lz4".to_string(),
+                    Some(2) => "zstd".to_string(),
+                    Some(value) => format!("unknown_{value}"),
+                    None => "not_declared".to_string(),
+                };
+                declared_uncompressed_size = optional_u32(bytes, 48);
+                declared_compressed_size = optional_u32(bytes, 52);
+            } else {
+                structural_signatures.push("binary_kv3_header_truncated".to_string());
+            }
+        }
+        _ => {}
+    }
+    let raw_reference_like_strings = raw_reference_like_strings(bytes);
+    if !raw_reference_like_strings.is_empty() {
+        structural_signatures.push("raw_resource_path_like_strings".to_string());
+    }
+    ResourceBlock {
+        tag,
+        offset,
+        stored_size,
+        raw_sha256: sha256_bytes(bytes),
+        declared_uncompressed_size,
+        declared_compressed_size,
+        compression,
+        structural_signatures,
+        raw_reference_like_strings,
+    }
+}
+
 fn dependency_kind(path: &str) -> ModelDependencyKind {
     let lower = path.to_ascii_lowercase();
     if lower.ends_with(".vmesh_c") {
@@ -161,10 +282,13 @@ fn parse_rerl(
     file_limit: usize,
 ) -> Result<Vec<ExternalDependency>, ResourceDescriptorError> {
     let block_start = block.offset as usize;
-    let block_end = checked_end(block_start, block.size as usize, file_limit).map_err(|_| {
-        ResourceDescriptorError::InvalidExternalReference("RERL block exceeds resource".to_string())
-    })?;
-    if (block.size as usize) < RERL_HEADER_SIZE {
+    let block_end =
+        checked_end(block_start, block.stored_size as usize, file_limit).map_err(|_| {
+            ResourceDescriptorError::InvalidExternalReference(
+                "RERL block exceeds resource".to_string(),
+            )
+        })?;
+    if (block.stored_size as usize) < RERL_HEADER_SIZE {
         return Err(ResourceDescriptorError::InvalidExternalReference(
             "RERL header is truncated".to_string(),
         ));
@@ -276,15 +400,18 @@ pub fn describe_vmdl_bytes(bytes: &[u8]) -> Result<ResourceDescriptor, ResourceD
         let offset = offset_field
             .checked_add(relative_offset)
             .ok_or(ResourceDescriptorError::BlockIndexOutOfBounds)?;
-        let size = read_u32(bytes, entry_start + 8)? as usize;
-        if checked_end(offset, size, file_size).is_err() {
+        let stored_size = read_u32(bytes, entry_start + 8)? as usize;
+        let end = if let Ok(end) = checked_end(offset, stored_size, file_size) {
+            end
+        } else {
             return Err(ResourceDescriptorError::BlockOutOfBounds { tag });
-        }
-        blocks.push(ResourceBlock {
+        };
+        blocks.push(inspect_block(
             tag,
-            offset: offset as u32,
-            size: size as u32,
-        });
+            offset as u32,
+            stored_size as u32,
+            &bytes[offset..end],
+        ));
     }
 
     let external_dependencies = blocks
@@ -293,6 +420,12 @@ pub fn describe_vmdl_bytes(bytes: &[u8]) -> Result<ResourceDescriptor, ResourceD
         .map(|block| parse_rerl(bytes, block, file_size))
         .transpose()?
         .unwrap_or_default();
+    if let Some(rerl) = blocks.iter_mut().find(|block| block.tag == "RERL") {
+        rerl.structural_signatures.push(format!(
+            "rerl_external_reference_count_{}",
+            external_dependencies.len()
+        ));
+    }
     Ok(ResourceDescriptor {
         schema_version: 1,
         resource_type: "vmdl".to_string(),
@@ -405,19 +538,20 @@ mod tests {
     }
 
     fn sample_vmdl() -> Vec<u8> {
-        let rer_start = 48;
+        let rer_start = 64;
         let entries_start = rer_start + RERL_HEADER_SIZE;
         let strings_start = entries_start + 2 * RERL_ENTRY_SIZE;
         let mesh = b"models/player/test.vmesh_c\0";
         let skeleton = b"models/player/test.vnmskel_c\0";
         let red2_start = strings_start + mesh.len() + skeleton.len();
-        let file_size = red2_start + RERL_HEADER_SIZE;
+        let data_start = red2_start + RERL_HEADER_SIZE;
+        let file_size = data_start + KV3_HEADER_MINIMUM_SIZE;
         let mut bytes = vec![0; file_size];
         put_u32(&mut bytes, 0, file_size as u32);
         put_u16(&mut bytes, 4, EXPECTED_HEADER_VERSION);
         put_u16(&mut bytes, 6, 1);
         put_u32(&mut bytes, 8, 8);
-        put_u32(&mut bytes, 12, 2);
+        put_u32(&mut bytes, 12, 3);
 
         bytes[16..20].copy_from_slice(b"RERL");
         put_u32(&mut bytes, 20, (rer_start - 20) as u32);
@@ -425,6 +559,9 @@ mod tests {
         bytes[28..32].copy_from_slice(b"RED2");
         put_u32(&mut bytes, 32, (red2_start - 32) as u32);
         put_u32(&mut bytes, 36, RERL_HEADER_SIZE as u32);
+        bytes[40..44].copy_from_slice(b"DATA");
+        put_u32(&mut bytes, 44, (data_start - 44) as u32);
+        put_u32(&mut bytes, 48, KV3_HEADER_MINIMUM_SIZE as u32);
 
         put_u32(&mut bytes, rer_start, RERL_HEADER_SIZE as u32);
         put_u32(&mut bytes, rer_start + 4, 2);
@@ -438,6 +575,10 @@ mod tests {
         }
         bytes[strings_start..strings_start + mesh.len()].copy_from_slice(mesh);
         bytes[strings_start + mesh.len()..red2_start].copy_from_slice(skeleton);
+        bytes[data_start..data_start + 4].copy_from_slice(&KV3_MAGIC5.to_le_bytes());
+        put_u32(&mut bytes, data_start + 20, 2);
+        put_u32(&mut bytes, data_start + 48, 1024);
+        put_u32(&mut bytes, data_start + 52, 128);
         bytes
     }
 
@@ -445,9 +586,25 @@ mod tests {
     fn describes_vmdl_blocks_and_rerl_dependencies_deterministically() {
         let descriptor = describe_vmdl_bytes(&sample_vmdl()).unwrap();
         assert_eq!(descriptor.resource_type, "vmdl");
-        assert_eq!(descriptor.blocks.len(), 2);
+        assert_eq!(descriptor.blocks.len(), 3);
         assert_eq!(descriptor.blocks[0].tag, "RERL");
         assert_eq!(descriptor.blocks[1].tag, "RED2");
+        assert_eq!(descriptor.blocks[2].tag, "DATA");
+        assert_eq!(descriptor.blocks[0].raw_sha256.len(), 64);
+        assert!(descriptor.blocks[0].stored_size > RERL_HEADER_SIZE as u32);
+        assert!(
+            descriptor.blocks[0]
+                .structural_signatures
+                .contains(&"rerl_external_reference_count_2".to_string())
+        );
+        assert_eq!(descriptor.blocks[2].compression, "zstd");
+        assert_eq!(descriptor.blocks[2].declared_uncompressed_size, Some(1024));
+        assert_eq!(descriptor.blocks[2].declared_compressed_size, Some(128));
+        assert!(
+            descriptor.blocks[2]
+                .structural_signatures
+                .contains(&"binary_kv3_v5".to_string())
+        );
         assert_eq!(descriptor.external_dependencies.len(), 2);
         assert_eq!(
             descriptor.external_dependencies[0].kind,

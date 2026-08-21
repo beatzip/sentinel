@@ -105,3 +105,5 @@
 - [ ] Этап A: реализовать isolated deterministic VMDL parser для verified local `.vmdl_c`, serializing skeleton/hitbox-set artifact без AG2, world transforms, fallback geometry или spatial evidence.
 - [x] Gate 1B: добавить isolated VMDL resource discovery — block directory, RED2/RERL external dependency manifest, SHA-256 и explicit unresolved dependencies; без VMDL geometry parsing или fallback.
 - [x] Gate 1B: добавить isolated VMDL resource discovery — block directory, RED2/RERL external dependency manifest, SHA-256 и explicit unresolved dependencies; без VMDL geometry parsing или fallback.
+- [x] Gate 1B: добавить deterministic per-block raw SHA-256, declared/compressed size и bounded structural signatures для RERL/RED2/DATA без semantic geometry decoding.
+- [x] Gate 1B: добавить deterministic per-block raw SHA-256, declared/compressed size и bounded structural signatures для RERL/RED2/DATA без semantic geometry decoding.
