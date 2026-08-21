@@ -119,6 +119,10 @@
 - [x] Запустить reviewed `cs2_fixture_probe` на двух user-supplied demo и сохранить only reproducible Gate 0 outputs в ignored local audit artifacts.
 - [x] Дополнить local-only Source2 Gate 0 trace correlated pawn identity, raw model/hitbox/AG2 fields и pose-byte hash без изменений replay/evidence paths.
 - [x] Оценить Gate 1 после успешного Gate 0: в двух diagnostics отсутствуют modelprecache/player VMDL paths, а локальный build-matched item/agent/econ schema source не предоставлен; identity mapping remains blocked.
-- [x] Gate 1 prerequisite: trace raw pawn `agent_skin`/`m_iItemDefinitionIndex` at the same Gate 0 pawn/tick, recording exact source field or its unavailability.
+- [x] Gate 1 correction: reject pawn `m_iItemDefinitionIndex` as agent identity after build-specific schema resolves observed `5034` to `specialist_gloves` / `hands_paintable`.
+- [x] Gate 1 prerequisite: trace raw controller `m_nPawnCharacterDefIndex` at the same resolved pawn/tick as AG2 bytes.
 - [x] Gate 1: audit supplied items_game manifest approach and require demo-to-VPK build matching before accepting any agent def_index → model_player path.
-- [ ] Gate 1 unblock: obtain an archived build-matched VPK plus `items_game.txt`, or record a fresh demo from the same local build; then verify raw non-zero `m_iItemDefinitionIndex` → `model_player` → extracted VMDL/dependencies with hashes.
+- [ ] Gate 1 unblock: document demo-to-VPK build matching, then verify raw controller `m_nPawnCharacterDefIndex` → `model_player` → extracted VMDL/dependencies with hashes.
+- [ ] Gate 1 asset stage: obtain `pak01_003.vpk` to extract observed `agents/models/ctm_fbi/ctm_fbi_variantb.vmdl_c`, then hash and inspect declared dependencies; retain build match as separately unproven until documented.
+- [x] Gate 1 correction: verify build-specific `items_game.txt` from indexed VPK chunk and record that pawn `m_iItemDefinitionIndex` is equipment-only when it resolves to a non-`customplayer` item.
+- [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.

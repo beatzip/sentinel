@@ -25,6 +25,7 @@ const ORIGIN_WORLD_OFFSET: f32 = 16_384.0;
 const AG2_POSE_RECIPE_FIELD: &str =
     "CBodyComponent.m_animationController.m_SerializePoseRecipeAG2Dynamic";
 const AGENT_DEFINITION_INDEX_FIELD: &str = "m_iItemDefinitionIndex";
+const CONTROLLER_CHARACTER_DEFINITION_FIELD: &str = "m_nPawnCharacterDefIndex";
 
 fn controller_index_from_handle(handle: u32) -> u32 {
     handle & ENTITY_INDEX_MASK
@@ -141,6 +142,7 @@ struct DemoCollector {
     player_snapshots: Vec<Source2PlayerSnapshot>,
     current_tick: u32,
     entity_to_player: HashMap<u32, PlayerId>,
+    controller_character_definitions: HashMap<u32, (u32, u16)>,
     event_user_to_player: HashMap<i64, PlayerId>,
     map_name: String,
     server_name: String,
@@ -453,6 +455,14 @@ impl DemoCollector {
             self.collect_game_rules_phase(entity, tick);
         }
 
+        if class_name == "CCSPlayerController"
+            && let Some(definition_index) =
+                self.get_u16(entity, CONTROLLER_CHARACTER_DEFINITION_FIELD)
+        {
+            self.controller_character_definitions
+                .insert(entity.index(), (self.current_tick, definition_index));
+        }
+
         // Player controller - extract name and team
         if class_name == "CCSPlayerController"
             && let Ok(val) = entity.get_property("m_steamID")
@@ -558,6 +568,8 @@ impl DemoCollector {
                     "CBodyComponent.m_animationController.m_nSerializePoseRecipeVersionAG2",
                 ),
             };
+            let controller_character_definition = controller_slot
+                .and_then(|slot| self.controller_character_definitions.get(&slot).copied());
 
             // Gate 0 is opt-in and local-only: it retains a real pawn's exact AG2 payload
             // with its observed identity fields. This trace is never public replay data,
@@ -569,7 +581,7 @@ impl DemoCollector {
             {
                 self.trace_pose_recipe_samples += 1;
                 eprintln!(
-                    "SOURCE2_AG2_POSE tick={} pawn_entity_index={} controller_slot={controller_slot:?} steam_id={} model_handle={:?} hitbox_set={:?} agent_definition_index_field={} agent_definition_index={:?} active_slot={:?} pose_recipe_version={:?} bytes_len={} sha256={} raw_hex={}",
+                    "SOURCE2_AG2_POSE tick={} pawn_entity_index={} controller_slot={controller_slot:?} steam_id={} model_handle={:?} hitbox_set={:?} pawn_item_definition_index_field={} pawn_item_definition_index={:?} controller_character_definition_index_field={} controller_character_definition_index={:?} controller_character_definition_tick={:?} active_slot={:?} pose_recipe_version={:?} bytes_len={} sha256={} raw_hex={}",
                     self.current_tick,
                     entity.index(),
                     player_id.as_u64(),
@@ -577,6 +589,9 @@ impl DemoCollector {
                     skeleton.hitbox_set,
                     AGENT_DEFINITION_INDEX_FIELD,
                     self.get_i32(entity, AGENT_DEFINITION_INDEX_FIELD),
+                    CONTROLLER_CHARACTER_DEFINITION_FIELD,
+                    controller_character_definition.map(|(_, definition_index)| definition_index),
+                    controller_character_definition.map(|(tick, _)| tick),
                     self.get_i32(entity, "CBodyComponent.m_animationController.m_nSerializePoseRecipeAG2ActiveSlot"),
                     skeleton.pose_recipe_version,
                     bytes.len(),
