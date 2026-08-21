@@ -110,3 +110,5 @@
 - [x] Выполнить read-only `model-describe` для supplied `ctm_diver_varianta.vmdl_c` и зафиксировать только фактические blocks, hashes, RERL и structural signatures.
 - [x] Gate 1C.1/1C.2: сначала получить independent Binary KV3 v5 oracle fixture output для MDAT/CTRL/RED2/DATA, затем реализовать generic decoder и bounded semantic inspection без geometry/evidence promotion.
 - [x] Реализовать bounded Binary KV3 v5 generic decoder и semantic-only VMDL inspector; подтвердить против локального oracle без добавления geometry или spatial evidence.
+- [x] Gate 1D.0: квалифицировать local VMDL fixture по verified handle-to-asset mapping и полным qualified KV3 schema paths; классифицировать без parser/AG2/evidence promotion (`ctm_diver_varianta.vmdl_c` = `not_geometry_fixture`).
+- [ ] Gate 1D.1: реализовать deterministic skeleton/hitbox-set parser только при qualified fixture с конкретными schema paths и реально обнаруженными структурами.
