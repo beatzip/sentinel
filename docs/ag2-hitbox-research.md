@@ -177,3 +177,9 @@ The required `expected/qualification.json` records the concrete typed context ra
 ```
 
 Each non-null path is literal and block-qualified. It must resolve from the named decoded block’s root through the declared object fields, and not by recursively finding a matching key anywhere in the generic KV3 tree. The qualified skeleton path must lead to a real bone collection with its parent graph and bind/local transforms; the qualified hitbox-set path must lead to real hitbox definitions with a bone reference and bounds or capsule radius. Qualification may yield only `qualified_for_skeleton_parser`, `qualified_for_hitbox_parser`, `requires_dependency`, or `not_geometry_fixture`. The first two statuses permit a future parser scoped to those exact paths; the latter two do not.
+
+### Gate 0 capture status — passed locally; Gate 1 remains blocked
+
+The local opt-in Source 2 trace now emits one real `CCSPlayerPawn` pose record with its tick, pawn entity index, controller slot, SteamID, observed `m_hModel`, `m_nHitboxSet`, AG2 active-slot value when exposed, pose-recipe version, byte length, SHA-256 and raw bytes. The raw payload is retained only in ignored local audit output and remains outside replay JSON, model mapping, geometry, spatial evidence and verdict flows.
+
+Two independently supplied demos showed that `m_hModel`, `m_SerializePoseRecipeAG2Dynamic`, and `m_nSerializePoseRecipeAG2ActiveSlot` are present in SendTables. Each produced a non-empty real-pawn AG2 dynamic byte array, so the byte-capture prerequisite is passed. Their diagnostics did not expose a modelprecache-style table, player VMDL path, or a build-matched item/agent/econ schema source. That negative result is not converted into a mapping: Gate 1 remains blocked until the documented non-handle chain from observed agent/econ/loadout identity to a build-matched schema/VPK source and exact model resource is supplied.

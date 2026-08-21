@@ -452,25 +452,6 @@ impl DemoCollector {
             self.collect_game_rules_phase(entity, tick);
         }
 
-        // Gate 0 is opt-in and local-only: it retains the exact AG2 payload as an audit
-        // artifact, never as public replay data or hitbox evidence.
-        if class_name == "CCSPlayerPawn"
-            && self.trace_pose_recipe
-            && self.current_tick <= self.trace_max_tick
-            && self.trace_pose_recipe_samples < self.trace_pose_recipe_max_samples
-            && let Some(bytes) = self.get_u8_vec(entity, AG2_POSE_RECIPE_FIELD)
-        {
-            self.trace_pose_recipe_samples += 1;
-            eprintln!(
-                "SOURCE2_AG2_POSE tick={} entity={} bytes_len={} sha256={} raw_hex={}",
-                self.current_tick,
-                entity.index(),
-                bytes.len(),
-                pose_recipe_sha256(&bytes),
-                hex_bytes(&bytes),
-            );
-        }
-
         // Player controller - extract name and team
         if class_name == "CCSPlayerController"
             && let Ok(val) = entity.get_property("m_steamID")
@@ -511,9 +492,10 @@ impl DemoCollector {
         if class_name == "CCSPlayerPawn" {
             // Pawns and controllers have different entity indexes. The pawn handle resolves to
             // its controller index in the Source 2 entity list.
-            let player_id = if let Some(controller_index) = self
+            let controller_slot = self
                 .get_u32(entity, "m_hOriginalController")
-                .map(controller_index_from_handle)
+                .map(controller_index_from_handle);
+            let player_id = if let Some(controller_index) = controller_slot
                 && let Some(&id) = self.entity_to_player.get(&controller_index)
             {
                 id
@@ -575,6 +557,30 @@ impl DemoCollector {
                     "CBodyComponent.m_animationController.m_nSerializePoseRecipeVersionAG2",
                 ),
             };
+
+            // Gate 0 is opt-in and local-only: it retains a real pawn's exact AG2 payload
+            // with its observed identity fields. This trace is never public replay data,
+            // geometry, spatial evidence, or a verdict input.
+            if self.trace_pose_recipe
+                && self.current_tick <= self.trace_max_tick
+                && self.trace_pose_recipe_samples < self.trace_pose_recipe_max_samples
+                && let Some(bytes) = self.get_u8_vec(entity, AG2_POSE_RECIPE_FIELD)
+            {
+                self.trace_pose_recipe_samples += 1;
+                eprintln!(
+                    "SOURCE2_AG2_POSE tick={} pawn_entity_index={} controller_slot={controller_slot:?} steam_id={} model_handle={:?} hitbox_set={:?} active_slot={:?} pose_recipe_version={:?} bytes_len={} sha256={} raw_hex={}",
+                    self.current_tick,
+                    entity.index(),
+                    player_id.as_u64(),
+                    skeleton.model_handle,
+                    skeleton.hitbox_set,
+                    self.get_i32(entity, "CBodyComponent.m_animationController.m_nSerializePoseRecipeAG2ActiveSlot"),
+                    skeleton.pose_recipe_version,
+                    bytes.len(),
+                    pose_recipe_sha256(&bytes),
+                    hex_bytes(&bytes),
+                );
+            }
 
             // Extract alive state (m_lifeState: 0 = alive, others = dead)
             let alive = self
