@@ -8,9 +8,9 @@ use sentinel_features::FeatureEngine;
 use sentinel_map::loader;
 use sentinel_memory::{MatchObservation, Memory};
 use sentinel_report::{
-    AnalysisProvenance, ConfidenceAssessment, DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, Encounter,
+    link_observed_shot_damage, AnalysisProvenance, ConfidenceAssessment, Encounter,
     LinkedShotDamage, MatchMetadata, MatchReport, ObservedDamage, ObservedShot, PlayerReport,
-    RosterKill, RoundContext, RoundStory, SupportingMatch, link_observed_shot_damage,
+    RosterKill, RoundContext, RoundStory, SupportingMatch, DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS,
 };
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
@@ -95,6 +95,7 @@ fn main() {
         }
         "dataset" => dataset::run(&args[2..]),
         "model-describe" => run_model_describe(&args[2..]),
+        "model-kv3-inspect" => run_model_kv3_inspect(&args[2..]),
         "replay" => {
             if args.len() < 3 {
                 eprintln!(
@@ -681,7 +682,7 @@ pub(crate) fn build_round_contexts(
 pub(crate) fn observed_combat_events(
     events: &[sentinel_events::kinds::GameEvent],
 ) -> (Vec<ObservedShot>, Vec<ObservedDamage>) {
-    use sentinel_events::{EventKind, damage_from_game_event, shot_from_game_event};
+    use sentinel_events::{damage_from_game_event, shot_from_game_event, EventKind};
 
     let shots = events
         .iter()
@@ -1063,6 +1064,71 @@ fn run_model_describe(args: &[String]) {
     }
 }
 
+fn run_model_kv3_inspect(args: &[String]) {
+    if args.len() < 2 || args.len() > 3 {
+        eprintln!(
+            "Usage: sentinel model-kv3-inspect <player.vmdl_c> <MDAT|CTRL|RED2|DATA> [output.json]"
+        );
+        return;
+    }
+    let input = PathBuf::from(&args[0]);
+    let tag = &args[1];
+    let descriptor = match sentinel_model::describe_vmdl_file(&input) {
+        Ok(descriptor) => descriptor,
+        Err(error) => {
+            eprintln!("Model discovery failed: {error}");
+            return;
+        }
+    };
+    let Some(block) = descriptor.blocks.iter().find(|block| block.tag == *tag) else {
+        eprintln!("Resource block {tag} was not found");
+        return;
+    };
+    let resource = match std::fs::read(&input) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("Unable to read model resource: {error}");
+            return;
+        }
+    };
+    let start = block.offset as usize;
+    let Some(end) = start.checked_add(block.stored_size as usize) else {
+        eprintln!("Resource block {tag} has an invalid range");
+        return;
+    };
+    let Some(bytes) = resource.get(start..end) else {
+        eprintln!("Resource block {tag} is outside the resource file");
+        return;
+    };
+    let document = match sentinel_model::decode_binary_kv3_v5(bytes) {
+        Ok(document) => document,
+        Err(error) => {
+            eprintln!("KV3 decode failed for block {tag}: {error}");
+            return;
+        }
+    };
+    let semantic_inspection = sentinel_model::inspect_vmdl_semantics(&document);
+    let output = args
+        .get(2)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| input.with_extension(format!("{tag}.kv3.json")));
+    let artifact = serde_json::json!({
+        "schema_version": 1,
+        "resource_sha256": descriptor.asset_sha256,
+        "block": block,
+        "document": document,
+        "semantic_inspection": semantic_inspection,
+        "exact_geometry_available": false,
+        "note": "Generic Binary KV3 inspection only: no VMDL geometry, hitbox transforms, AG2 pose decoding, or spatial evidence is produced."
+    });
+    match serde_json::to_string_pretty(&artifact)
+        .and_then(|json| std::fs::write(&output, json).map_err(serde_json::Error::io))
+    {
+        Ok(()) => println!("KV3 inspection: {}", output.display()),
+        Err(error) => eprintln!("Unable to write KV3 inspection: {error}"),
+    }
+}
+
 fn print_usage() {
     println!("Usage: sentinel <command> [options]");
     println!();
@@ -1078,5 +1144,6 @@ fn print_usage() {
     );
     println!("  replay <match.dem> [output]   Export sampled replay frames with visibility pairs");
     println!("  model-describe <vmdl_c> [out] Discover Source 2 VMDL blocks and RERL dependencies");
+    println!("  model-kv3-inspect <vmdl_c> <tag> [out] Decode one KV3 v5 block and report bounded semantic keys");
     println!("  verify                        Run verification checks");
 }

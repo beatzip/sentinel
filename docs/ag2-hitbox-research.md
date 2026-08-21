@@ -104,9 +104,9 @@ The current uploaded VPK index, segments, and extracted descriptors still do not
 sentinel model-describe player.vmdl_c [output.resource.json] [--asset-root directory]
 ```
 
-`RERL` is parsed structurally as the authoritative external-reference list and each listed resource receives a dependency type/path plus explicit `resolved`, `missing`, or `unsafe_path` status below `--asset-root`. `REDI`/`RED2` and `DATA` remain non-semantic: the implementation only recognizes a bounded Binary KV3 header signature and, if a complete header is present, its declared compression mode and declared compressed/uncompressed byte counts. It scans at most 8 KiB and returns at most 32 printable path-like byte strings; those strings are diagnostic hints, not dependencies or proof of embedded geometry.
+`RERL` is parsed structurally as the authoritative external-reference list and each listed resource receives a dependency type/path plus explicit `resolved`, `missing`, or `unsafe_path` status below `--asset-root`. The container descriptor still treats `REDI`/`RED2` and `DATA` as non-semantic: it recognizes a bounded Binary KV3 header signature and, if a complete header is present, its declared compression mode and declared compressed/uncompressed byte counts. It scans at most 8 KiB and returns at most 32 printable path-like byte strings; those strings are diagnostic hints, not dependencies or proof of embedded geometry.
 
-No generic skeleton, generic hitboxes, inferred model dependency, semantic KV3 decoding, AG2 pose, world transform, or geometry claim is substituted.
+No generic skeleton, generic hitboxes, inferred model dependency, AG2 pose, world transform, or geometry claim is substituted.
 
 Validation on the supplied `ctm_diver_varianta.vmdl_c` discovered `MVTX`, `MIDX`, `MDAT`, `CTRL`, `RERL`, `RED2`, and `DATA` blocks and one missing material reference. It did not discover a mesh or skeleton dependency, so the artifact truthfully remains geometry-unavailable.
 
@@ -115,11 +115,19 @@ The capabilities are intentionally separate:
 ```text
 Gate 1A: model identity resolution (handle -> resource identity)      metadata-only
 Gate 1B: VMDL container/dependency discovery                          implemented
-Gate 1C: deterministic VMDL/mesh/skeleton/hitbox-set parsing          requires fixture bundle
-Gate 1D: exact local-space model geometry snapshot                     requires Gate 1C
+Gate 1C.1: bounded Binary KV3 v5 generic tree decode                   implemented
+Gate 1C.2: read-only VMDL-shaped semantic-key inspection               implemented
+Gate 1D: deterministic skeleton/hitbox-set semantic parser             requires verified fixture bundle
+Gate 1E: exact local-space model geometry snapshot                     requires Gate 1D
 Gate 2:  AG2 pose decoding and bone-local transforms                   unavailable
 Gate 3:  exact world-space hitboxes                                    unavailable
 Gate 4:  exact hitbox spatial evidence                                 unavailable
 ```
 
 Model identity resolution is not exact geometry, and exact geometry is not exact spatial evidence. `sentinel-model` is isolated from `generic_fallback`, `approximate_spatial`, `SpatialShotEvidence`, and verdict code until later gates have verified fixtures.
+
+### Gate 1C.1 / 1C.2 Binary KV3 decode and semantic inspection — implemented
+
+`sentinel-model` now decodes a bounded generic Binary KV3 v5 tree for uncompressed and standard 16 KiB LZ4 buffers. Zstd payloads and Binary KV3 blob streams return explicit unsupported results in this initial decoder; neither condition is silently approximated. `sentinel model-kv3-inspect player.vmdl_c <MDAT|CTRL|RED2|DATA> [output.json]` writes a local inspection artifact with the raw block descriptor, generic tree, and a bounded report of only these names when present: `m_skeleton`, `m_modelSkeleton`, `m_hitboxsets`, `m_bones`, `m_boneName`, and `m_nParent`.
+
+The decoder was independently compared with the ValveResourceFormat oracle on the supplied ignored `ctm_diver_varianta.vmdl_c`: all four v5 blocks (`MDAT`, `CTRL`, `RED2`, `DATA`) decode. The local golden regression confirms the oracle facts that `MDAT._class` is `CRenderMesh`, `MDAT.m_hitboxsets` is empty, and `DATA.m_modelSkeleton` carries only the `dummy` name and parent `-1`. The inspection still writes `exact_geometry_available=false`; it does not construct a parsed skeleton artifact, interpret a hitbox shape, resolve model identity, decode AG2, or produce spatial evidence.

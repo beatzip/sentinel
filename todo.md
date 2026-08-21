@@ -108,3 +108,5 @@
 - [x] Gate 1B: добавить deterministic per-block raw SHA-256, declared/compressed size и bounded structural signatures для RERL/RED2/DATA без semantic geometry decoding.
 - [x] Gate 1B: добавить deterministic per-block raw SHA-256, declared/compressed size и bounded structural signatures для RERL/RED2/DATA без semantic geometry decoding.
 - [x] Выполнить read-only `model-describe` для supplied `ctm_diver_varianta.vmdl_c` и зафиксировать только фактические blocks, hashes, RERL и structural signatures.
+- [x] Gate 1C.1/1C.2: сначала получить independent Binary KV3 v5 oracle fixture output для MDAT/CTRL/RED2/DATA, затем реализовать generic decoder и bounded semantic inspection без geometry/evidence promotion.
+- [x] Реализовать bounded Binary KV3 v5 generic decoder и semantic-only VMDL inspector; подтвердить против локального oracle без добавления geometry или spatial evidence.
