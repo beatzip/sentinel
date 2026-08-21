@@ -139,6 +139,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Gate 1D.0 Local fixture qualification: full KV3 review classifies supplied `ctm_diver_varianta.vmdl_c` as `not_geometry_fixture`; no verified handle mapping and no player hitbox-set source
 - [ ] Gate 1D.1 requires a telemetry-derived qualified verified player-model fixture bundle with exact block-qualified schema paths; do not search VPK assets by name or parse global KV3 key matches
 - [x] Gate 0 local pose-capture trace: emits one non-empty AG2 byte payload with observed pawn identity, model handle, hitbox set and SHA-256; raw bytes remain local-only and never enter replay/evidence paths
+- [x] Gate 1 raw telemetry prerequisite: local Gate 0 trace emits raw `m_iItemDefinitionIndex` alongside the same pawn/tick AG2 record; zero remains non-qualifying and non-zero is only a schema lookup key
 - [ ] Gate 1 documented non-handle identity chain: requires demo-derived agent/econ/loadout identity plus build-matched schema/VPK provenance before mapping to a VMDL; no handle, CRC or filename inference
 - [ ] Verified CS2 build identity in demo metadata plus VMDL/mesh/skeleton/hitbox-set parser before any exact geometry gate can be available
 - [ ] AG2 byte-level golden fixture, offline pose decoder and exact bone-transform fixture; do not enable hitbox intersection or approximate LOS beforehand

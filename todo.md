@@ -119,3 +119,6 @@
 - [x] Запустить reviewed `cs2_fixture_probe` на двух user-supplied demo и сохранить only reproducible Gate 0 outputs в ignored local audit artifacts.
 - [x] Дополнить local-only Source2 Gate 0 trace correlated pawn identity, raw model/hitbox/AG2 fields и pose-byte hash без изменений replay/evidence paths.
 - [x] Оценить Gate 1 после успешного Gate 0: в двух diagnostics отсутствуют modelprecache/player VMDL paths, а локальный build-matched item/agent/econ schema source не предоставлен; identity mapping remains blocked.
+- [x] Gate 1 prerequisite: trace raw pawn `agent_skin`/`m_iItemDefinitionIndex` at the same Gate 0 pawn/tick, recording exact source field or its unavailability.
+- [x] Gate 1: audit supplied items_game manifest approach and require demo-to-VPK build matching before accepting any agent def_index → model_player path.
+- [ ] Gate 1 unblock: obtain an archived build-matched VPK plus `items_game.txt`, or record a fresh demo from the same local build; then verify raw non-zero `m_iItemDefinitionIndex` → `model_player` → extracted VMDL/dependencies with hashes.

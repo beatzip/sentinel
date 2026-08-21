@@ -24,6 +24,7 @@ const ORIGIN_CELL_SIZE: f32 = 512.0;
 const ORIGIN_WORLD_OFFSET: f32 = 16_384.0;
 const AG2_POSE_RECIPE_FIELD: &str =
     "CBodyComponent.m_animationController.m_SerializePoseRecipeAG2Dynamic";
+const AGENT_DEFINITION_INDEX_FIELD: &str = "m_iItemDefinitionIndex";
 
 fn controller_index_from_handle(handle: u32) -> u32 {
     handle & ENTITY_INDEX_MASK
@@ -568,12 +569,14 @@ impl DemoCollector {
             {
                 self.trace_pose_recipe_samples += 1;
                 eprintln!(
-                    "SOURCE2_AG2_POSE tick={} pawn_entity_index={} controller_slot={controller_slot:?} steam_id={} model_handle={:?} hitbox_set={:?} active_slot={:?} pose_recipe_version={:?} bytes_len={} sha256={} raw_hex={}",
+                    "SOURCE2_AG2_POSE tick={} pawn_entity_index={} controller_slot={controller_slot:?} steam_id={} model_handle={:?} hitbox_set={:?} agent_definition_index_field={} agent_definition_index={:?} active_slot={:?} pose_recipe_version={:?} bytes_len={} sha256={} raw_hex={}",
                     self.current_tick,
                     entity.index(),
                     player_id.as_u64(),
                     skeleton.model_handle,
                     skeleton.hitbox_set,
+                    AGENT_DEFINITION_INDEX_FIELD,
+                    self.get_i32(entity, AGENT_DEFINITION_INDEX_FIELD),
                     self.get_i32(entity, "CBodyComponent.m_animationController.m_nSerializePoseRecipeAG2ActiveSlot"),
                     skeleton.pose_recipe_version,
                     bytes.len(),
@@ -760,6 +763,7 @@ impl DemoCollector {
             FieldValue::Signed32(value) => Some(*value),
             FieldValue::Unsigned8(value) => Some(i32::from(*value)),
             FieldValue::Unsigned16(value) => Some(i32::from(*value)),
+            FieldValue::Unsigned32(value) => i32::try_from(*value).ok(),
             _ => None,
         }
     }
