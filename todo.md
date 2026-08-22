@@ -118,6 +118,7 @@
 - [x] Зафиксировать Gate 1D.1 intake contract: verified telemetry-derived bundle, hashes, declared dependencies и literal block-qualified schema paths; не создавать parser до появления такого fixture.
 - [x] Gate 0: безопасно проверить user-supplied demo.proto probe на двух указанных demo и зафиксировать only reproducible pose-byte capture facts for one real pawn/tick when available.
 - [ ] Gate 1: продолжать только если Gate 0 подтверждает non-empty pose bytes; тогда проверить documented non-handle agent/econ/loadout → build-matched model identity chain без CRC/handle inference.
+- [x] Gate 1 acquisition audit: for `match730_003837681838084587988_1084783981_187.dem`, emit an ignored evidence-only acquisition report with demo SHA/header, observed pawn/controller model telemetry, and only an actual modelprecache/resource-manifest binding if present; do not perform generic asset search or fixture promotion (no binding present).
 - [x] Запустить reviewed `cs2_fixture_probe` на двух user-supplied demo и сохранить only reproducible Gate 0 outputs в ignored local audit artifacts.
 - [x] Дополнить local-only Source2 Gate 0 trace correlated pawn identity, raw model/hitbox/AG2 fields и pose-byte hash без изменений replay/evidence paths.
 - [x] Оценить Gate 1 после успешного Gate 0: в двух diagnostics отсутствуют modelprecache/player VMDL paths, а локальный build-matched item/agent/econ schema source не предоставлен; identity mapping remains blocked.
