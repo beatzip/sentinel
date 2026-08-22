@@ -133,6 +133,7 @@
 - [x] Variant B audit correction: remove unsupported attached-log exit-code/release-archive verification claims and retain explicit no-data comparison status.
 - [x] Variant B 19-Aug candidate: retrieve manifest `4846265837652631529` for depot 2347771 and compare `pak01_dir/003/491.vpk` hashes only if manifest-backed bytes are obtained (retired: that depot manifest contains none of the requested paths).
 - [x] Variant B 19-Aug corrected candidate: retrieve manifest `4814468113142569832` for depot 2347770 and compare the manifest-listed `game/csgo/pak01_dir.vpk` with the local directory index; do not claim chunk hashes from directory-index equality (directory index mismatch).
+- [x] Variant B audit repair: deliver and reconcile raw successful 19-Aug retrieval log with manifest, output path and SHA record; retract any unsupported comparison claim and keep Aug-12 baseline separate.
 - [x] Variant B candidate: публично проверить SteamDB metadata для build `24701871` и записать его только как candidate for patch `14175`, без manifest/build-match claim.
 - [x] Gate 1 correction: verify build-specific `items_game.txt` from indexed VPK chunk and record that pawn `m_iItemDefinitionIndex` is equipment-only when it resolves to a non-`customplayer` item.
 - [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.
