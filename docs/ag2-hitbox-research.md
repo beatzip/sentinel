@@ -250,6 +250,12 @@ The validated current `items_game.txt` KeyValues document has 33 top-level secti
 
 The corresponding extracted VMDL is a version-1/header-version-12 `vmdl` resource with 40 blocks: 17 `MVTX`, 9 `MIDX`, 5 `MDAT`, and one each `MRPH`, `ANIM`, `ASEQ`, `AGRP`, `PHYS`, `CTRL`, `RERL`, `RED2`, and `DATA`; 13 blocks carry bounded Binary KV3 v5 signatures. `RERL` lists 14 external resources, including two NM skeleton paths, but they are unresolved in the supplied current asset root. The decoded `DATA` block has a model name, hull bounds, empty `m_refPhysicsHitboxData`, two NM skeleton references, and parallel skeleton-related arrays of 94 entries. Its text metadata contains an AO-proxy capsule list, which is recorded only as embedded text and is not interpreted as gameplay hitbox geometry. The ignored `current-structural-analysis.json` preserves the structural facts and explicit no-promotion limits.
 
+### Current/19-Aug `model_player` inventory — metadata only
+
+The current `items_game.txt` inventory contains 255 `model_player` records resolving to 191 unique paths. Classification by path namespace and item prefab yields 141 records / 79 paths for `customplayer_agent`, 10 / 10 for wearable hands, 76 / 76 for props, and 28 / 26 for weapons. The full ignored `current-model-player-inventory.json` records each path together with the originating item definition index, localized item-name token and prefab. The selected Variant B path is one current schema record: `agents/models/ctm_fbi/ctm_fbi_variantb.vmdl`, definition index `5308`, prefab `customplayertradable`.
+
+This inventory is a current-content catalog, not a demo identity source. A path’s presence, definition index, agent-looking namespace, item name, VPK location or extracted VMDL hash does not establish any historical `m_hModel → path` relation, model mapping, fixture qualification, AG2 decoding or exact geometry.
+
 ### Gate 1 acquisition audit — selected Anubis demo
 
 The local-only acquisition report for `match730_003837681838084587988_1084783981_187.dem` independently records SHA-256 `e6fbdcd77267c6e38e9823fcaa4b37489e8e42b0894927aaf3e85c195ae363ae`, header patch `14175`, build `10847`, map `de_anubis`, and the completed Sentinel Source2 parser pass (68,484 ticks; 10 observed players). At tick 2, a real pawn/controller pair exposed `m_hModel=9371194797796759017`, `m_nHitboxSet=0`, controller `m_nPawnCharacterDefIndex=5308`, pose recipe version `2`, and a 64-byte AG2 payload with SHA-256 `b60d35c3e1bb5bc51fc0542994fb8118ca6c6a7d556801f0f65092d67e0e74a3`.
