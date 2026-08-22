@@ -89,6 +89,33 @@ All paths must be safe relative `.vmdl_c` paths. Resource SHA-256 is computed ov
 
 A capture from an unknown content build, a capture that cannot establish serialized-token equivalence, a path without a resource hash, or a memory-only pointer dump is not an accepted binding.
 
+## Session scope and handle stability
+
+No public source establishes that `CStrongHandle<InfoForResourceTypeCModel>` values remain stable across process sessions, resource unload/reload cycles or runtime table reuse. Sentinel therefore treats the numeric handle as **session-scoped until proved otherwise**. Every binding capture must include a non-secret `capture_session_id`, capture start/end timestamps, a capture-artifact SHA-256 and the demo SHA-256 when a demo is recorded in that same capture session.
+
+For an already-recorded demo, a later capture from the same nominal build is not a verified binding merely because its decimal handle happens to equal the demo value. It is `session_unlinked` and cannot enter VMDL or geometry work. A `verified` decision requires a same-session demo-to-capture link, or a separate reviewed stability study that proves the precise serialized-handle behavior across independent sessions and explicitly states the remaining limitations. Such a study is evidence about the studied build behavior; it does not retrospectively qualify an unrelated historic demo session by default.
+
+The capture schema therefore extends as follows:
+
+```json
+{
+  "capture": {
+    "capture_session_id": "non-secret UUID",
+    "demo_sha256": "required for same-session binding",
+    "session_link": "same_session | session_unlinked",
+    "handle_stability": "unproven | reviewed_cross_session"
+  }
+}
+```
+
+Only `same_session` plus all other verified-binding checks permits `verified`. `session_unlinked`, `unproven`, changed resource identity or observed slot reuse must return a non-evidence status and block the exact pipeline.
+
+## Runtime acquisition safety boundary
+
+Gate 1A.7 does not authorize creation of process hooks, DLL injection, process-memory reads, anti-cheat bypasses, or interaction with a VAC-protected CS2 process. Valve’s Trusted Mode documentation states that third-party files are blocked from interacting with CS2 by default and that targeted process tampering may be subject to VAC enforcement; it also states that there is no safe-injection whitelist. See https://help.steampowered.com/en/faqs/view/09A0-4879-4353-EF95 and https://help.steampowered.com/en/faqs/view/571A-97DA-70E9-FF74.
+
+Accordingly, **no runtime capture mechanism is currently admitted**. Gate 1A.7 remains design-only until one of these conditions is independently established: an official Valve-supported export exposes the required binding, or Valve explicitly authorizes a non-VAC test environment and the capture method for this purpose. A user assertion that a context is isolated, offline or insecure is not by itself sufficient to activate tooling. Until then, the only safe acquisition path is the read-only build-matched resource inventory, which remains insufficient to resolve a handle by itself.
+
 ## Verified binding decision
 
 The validator accepts a binding only when all of the following are true: the demo SHA-256 equals the observed-demo record; the tuple `(model_handle, hitbox_set, pose_recipe_version)` was actually observed; the binding capture has the same decimal serialized handle and resource type `CModel`; the inventory is `byte_verified` for the exact demo build/content boundary; canonical compiled path and SHA-256 agree between capture and inventory; the extracted `.vmdl_c` bytes hash to the accepted SHA-256; and all artifact paths are safe and non-duplicated.
@@ -114,7 +141,7 @@ The validator accepts a binding only when all of the following are true: the dem
 }
 ```
 
-The only other decisions are `unresolved`, when no qualifying binding exists, and `conflict`, when two otherwise admissible sources disagree on path, type, hash or build identity. Both decisions prohibit VMDL inspection, fixture qualification, skeleton/hitbox parsing, AG2 decoding and exact spatial evidence.
+The only other decisions are `unresolved`, when no qualifying binding exists; `conflict`, when two otherwise admissible sources disagree on path, type, hash or build identity; and `session_unlinked`, when the runtime binding is not demonstrably from the demo’s own capture session. All three decisions prohibit VMDL inspection, fixture qualification, skeleton/hitbox parsing, AG2 decoding and exact spatial evidence.
 
 ## Minimal acquisition sequence
 
