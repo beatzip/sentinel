@@ -178,6 +178,14 @@ The required `expected/qualification.json` records the concrete typed context ra
 
 Each non-null path is literal and block-qualified. It must resolve from the named decoded block’s root through the declared object fields, and not by recursively finding a matching key anywhere in the generic KV3 tree. The qualified skeleton path must lead to a real bone collection with its parent graph and bind/local transforms; the qualified hitbox-set path must lead to real hitbox definitions with a bone reference and bounds or capsule radius. Qualification may yield only `qualified_for_skeleton_parser`, `qualified_for_hitbox_parser`, `requires_dependency`, or `not_geometry_fixture`. The first two statuses permit a future parser scoped to those exact paths; the latter two do not.
 
+### Gate 1D.2 — Model Schema Registry (post-fixture)
+
+After — and only after — the first telemetry-derived fixture qualifies, Sentinel may record a deterministic schema fingerprint. A registry entry binds that fingerprint to the exact resource class, literal block-qualified skeleton and hitbox-set schema paths, parser version, fixture hash, resource hash and dependency-hash set used to establish it. The fingerprint is a parser-routing key, not a claim that all future resources are equivalent. Registry writes require explicit human review of the initial qualified fixture; no inferred or filename-selected asset may create an entry.
+
+### Gate 1D.3 — Automatic model resolution (post-registry)
+
+The production routing chain is strictly `observed m_hModel → accepted verified asset mapping → exact resource bytes → schema fingerprint → registered exact parser`. A known fingerprint selects only its registered parser and schema paths. An unknown, malformed, hash-mismatched or dependency-incomplete fingerprint produces structured `unsupported`; it must not fall back to a global KV3 key search, generic capsules, approximate geometry or exact spatial evidence. Successful parsing yields only deterministic local skeleton/hitbox artifacts; AG2 decoding and world-space evidence remain independently gated.
+
 ### Gate 0 capture status — passed locally; Gate 1 remains blocked
 
 The local opt-in Source 2 trace now emits one real `CCSPlayerPawn` pose record with its tick, pawn entity index, controller slot, SteamID, observed `m_hModel`, `m_nHitboxSet`, AG2 active-slot value when exposed, pose-recipe version, byte length, SHA-256 and raw bytes. The raw payload is retained only in ignored local audit output and remains outside replay JSON, model mapping, geometry, spatial evidence and verdict flows.

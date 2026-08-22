@@ -112,6 +112,8 @@
 - [x] Реализовать bounded Binary KV3 v5 generic decoder и semantic-only VMDL inspector; подтвердить против локального oracle без добавления geometry или spatial evidence.
 - [x] Gate 1D.0: квалифицировать local VMDL fixture по verified handle-to-asset mapping и полным qualified KV3 schema paths; классифицировать без parser/AG2/evidence promotion (`ctm_diver_varianta.vmdl_c` = `not_geometry_fixture`).
 - [ ] Gate 1D.1: реализовать deterministic skeleton/hitbox-set parser только при qualified fixture с конкретными schema paths и реально обнаруженными структурами.
+- [ ] Gate 1D.2: после первого qualified verified player-model fixture создать Model Schema Registry keyed by deterministic schema fingerprint, with literal block-qualified skeleton/hitbox paths, parser version and fixture/resource hashes; unknown fingerprints must remain unsupported.
+- [ ] Gate 1D.3: после Gate 1D.2 реализовать automatic model resolution `verified asset mapping → schema fingerprint → known exact parser | unsupported`; prohibit generic KV3 key search, fallback promotion and unregistered schema inference.
 - [ ] Gate 1D.1 prerequisite: определить и валидировать qualified verified player-model fixture bundle, derived only from observed Sentinel telemetry → verified mapping → exact asset; запретить случайный asset-name discovery.
 - [x] Зафиксировать Gate 1D.1 intake contract: verified telemetry-derived bundle, hashes, declared dependencies и literal block-qualified schema paths; не создавать parser до появления такого fixture.
 - [x] Gate 0: безопасно проверить user-supplied demo.proto probe на двух указанных demo и зафиксировать only reproducible pose-byte capture facts for one real pawn/tick when available.
