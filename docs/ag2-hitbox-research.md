@@ -256,6 +256,8 @@ The current `items_game.txt` inventory contains 255 `model_player` records resol
 
 This inventory is a current-content catalog, not a demo identity source. A path’s presence, definition index, agent-looking namespace, item name, VPK location or extracted VMDL hash does not establish any historical `m_hModel → path` relation, model mapping, fixture qualification, AG2 decoding or exact geometry.
 
+The derived current selection catalog contains 79 unique `customplayer_agent` paths. Each entry carries its current schema definition indices and localized item-name tokens for explicit future path selection. For example, the current catalog lists `agents/models/ctm_fbi/ctm_fbi_variantb.vmdl` at definition index `5308`; it remains a catalog entry only. No bones, hitboxes, dependencies, model semantics, or resource extraction beyond the already validated selected VMDL is initiated by this list. The ignored `current-customplayer-agent-paths.json` preserves all 79 paths with no historical mapping claim.
+
 ### Gate 1 acquisition audit — selected Anubis demo
 
 The local-only acquisition report for `match730_003837681838084587988_1084783981_187.dem` independently records SHA-256 `e6fbdcd77267c6e38e9823fcaa4b37489e8e42b0894927aaf3e85c195ae363ae`, header patch `14175`, build `10847`, map `de_anubis`, and the completed Sentinel Source2 parser pass (68,484 ticks; 10 observed players). At tick 2, a real pawn/controller pair exposed `m_hModel=9371194797796759017`, `m_nHitboxSet=0`, controller `m_nPawnCharacterDefIndex=5308`, pose recipe version `2`, and a 64-byte AG2 payload with SHA-256 `b60d35c3e1bb5bc51fc0542994fb8118ca6c6a7d556801f0f65092d67e0e74a3`.
