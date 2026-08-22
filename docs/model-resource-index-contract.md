@@ -93,7 +93,11 @@ A capture from an unknown content build, a capture that cannot establish seriali
 
 No public source establishes that `CStrongHandle<InfoForResourceTypeCModel>` values remain stable across process sessions, resource unload/reload cycles or runtime table reuse. Sentinel therefore treats the numeric handle as **session-scoped until proved otherwise**. Every binding capture must include a non-secret `capture_session_id`, capture start/end timestamps, a capture-artifact SHA-256 and the demo SHA-256 when a demo is recorded in that same capture session.
 
-For an already-recorded demo, a later capture from the same nominal build is not a verified binding merely because its decimal handle happens to equal the demo value. It is `session_unlinked` and cannot enter VMDL or geometry work. A `verified` decision requires a same-session demo-to-capture link, or a separate reviewed stability study that proves the precise serialized-handle behavior across independent sessions and explicitly states the remaining limitations. Such a study is evidence about the studied build behavior; it does not retrospectively qualify an unrelated historic demo session by default.
+For an already-recorded demo, a later capture from the same nominal build is not a verified binding merely because its decimal handle happens to equal the demo value. It is `session_unlinked` and cannot enter VMDL or geometry work. If the original demo process is no longer available, the default terminal result is `historical_session_unrecoverable`: same-session evidence cannot be acquired retrospectively.
+
+`reviewed_cross_session` is not a silent exception to that result. It is a research-only determinism profile and may be created only from an authorized capture source after explicit human review. It must state the exact content build and resource inventory hash; use multiple independent sessions; predeclare and record the tested resource-load order, load/unload/reload events and observed slot-reuse behavior; retain the same runtime-to-resource evidence required by this contract; and report counterexamples. It proves only the bounded behavior observed in that study.
+
+Even a positive profile does not automatically resolve a concrete historical handle. A historical exception would require a separate human-approved rule that demonstrates the recorded demo's load conditions are reproduced by the study, that its model handle is within the profile’s explicit coverage, that no slot reuse/conflict occurred, and that the resolved path/SHA agrees with the exact build inventory. Until all of those facts exist, the historical demo remains `historical_session_unrecoverable`; it does not become `pending`, `verified`, or eligible for VMDL/geometry work.
 
 The capture schema therefore extends as follows:
 
@@ -108,7 +112,7 @@ The capture schema therefore extends as follows:
 }
 ```
 
-Only `same_session` plus all other verified-binding checks permits `verified`. `session_unlinked`, `unproven`, changed resource identity or observed slot reuse must return a non-evidence status and block the exact pipeline.
+Only `same_session` plus all other verified-binding checks permits `verified`. `historical_session_unrecoverable`, `session_unlinked`, `unproven`, changed resource identity or observed slot reuse must return a non-evidence status and block the exact pipeline.
 
 ## Runtime acquisition safety boundary
 
@@ -141,7 +145,7 @@ The validator accepts a binding only when all of the following are true: the dem
 }
 ```
 
-The only other decisions are `unresolved`, when no qualifying binding exists; `conflict`, when two otherwise admissible sources disagree on path, type, hash or build identity; and `session_unlinked`, when the runtime binding is not demonstrably from the demo’s own capture session. All three decisions prohibit VMDL inspection, fixture qualification, skeleton/hitbox parsing, AG2 decoding and exact spatial evidence.
+The only other decisions are `unresolved`, when no qualifying binding exists; `conflict`, when two otherwise admissible sources disagree on path, type, hash or build identity; `session_unlinked`, when a capture is not demonstrably from the demo’s own session; and `historical_session_unrecoverable`, when that demo session has ended and no separately human-approved cross-session exception meets every condition above. All four decisions prohibit VMDL inspection, fixture qualification, skeleton/hitbox parsing, AG2 decoding and exact spatial evidence.
 
 ## Minimal acquisition sequence
 
