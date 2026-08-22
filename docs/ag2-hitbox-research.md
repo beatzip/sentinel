@@ -264,6 +264,12 @@ The selected demo observes controller field `CCSPlayerController.m_nPawnCharacte
 
 The source schema places the field beside controller pawn-state data, while the demo’s `m_hModel` remains a distinct typed `CStrongHandle<InfoForResourceTypeCModel>` with no observed modelprecache/resource-manifest/runtime binding to either definition `5308` or the current path. Furthermore, the demo has build number `10847`, while the catalog is verified only for current/19-Aug content; cross-build definition stability and per-demo asset selection remain unproven. The one permitted result is therefore `historical_mapping_required`, not a verified historical model mapping. The ignored `demo1-definition-index-audit.json` records the source values, current one-to-one catalog match and all no-promotion exclusions.
 
+### Historical build-10847 definition mapping — unresolved
+
+No build-10847-qualified `items_game.txt` artifact is available locally. The current/19-Aug `items_game.txt` is rejected as historical evidence, and the nearest publicly auditable GameTracking revision found (commit `39df8b2a5bdd43f358c0a63a92adee2e220db505`, dated 29-Jul-2026) is likewise not accepted because no source record binds its bytes to demo build `10847`. The resulting status is `unresolved_no_build_qualified_items_game`; no definition-to-model claim is created.
+
+`docs/historical-definition-mapping-contract.md` now defines the minimum admissible artifact: a source record that binds a historical `scripts/items/items_game.txt` byte hash to the target demo build, literal parsing of definition `5308` from those same bytes, provenance hashing, and explicit review. Even a future verified definition-to-model record remains distinct from `m_hModel → path` and cannot admit VMDL/KV3/skeleton/hitbox/AG2/exact geometry work on its own.
+
 ### Gate 1 acquisition audit — selected Anubis demo
 
 The local-only acquisition report for `match730_003837681838084587988_1084783981_187.dem` independently records SHA-256 `e6fbdcd77267c6e38e9823fcaa4b37489e8e42b0894927aaf3e85c195ae363ae`, header patch `14175`, build `10847`, map `de_anubis`, and the completed Sentinel Source2 parser pass (68,484 ticks; 10 observed players). At tick 2, a real pawn/controller pair exposed `m_hModel=9371194797796759017`, `m_nHitboxSet=0`, controller `m_nPawnCharacterDefIndex=5308`, pose recipe version `2`, and a 64-byte AG2 payload with SHA-256 `b60d35c3e1bb5bc51fc0542994fb8118ca6c6a7d556801f0f65092d67e0e74a3`.
