@@ -226,6 +226,12 @@ The public metadata candidate for build `24701871` is app `730`, 64-bit depot `2
 
 Therefore the claimed association is recorded only as a historical candidate, not as verified VPK source content. In particular, Sentinel has not established whether this manifest lists `game/csgo/pak01_dir.vpk`, has not downloaded or hashed that directory index, has not derived any historical archive indices, and has not compared it to local VPK bytes. The 12-Aug build/content boundary remains `unproven`. The only permitted continuation is authenticated retrieval of the same manifest or independently supplied manifest-backed historical bytes and a redacted provenance record; no parser or fixture qualification may start from this candidate alone.
 
+### Variant B 12-Aug authenticated three-file attempt — failed before manifest access
+
+One authenticated DepotDownloader attempt was made for app `730`, depot `2347771`, manifest `358563799254497787`, and the exact file list `game/csgo/pak01_dir.vpk`, `game/csgo/pak01_003.vpk`, and `game/csgo/pak01_491.vpk`. Steam3 connection and password submission completed, but the connection was lost during Steam Guard handling and DepotDownloader ended with `InitializeSteam failed`. The user directed that no new Steam Guard code, retry, SteamCMD fallback, or other retrieval method be attempted in this task.
+
+No manifest request code, manifest date, CDN status, file listing, chunk GID, VPK byte, reconstructed hash, comparison result or VPK index record was produced. The ignored local `authentication-attempt.json` contains only the redacted scope and failure state `authentication_attempt_failed_no_bytes`; it contains no username, password, Steam Guard code, Steam request code or raw client log. This is an authentication failure record, not a historical content reconstruction. The 12-Aug baseline remains `unproven` and comparison input remains absent.
+
 ### Gate 1 acquisition audit — selected Anubis demo
 
 The local-only acquisition report for `match730_003837681838084587988_1084783981_187.dem` independently records SHA-256 `e6fbdcd77267c6e38e9823fcaa4b37489e8e42b0894927aaf3e85c195ae363ae`, header patch `14175`, build `10847`, map `de_anubis`, and the completed Sentinel Source2 parser pass (68,484 ticks; 10 observed players). At tick 2, a real pawn/controller pair exposed `m_hModel=9371194797796759017`, `m_nHitboxSet=0`, controller `m_nPawnCharacterDefIndex=5308`, pose recipe version `2`, and a 64-byte AG2 payload with SHA-256 `b60d35c3e1bb5bc51fc0542994fb8118ca6c6a7d556801f0f65092d67e0e74a3`.
