@@ -173,3 +173,6 @@
 - [x] Add higher-contrast non-evidentiary provenance and observed-crouch indicators to the primary dashboard approximate layer.
 - [x] Capture real standing, movement, and crouch verification frames from the primary dashboard, then publish only after dashboard checks pass.
 - [x] Audit the primary approximate overlay against the supplied 19-capsule non-evidentiary contract; correct only a verified deviation.
+- [x] Audit grenade event ingestion, dispatch and current field population without implementing changes.
+- [x] Inventory grenade/projectile/effect data models and record silent-stub or data-loss surfaces.
+- [x] Publish a grenade-pipeline audit with low-cost extension choices and deferred decisions only; do not implement.
