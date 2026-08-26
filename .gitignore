@@ -3,6 +3,8 @@ target/
 *.exe
 *.dll
 *.so
+bin/
+obj/
 sentinel_memory.json
 datasets/manifest.local.json
 datasets/unknown/
