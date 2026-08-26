@@ -170,3 +170,5 @@
 - [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.
 - [x] Consolidate the current-track approximate replay dashboard consumer into the primary Sentinel repository without importing exact C4–C8 or `SpatialShotEvidence` paths.
 - [x] Publish the primary-repository approximation update only after native checks and functional provenance validation pass.
+- [x] Add higher-contrast non-evidentiary provenance and observed-crouch indicators to the primary dashboard approximate layer.
+- [x] Capture real standing, movement, and crouch verification frames from the primary dashboard, then publish only after dashboard checks pass.

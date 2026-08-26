@@ -127,6 +127,8 @@ export default function ReplayViewer({ apiUrl, reportId, onClose }: { apiUrl: st
     {frame && replay ? <>
       <div className="replay-map" style={{ backgroundImage: "linear-gradient(rgba(8,22,21,.74), rgba(8,22,21,.89)), url('/manus-storage/sentinel-route-map_6c357b2d.jpg')" }}>
         <div className="map-stamp">ROUND / {frame.round > 0 ? String(frame.round).padStart(2, "0") : "UNAVAILABLE"}<br />TICK / {frame.tick}<br />RATE / {replay.tick_rate}</div>
+        {replay.functional_only ? <div className="functional-boundary-banner" aria-label="Non-evidentiary functional-layer provenance"><div><span>QUARANTINED APPROXIMATE LAYER</span><strong>NOT EVIDENCE</strong></div><div className="provenance-chip-row"><b>generic_fallback</b><b>evidence_allowed=false</b><b>functional_only=true</b></div></div> : null}
+        {selectedPlayer && replay.functional_only ? <div className={`crouch-plate ${(selectedPlayer.duck_amount ?? 0) >= 0.5 ? "is-crouched" : "is-standing"}`}><span>OBSERVED CROUCH / DUCKAMOUNT</span><strong>{(selectedPlayer.duck_amount ?? 0).toFixed(2)}</strong><small>{(selectedPlayer.duck_amount ?? 0) >= 0.5 ? "GENERIC PROFILE COMPRESSED" : "UPRIGHT GENERIC PROFILE"}</small></div> : null}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className={`visibility-layer ${visibility ? "shown" : ""}`}>
           {visibility && frame.visible_pairs.map((pair) => {
             const observer = playerById.get(pair.observer);
