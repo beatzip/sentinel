@@ -1,7 +1,7 @@
 use sentinel_core::source::PlayerSnapshot;
 use sentinel_core::{
-    Angles, KillEvent, PlayerId, PlayerState, RoundPhase, SkeletonMetadata, SourceTeam, Tick,
-    TickState, Vec3, Weapon,
+    Angles, GrenadeState, GrenadeType, KillEvent, PlayerId, PlayerState, RoundPhase,
+    SkeletonMetadata, SourceTeam, Tick, TickState, Vec3, Weapon,
 };
 use sentinel_events::kinds::{EventKind, EventValue, GameEvent};
 
@@ -191,10 +191,10 @@ impl WorldRebuilder {
             EventKind::PlayerDeath => self.handle_player_death(event),
             EventKind::PlayerHurt => self.handle_player_hurt(event),
             EventKind::WeaponFire => self.handle_weapon_fire(event),
-            EventKind::SmokeGrenadeDetonate => self.handle_grenade_detonate(event),
-            EventKind::FlashGrenadeDetonate => self.handle_grenade_detonate(event),
-            EventKind::HEGrenadeDetonate => self.handle_grenade_detonate(event),
-            EventKind::MolotovDetonate => self.handle_grenade_detonate(event),
+            EventKind::SmokeGrenadeDetonate => self.handle_effect_start(event, GrenadeType::Smoke),
+            EventKind::SmokeGrenadeExpired => self.handle_effect_expire(event, GrenadeType::Smoke),
+            EventKind::InfernoStart => self.handle_effect_start(event, GrenadeType::Inferno),
+            EventKind::InfernoExpire => self.handle_effect_expire(event, GrenadeType::Inferno),
             EventKind::BombPlant => self.handle_bomb_plant(event),
             EventKind::BombDefuse => self.handle_bomb_defuse(event),
             EventKind::WarmupStart => self.handle_warmup_start(),
@@ -397,10 +397,58 @@ impl WorldRebuilder {
         }
     }
 
-    /// Handle grenade detonate event
-    fn handle_grenade_detonate(&mut self, _event: &GameEvent) {
-        // Mark the grenade as detonated
-        // In a real implementation, we'd find the specific grenade and mark it
+    fn handle_effect_start(&mut self, event: &GameEvent, grenade_type: GrenadeType) {
+        let Some(entity_id) = observed_entity_id(event) else {
+            return;
+        };
+        let Some(position) = observed_position(event) else {
+            return;
+        };
+        let owner = event
+            .data
+            .get("userid")
+            .and_then(EventValue::as_player_id)
+            .map(PlayerId::new);
+        if let Some(existing) = self.world.grenades.iter_mut().find(|grenade| {
+            grenade.entity_id == Some(entity_id) && grenade.grenade_type == grenade_type
+        }) {
+            existing.position = position;
+            existing.owner = owner.or(existing.owner);
+            existing.detonated_tick = Some(event.tick);
+            existing.start_tick = Some(event.tick);
+            existing.end_tick = None;
+            existing.active = true;
+            return;
+        }
+        self.world.grenades.push(GrenadeState {
+            id: entity_id,
+            grenade_type,
+            owner,
+            position,
+            velocity: Vec3::default(),
+            thrown_tick: None,
+            detonated_tick: Some(event.tick),
+            start_tick: Some(event.tick),
+            end_tick: None,
+            entity_id: Some(entity_id),
+            active: true,
+            observed_effect_only: true,
+        });
+    }
+
+    fn handle_effect_expire(&mut self, event: &GameEvent, grenade_type: GrenadeType) {
+        let Some(entity_id) = observed_entity_id(event) else {
+            return;
+        };
+        if let Some(existing) = self.world.grenades.iter_mut().find(|grenade| {
+            grenade.entity_id == Some(entity_id) && grenade.grenade_type == grenade_type
+        }) {
+            if let Some(position) = observed_position(event) {
+                existing.position = position;
+            }
+            existing.end_tick = Some(event.tick);
+            existing.active = false;
+        }
     }
 
     /// Handle bomb plant event
@@ -480,6 +528,22 @@ impl WorldRebuilder {
             }
         }
     }
+}
+
+fn observed_entity_id(event: &GameEvent) -> Option<u32> {
+    event
+        .data
+        .get("entityid")
+        .and_then(EventValue::as_i64)
+        .and_then(|value| u32::try_from(value).ok())
+}
+
+fn observed_position(event: &GameEvent) -> Option<Vec3> {
+    Some(Vec3::new(
+        event.data.get("x")?.as_f64()? as f32,
+        event.data.get("y")?.as_f64()? as f32,
+        event.data.get("z")?.as_f64()? as f32,
+    ))
 }
 
 impl Default for WorldRebuilder {
@@ -651,5 +715,69 @@ mod tests {
         // Test exact match boundary
         let kills = context.kills_up_to(Tick(200));
         assert_eq!(kills.len(), 2);
+    }
+
+    #[test]
+    fn test_observed_effect_lifecycle_pairs_only_by_entity_id() {
+        let mut rebuilder = WorldRebuilder::new();
+        let states = rebuilder.process_events(&[
+            make_event(
+                EventKind::SmokeGrenadeDetonate,
+                Tick(10),
+                vec![
+                    ("entityid", EventValue::Integer(42)),
+                    ("userid", EventValue::PlayerId(7)),
+                    ("x", EventValue::Float(10.0)),
+                    ("y", EventValue::Float(20.0)),
+                    ("z", EventValue::Float(30.0)),
+                ],
+            ),
+            make_event(
+                EventKind::SmokeGrenadeExpired,
+                Tick(20),
+                vec![("entityid", EventValue::Integer(42))],
+            ),
+            make_event(
+                EventKind::InfernoExpire,
+                Tick(30),
+                vec![("entityid", EventValue::Integer(999))],
+            ),
+        ]);
+        let started = states.iter().find(|state| state.tick == Tick(10)).unwrap();
+        let smoke = &started.grenades[0];
+        assert_eq!(smoke.grenade_type, GrenadeType::Smoke);
+        assert_eq!(smoke.owner, Some(PlayerId::new(7)));
+        assert_eq!(smoke.thrown_tick, None);
+        assert!(smoke.observed_effect_only && smoke.active);
+
+        let expired = states.iter().find(|state| state.tick == Tick(20)).unwrap();
+        assert!(!expired.grenades[0].active);
+        assert_eq!(expired.grenades[0].end_tick, Some(Tick(20)));
+        let no_start_expiry = states.iter().find(|state| state.tick == Tick(30)).unwrap();
+        assert_eq!(no_start_expiry.grenades.len(), 1);
+    }
+
+    #[test]
+    fn test_inferno_start_keeps_unknown_owner() {
+        let mut rebuilder = WorldRebuilder::new();
+        let states = rebuilder.process_events(&[make_event(
+            EventKind::InfernoStart,
+            Tick(10),
+            vec![
+                ("entityid", EventValue::Integer(77)),
+                ("x", EventValue::Float(-10.0)),
+                ("y", EventValue::Float(20.0)),
+                ("z", EventValue::Float(30.0)),
+            ],
+        )]);
+        let inferno = &states
+            .iter()
+            .find(|state| state.tick == Tick(10))
+            .unwrap()
+            .grenades[0];
+        assert_eq!(inferno.grenade_type, GrenadeType::Inferno);
+        assert_eq!(inferno.owner, None);
+        assert_eq!(inferno.thrown_tick, None);
+        assert!(inferno.observed_effect_only);
     }
 }

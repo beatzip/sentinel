@@ -166,7 +166,13 @@ impl MatchContext {
     /// Get all active grenades at a tick
     pub fn grenades_at(&self, tick: Tick) -> Vec<&GrenadeState> {
         self.state_at(tick)
-            .map(|s| s.grenades.iter().filter(|g| g.active).collect())
+            .map(|state| {
+                state
+                    .grenades
+                    .iter()
+                    .filter(|grenade| grenade.active && !grenade.observed_effect_only)
+                    .collect()
+            })
             .unwrap_or_default()
     }
 

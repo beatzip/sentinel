@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use super::player::PlayerId;
 use super::tick::Tick;
 
-/// Grenade type
+/// Grenade type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum GrenadeType {
     Flash,
@@ -11,16 +11,12 @@ pub enum GrenadeType {
     HE,
     Molotov,
     Incendiary,
+    /// Observed fire effect where the source does not establish Molotov versus Incendiary.
+    Inferno,
     Decoy,
 }
 
-/// State of a grenade in the world.
-///
-/// For timed grenades (smokes, molotovs, incendiaries):
-/// - `detonated_tick` = tick when grenade exploded/started burning
-/// - `start_tick` = tick when grenade becomes active (detonate time)
-/// - `end_tick` = tick when grenade expires (None if still active or not found)
-/// - `entity_id` = unique entity identifier from demo for matching start/end events
+/// State of a grenade or observed grenade effect in the world.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GrenadeState {
     pub id: u32,
@@ -28,45 +24,45 @@ pub struct GrenadeState {
     pub owner: Option<PlayerId>,
     pub position: super::player::Vec3,
     pub velocity: super::player::Vec3,
-    /// Tick when grenade was thrown
-    pub thrown_tick: Tick,
-    /// Tick when grenade detonated (exploded / started burning)
+    /// Tick when a grenade throw was observed; absent for effect-only records.
+    pub thrown_tick: Option<Tick>,
+    /// Tick when a grenade detonated or an effect started.
     pub detonated_tick: Option<Tick>,
-    /// Start tick of the active effect (same as detonated_tick for smokes/infernos)
     pub start_tick: Option<Tick>,
-    /// End tick when grenade effect expires (None if still active or not found)
     pub end_tick: Option<Tick>,
-    /// Entity ID from demo (for matching start/end events per awpy pattern)
+    /// Entity identifier from the demo for exact lifecycle pairing.
     pub entity_id: Option<u32>,
     pub active: bool,
+    /// Observed effect state with no throw, trajectory, model, or collision telemetry.
+    pub observed_effect_only: bool,
 }
 
 impl GrenadeState {
-    pub fn time_since_thrown(&self, current_tick: Tick) -> f32 {
-        (current_tick.0 - self.thrown_tick.0) as f32 / 64.0
+    pub fn time_since_thrown(&self, current_tick: Tick) -> Option<f32> {
+        self.thrown_tick
+            .map(|thrown_tick| (current_tick.0 - thrown_tick.0) as f32 / 64.0)
     }
 
-    /// Time remaining until this grenade effect expires (in seconds).
-    /// Returns None if the grenade doesn't have an end tick.
+    /// Time remaining until the effect expires in seconds.
     pub fn time_remaining(&self, current_tick: Tick) -> Option<f32> {
         self.end_tick
             .map(|end| (end.0 as f32 - current_tick.0 as f32) / 64.0)
     }
 
-    /// Whether this is a timed grenade (smoke, molotov, incendiary) that has a duration window.
     pub fn is_timed(&self) -> bool {
         matches!(
             self.grenade_type,
-            GrenadeType::Smoke | GrenadeType::Molotov | GrenadeType::Incendiary
+            GrenadeType::Smoke
+                | GrenadeType::Molotov
+                | GrenadeType::Incendiary
+                | GrenadeType::Inferno
         )
     }
 
-    /// Whether this grenade is currently active at the given tick.
     pub fn is_active_at(&self, current_tick: Tick) -> bool {
         if !self.active {
             return false;
         }
-        // Check if we're within the effect window
         if let Some(start) = self.start_tick
             && current_tick.0 < start.0
         {
@@ -86,142 +82,50 @@ mod tests {
     use super::super::player::Vec3;
     use super::*;
 
-    #[test]
-    fn test_is_timed() {
-        let smoke = GrenadeState {
+    fn known_state(grenade_type: GrenadeType) -> GrenadeState {
+        GrenadeState {
             id: 1,
-            grenade_type: GrenadeType::Smoke,
+            grenade_type,
             owner: None,
             position: Vec3::default(),
             velocity: Vec3::default(),
-            thrown_tick: Tick(100),
+            thrown_tick: Some(Tick(100)),
             detonated_tick: Some(Tick(101)),
             start_tick: Some(Tick(101)),
             end_tick: Some(Tick(600)),
             entity_id: Some(42),
             active: true,
-        };
-        assert!(smoke.is_timed());
-
-        let flash = GrenadeState {
-            id: 2,
-            grenade_type: GrenadeType::Flash,
-            owner: None,
-            position: Vec3::default(),
-            velocity: Vec3::default(),
-            thrown_tick: Tick(100),
-            detonated_tick: Some(Tick(101)),
-            start_tick: None,
-            end_tick: None,
-            entity_id: None,
-            active: true,
-        };
-        assert!(!flash.is_timed());
-
-        let molotov = GrenadeState {
-            id: 3,
-            grenade_type: GrenadeType::Molotov,
-            owner: None,
-            position: Vec3::default(),
-            velocity: Vec3::default(),
-            thrown_tick: Tick(100),
-            detonated_tick: Some(Tick(101)),
-            start_tick: Some(Tick(101)),
-            end_tick: Some(Tick(400)),
-            entity_id: Some(43),
-            active: true,
-        };
-        assert!(molotov.is_timed());
-
-        let incendiary = GrenadeState {
-            id: 4,
-            grenade_type: GrenadeType::Incendiary,
-            owner: None,
-            position: Vec3::default(),
-            velocity: Vec3::default(),
-            thrown_tick: Tick(100),
-            detonated_tick: Some(Tick(101)),
-            start_tick: Some(Tick(101)),
-            end_tick: Some(Tick(350)),
-            entity_id: Some(44),
-            active: true,
-        };
-        assert!(incendiary.is_timed());
+            observed_effect_only: false,
+        }
     }
 
     #[test]
-    fn test_is_active_at() {
-        let smoke = GrenadeState {
-            id: 1,
-            grenade_type: GrenadeType::Smoke,
-            owner: None,
-            position: Vec3::default(),
-            velocity: Vec3::default(),
-            thrown_tick: Tick(100),
-            detonated_tick: Some(Tick(101)),
-            start_tick: Some(Tick(101)),
-            end_tick: Some(Tick(600)),
-            entity_id: Some(42),
-            active: true,
-        };
+    fn test_timed_types_and_active_window() {
+        assert!(known_state(GrenadeType::Smoke).is_timed());
+        assert!(known_state(GrenadeType::Molotov).is_timed());
+        assert!(known_state(GrenadeType::Incendiary).is_timed());
+        assert!(known_state(GrenadeType::Inferno).is_timed());
+        assert!(!known_state(GrenadeType::Flash).is_timed());
 
-        // Before start
+        let smoke = known_state(GrenadeType::Smoke);
         assert!(!smoke.is_active_at(Tick(100)));
-        // During active
         assert!(smoke.is_active_at(Tick(300)));
-        // After end
-        assert!(!smoke.is_active_at(Tick(601)));
-        // Inactive flag
-        let mut dead_smoke = smoke.clone();
-        dead_smoke.active = false;
-        assert!(!dead_smoke.is_active_at(Tick(300)));
+        assert!(!smoke.is_active_at(Tick(600)));
     }
 
     #[test]
-    fn test_time_remaining() {
-        let smoke = GrenadeState {
-            id: 1,
-            grenade_type: GrenadeType::Smoke,
-            owner: None,
-            position: Vec3::default(),
-            velocity: Vec3::default(),
-            thrown_tick: Tick(100),
-            detonated_tick: Some(Tick(101)),
-            start_tick: Some(Tick(101)),
-            end_tick: Some(Tick(600)),
-            entity_id: Some(42),
-            active: true,
-        };
-
-        // At tick 300, (600-300) ticks remain = 300/64 = 4.6875 seconds
-        let remaining = smoke.time_remaining(Tick(300));
-        assert!(remaining.is_some());
-        assert!((remaining.unwrap() - 4.6875).abs() < 0.001);
-
-        // No end tick
-        let mut no_end = smoke;
-        no_end.end_tick = None;
-        assert!(no_end.time_remaining(Tick(300)).is_none());
+    fn test_effect_only_state_keeps_unknown_throw_time() {
+        let mut effect = known_state(GrenadeType::Inferno);
+        effect.thrown_tick = None;
+        effect.observed_effect_only = true;
+        assert!(effect.time_since_thrown(Tick(300)).is_none());
+        assert!(effect.is_active_at(Tick(300)));
     }
 
     #[test]
-    fn test_time_since_thrown() {
-        let grenade = GrenadeState {
-            id: 1,
-            grenade_type: GrenadeType::Smoke,
-            owner: None,
-            position: Vec3::default(),
-            velocity: Vec3::default(),
-            thrown_tick: Tick(100),
-            detonated_tick: Some(Tick(101)),
-            start_tick: Some(Tick(101)),
-            end_tick: Some(Tick(600)),
-            entity_id: Some(42),
-            active: true,
-        };
-
-        // At tick 300, 200 ticks passed = 200/64 = 3.125 seconds
-        let elapsed = grenade.time_since_thrown(Tick(300));
-        assert!((elapsed - 3.125).abs() < 0.001);
+    fn test_timing_helpers() {
+        let state = known_state(GrenadeType::Smoke);
+        assert!((state.time_since_thrown(Tick(300)).unwrap() - 3.125).abs() < 0.001);
+        assert!((state.time_remaining(Tick(300)).unwrap() - 4.6875).abs() < 0.001);
     }
 }

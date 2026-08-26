@@ -79,14 +79,21 @@ impl WorldState {
 
     /// Get all active grenades
     pub fn active_grenades(&self) -> Vec<&GrenadeState> {
-        self.grenades.iter().filter(|g| g.active).collect()
+        self.grenades
+            .iter()
+            .filter(|grenade| grenade.active && !grenade.observed_effect_only)
+            .collect()
     }
 
     /// Get grenades of a specific type
     pub fn grenades_by_type(&self, grenade_type: GrenadeType) -> Vec<&GrenadeState> {
         self.grenades
             .iter()
-            .filter(|g| g.active && g.grenade_type == grenade_type)
+            .filter(|grenade| {
+                grenade.active
+                    && !grenade.observed_effect_only
+                    && grenade.grenade_type == grenade_type
+            })
             .collect()
     }
 

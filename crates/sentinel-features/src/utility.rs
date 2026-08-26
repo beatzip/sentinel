@@ -46,7 +46,11 @@ impl FeatureExt for NadeUsageRate {
             Some(s) => s,
             None => return FeatureResult::new(0.3),
         };
-        let total_grenades = state.grenades.len() as f64;
+        let total_grenades = state
+            .grenades
+            .iter()
+            .filter(|grenade| !grenade.observed_effect_only)
+            .count() as f64;
         let rate = (total_grenades / 10.0).clamp(0.0, 1.0); // Normalize by expected max
         FeatureResult::new(rate)
     }

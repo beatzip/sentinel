@@ -469,7 +469,7 @@ impl VisibilityEngine {
     fn is_behind_smoke(target: &PlayerState, state: &TickState) -> bool {
         // Check all active smoke grenades
         for grenade in &state.grenades {
-            if !grenade.active {
+            if !grenade.active || grenade.observed_effect_only {
                 continue;
             }
 
@@ -492,7 +492,10 @@ impl VisibilityEngine {
     /// Check if player is within smoke radius at a position
     pub fn position_in_smoke(position: Vec3, state: &TickState) -> bool {
         for grenade in &state.grenades {
-            if !grenade.active || grenade.grenade_type != GrenadeType::Smoke {
+            if !grenade.active
+                || grenade.observed_effect_only
+                || grenade.grenade_type != GrenadeType::Smoke
+            {
                 continue;
             }
 
@@ -639,18 +642,25 @@ mod tests {
             owner: Some(PlayerId::new(1)),
             position: Vec3::new(400.0, 0.0, 0.0), // 100 units from target at (500, 0, 0)
             velocity: Vec3::default(),
-            thrown_tick: Tick(90),
+            thrown_tick: Some(Tick(90)),
             detonated_tick: Some(Tick(95)),
             start_tick: Some(Tick(95)),
             end_tick: Some(Tick(600)), // 8 seconds at 64 tick
             entity_id: Some(42),
             active: true,
+            observed_effect_only: false,
         };
         state.grenades.push(smoke);
 
         let result = VisibilityEngine::can_see(&state, PlayerId::new(1), PlayerId::new(2));
         assert!(!result.visible);
         assert_eq!(result.reason, VisibilityReason::ThroughSmoke);
+
+        state.grenades[0].observed_effect_only = true;
+        assert!(!VisibilityEngine::position_in_smoke(
+            Vec3::new(400.0, 0.0, 0.0),
+            &state
+        ));
     }
 
     #[test]

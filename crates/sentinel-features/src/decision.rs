@@ -281,7 +281,8 @@ impl FeatureExt for UtilitySupportRate {
             .iter()
             .filter(|s| {
                 s.grenades.iter().any(|g| {
-                    g.grenade_type == sentinel_core::GrenadeType::Flash
+                    !g.observed_effect_only
+                        && g.grenade_type == sentinel_core::GrenadeType::Flash
                         && g.detonated_tick.is_some()
                         && g.owner == Some(_player)
                 })

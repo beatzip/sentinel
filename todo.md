@@ -176,3 +176,6 @@
 - [x] Audit grenade event ingestion, dispatch and current field population without implementing changes.
 - [x] Inventory grenade/projectile/effect data models and record silent-stub or data-loss surfaces.
 - [x] Publish a grenade-pipeline audit with low-cost extension choices and deferred decisions only; do not implement.
+- [x] Write and approve the bounded state-only smoke/inferno lifecycle implementation contract.
+- [x] Implement observed entityid-paired smoke/inferno lifecycle state without inferred throw, owner, velocity or flash effect.
+- [x] Add focused lifecycle tests, validate current-demo grenade state population and publish the primary-repository update.
