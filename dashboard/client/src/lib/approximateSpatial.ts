@@ -15,7 +15,7 @@ export type ApproximateSpatialRecord = {
   usage_scope: string;
   evidence_allowed: boolean;
   source: "generic_fallback" | "exact_demo" | "unresolved";
-  confidence: "exact" | "approximate" | "unavailable";
+  confidence: "exact" | "approximate" | "generic_fallback" | "unavailable";
   hitboxes: {
     observed_duck_amount?: number | null;
     capsules: ApproximateCapsule[];
@@ -31,7 +31,7 @@ export function functionalRecordsAtTick(records: ApproximateSpatialRecord[], tic
       record.usage_scope === "exploratory_functional" &&
       record.evidence_allowed === false &&
       record.source === "generic_fallback" &&
-      record.confidence === "approximate" &&
+      (record.confidence === "approximate" || record.confidence === "generic_fallback") &&
       record.hitboxes.capsules.length > 0,
   );
 }

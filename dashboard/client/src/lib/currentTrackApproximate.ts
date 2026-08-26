@@ -10,6 +10,7 @@ type RawRecord = {
   tick: number;
   entity_index: number;
   pawn_character_def_index: number;
+  confidence: string;
   origin: Vec3;
   yaw_deg: number;
   duck_amount: number;
@@ -25,7 +26,7 @@ type RawRecord = {
     ag2_bone_matrices_claimed: boolean;
   };
 };
-type RawDataset = { schema_version: number; demo_sha256: string; map: string; resolution: string; profile_id: string; records: RawRecord[] };
+type RawDataset = { schema_version: number; demo_sha256: string; map: string; resolution: string; profile_id: string; confidence: string; records: RawRecord[] };
 type ProfileCapsule = { id: string; group: string; a: [number, number, number]; b: [number, number, number] };
 type GenericProfile = {
   artifact_kind: string;
@@ -51,6 +52,7 @@ function validRecord(record: RawRecord) {
   const provenance = record.provenance;
   return record.pawn_character_def_index === 5037
     && record.capsules?.length === 19
+    && record.confidence === "generic_fallback"
     && provenance?.evidence_allowed === false
     && provenance.usage_scope === "exploratory_functional"
     && provenance.derivation === "definition_5037_to_ctm_sas_profile"
@@ -92,7 +94,7 @@ export async function loadCurrentTrackApproximateReplay(): Promise<CurrentTrackR
   const [recordsResponse, profileResponse] = await Promise.all([fetch(CURRENT_TRACK_URL), fetch(GENERIC_PROFILE_URL)]);
   if (!recordsResponse.ok || !profileResponse.ok) throw new Error("current approximate sidecar unavailable");
   const [dataset, profile] = [await readGzipJson(recordsResponse) as RawDataset, await profileResponse.json() as GenericProfile];
-  if (dataset.schema_version !== 1 || dataset.profile_id !== "standard_player_19_capsule_generic_v1" || dataset.resolution !== "downsampled_10hz" || !Array.isArray(dataset.records)) throw new Error("current approximate dataset contract rejected");
+  if (dataset.schema_version !== 1 || dataset.profile_id !== "standard_player_19_capsule_generic_v1" || dataset.confidence !== "generic_fallback" || dataset.resolution !== "downsampled_10hz" || !Array.isArray(dataset.records)) throw new Error("current approximate dataset contract rejected");
   if (profile.artifact_kind !== "sentinel_approximate_generic_player_capsule_profile" || profile.profile_id !== dataset.profile_id || profile.confidence !== "generic_fallback" || profile.evidence_allowed !== false || profile.usage_scope !== "exploratory_functional" || profile.exact_model_calibration !== false || profile.capsules.length !== 19) throw new Error("generic profile contract rejected");
   if (!dataset.records.every(validRecord)) throw new Error("current record provenance contract rejected");
 
@@ -106,7 +108,7 @@ export async function loadCurrentTrackApproximateReplay(): Promise<CurrentTrackR
     usage_scope: "exploratory_functional",
     evidence_allowed: false,
     source: "generic_fallback",
-    confidence: "approximate",
+    confidence: "generic_fallback",
     hitboxes: {
       observed_duck_amount: record.duck_amount,
       capsules: record.capsules.map((capsule) => {

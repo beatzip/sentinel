@@ -4,10 +4,10 @@ The Radar Room now includes the existing `approximate_spatial` functional consum
 
 | Asset | SHA-256 | Purpose |
 |---|---|---|
-| `client/public/approximate/current-track-5037-downsampled.json.gz` | `f99ead536f216dd706fa644b6347d4e8dee12c961c4b3c34263b19487ddbc8ec` | 60,189 downsampled generic records |
+| `client/public/approximate/current-track-5037-downsampled.json.gz` | `5741cf6b3dc65308510d70f24457feccb049fc5f75ff970008a7cbb849cd754c` | 60,189 downsampled generic records |
 | `client/public/approximate/standard-player-19-capsule-generic.json` | `222627bf08f4ffa419e49a23f6484d95009f063a52048ba7a05e4455d7d1a50a` | Generic 19-capsule profile |
 
-The client rejects the sidecar unless all records are definition `5037`, contain exactly 19 capsules, and carry the emitted nested non-evidentiary provenance: `evidence_allowed=false`, `usage_scope=exploratory_functional`, `derivation=definition_5037_to_ctm_sas_profile`, `m_hModel_binding=not_used`, and every exact-claim flag set to `false`.
+The client rejects the sidecar unless its dataset and every record carry `confidence=generic_fallback`, all records are definition `5037`, records contain exactly 19 capsules, and each carries the emitted nested non-evidentiary provenance: `evidence_allowed=false`, `usage_scope=exploratory_functional`, `derivation=definition_5037_to_ctm_sas_profile`, `m_hModel_binding=not_used`, and every exact-claim flag set to `false`.
 
 The conversion into the existing functional map layer uses observed `origin`, yaw, duck amount, materialized generic capsule fields, and the generic profile only. It does not resolve `m_hModel`, load a VMDL, construct exact geometry, show a skeleton, run AG2, add `SpatialShotEvidence`, enable LOS, or create collision/damage/penetration/verdict output.
 
@@ -42,3 +42,7 @@ Standing, movement, and crouch verification captures are taken with the map canv
 The complete canvas was also captured for `PWN-260 / tick 82518`, with `DUCKAMOUNT 0.00`, `UPRIGHT GENERIC PROFILE`, the three provenance labels, and the selected one-record / nineteen-capsule functional layer visible together.
 
 The complete-canvas capture for `PWN-106 / tick 6510` reaffirmed `DUCKAMOUNT 0.86`, `GENERIC PROFILE COMPRESSED`, and the three non-evidentiary provenance labels with one selected nineteen-capsule record.
+
+## Confidence Contract Revalidation
+
+The sidecar was regenerated with explicit `confidence=generic_fallback` on the dataset and every record. The primary dashboard accepted the regenerated compressed sidecar through its strict validator and displayed the current functional replay at tick `6`, with four observed player records and nineteen generic capsules per record.

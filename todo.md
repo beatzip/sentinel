@@ -172,3 +172,4 @@
 - [x] Publish the primary-repository approximation update only after native checks and functional provenance validation pass.
 - [x] Add higher-contrast non-evidentiary provenance and observed-crouch indicators to the primary dashboard approximate layer.
 - [x] Capture real standing, movement, and crouch verification frames from the primary dashboard, then publish only after dashboard checks pass.
+- [x] Audit the primary approximate overlay against the supplied 19-capsule non-evidentiary contract; correct only a verified deviation.
