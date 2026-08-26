@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "sentinel_approximate_generic_player_capsule_profile",
+  "profile_id": "standard_player_19_capsule_generic_v1",
+  "profile_aliases": ["ctm_sas_style", "tm_phoenix_style"],
+  "coordinate_frame": "local_player_origin_at_ground; local +Y is forward before observed yaw rotation",
+  "units": "Source 2 world-unit approximation",
+  "confidence": "generic_fallback",
+  "evidence_allowed": false,
+  "usage_scope": "exploratory_functional",
+  "exact_model_calibration": false,
+  "provenance": "Generic profile created only for clearly non-evidentiary replay/radar visualization. It is not extracted from a VMDL, hitbox set, runtime handle binding, skeleton, or AG2 pose.",
+  "crouch_transform": {
+    "input_field": "m_pMovementServices.m_flDuckAmount",
+    "input_range": [0.0, 1.0],
+    "upper_body_pivot_z": 30.0,
+    "upper_body_drop_per_duck": 12.0,
+    "upper_body_z_scale_at_full_duck": 0.78,
+    "leg_z_scale_at_full_duck": 0.82,
+    "description": "Generic visual compression only; not bone or hitbox animation."
+  },
+  "capsules": [
+    {"id":"head","group":"head","a":[0,0,64],"b":[0,0,72],"radius":5.0},
+    {"id":"neck","group":"neck","a":[0,0,58],"b":[0,0,65],"radius":3.2},
+    {"id":"chest","group":"torso","a":[0,0,48],"b":[0,0,59],"radius":7.2},
+    {"id":"abdomen","group":"torso","a":[0,0,38],"b":[0,0,49],"radius":6.8},
+    {"id":"pelvis","group":"pelvis","a":[0,0,30],"b":[0,0,40],"radius":7.0},
+    {"id":"left_shoulder","group":"arm","a":[-6,0,57],"b":[-12,0,54],"radius":4.0},
+    {"id":"right_shoulder","group":"arm","a":[6,0,57],"b":[12,0,54],"radius":4.0},
+    {"id":"left_upper_arm","group":"arm","a":[-11,0,54],"b":[-19,0,47],"radius":3.5},
+    {"id":"right_upper_arm","group":"arm","a":[11,0,54],"b":[19,0,47],"radius":3.5},
+    {"id":"left_forearm","group":"arm","a":[-19,0,47],"b":[-21,0,38],"radius":3.0},
+    {"id":"right_forearm","group":"arm","a":[19,0,47],"b":[21,0,38],"radius":3.0},
+    {"id":"left_hand","group":"arm","a":[-21,0,38],"b":[-21,0,33],"radius":2.5},
+    {"id":"right_hand","group":"arm","a":[21,0,38],"b":[21,0,33],"radius":2.5},
+    {"id":"left_thigh","group":"leg","a":[-4,0,31],"b":[-5,0,17],"radius":4.2},
+    {"id":"right_thigh","group":"leg","a":[4,0,31],"b":[5,0,17],"radius":4.2},
+    {"id":"left_shin","group":"leg","a":[-5,0,17],"b":[-5,0,5],"radius":3.5},
+    {"id":"right_shin","group":"leg","a":[5,0,17],"b":[5,0,5],"radius":3.5},
+    {"id":"left_foot","group":"leg","a":[-5,-2,4],"b":[-5,8,4],"radius":3.4},
+    {"id":"right_foot","group":"leg","a":[5,-2,4],"b":[5,8,4],"radius":3.4}
+  ]
+}

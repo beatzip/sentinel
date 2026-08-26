@@ -168,3 +168,5 @@
 - [x] Variant B candidate: публично проверить SteamDB metadata для build `24701871` и записать его только как candidate for patch `14175`, без manifest/build-match claim.
 - [x] Gate 1 correction: verify build-specific `items_game.txt` from indexed VPK chunk and record that pawn `m_iItemDefinitionIndex` is equipment-only when it resolves to a non-`customplayer` item.
 - [x] Gate 1 prerequisite: locate a raw demo telemetry field that actually identifies equipped `customplayer` agent, rather than inferring it from pawn gloves/item definition.
+- [x] Consolidate the current-track approximate replay dashboard consumer into the primary Sentinel repository without importing exact C4–C8 or `SpatialShotEvidence` paths.
+- [x] Publish the primary-repository approximation update only after native checks and functional provenance validation pass.

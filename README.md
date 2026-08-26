@@ -410,7 +410,23 @@ examples/
 tris/                    <- map geometry
 
 assets/
+
+dashboard/               <- consolidated Radar Room web dashboard
 ```
+
+---
+
+# Consolidated Dashboard
+
+The Radar Room dashboard now lives in this primary repository under [`dashboard/`](dashboard/). It can be run locally with:
+
+```bash
+cd dashboard
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Its current-track functional replay source is intentionally quarantined. It consumes only the definition-5037 downsampled approximate sidecar and the generic 19-capsule profile, validates `evidence_allowed=false` provenance before rendering, and cannot write `SpatialShotEvidence` or access the exact C4–C8 path. See [`dashboard/docs/current-track-approximate-sidecar.md`](dashboard/docs/current-track-approximate-sidecar.md) for the strict data boundary.
 
 ---
 
