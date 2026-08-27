@@ -1,3 +1,8 @@
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+};
+
 use serde::{Deserialize, Serialize};
 
 /// 3D position vector (local to sentinel-map to avoid circular dependency)
@@ -446,8 +451,53 @@ impl TrianglesBVH {
     }
 }
 
-/// Complete map data
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+struct SegmentResultCacheKey {
+    from_x: u32,
+    from_y: u32,
+    from_z: u32,
+    to_x: u32,
+    to_y: u32,
+    to_z: u32,
+}
+
+impl SegmentResultCacheKey {
+    fn new(from: Vec3, to: Vec3) -> Self {
+        Self {
+            from_x: from.x.to_bits(),
+            from_y: from.y.to_bits(),
+            from_z: from.z.to_bits(),
+            to_x: to.x.to_bits(),
+            to_y: to.y.to_bits(),
+            to_z: to.z.to_bits(),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SegmentResultCache {
+    enabled: bool,
+    calls: u64,
+    hits: u64,
+    misses: u64,
+    entries: HashMap<SegmentResultCacheKey, bool>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct SegmentResultCacheStats {
+    pub enabled: bool,
+    pub calls: u64,
+    pub hits: u64,
+    pub misses: u64,
+    pub entries: usize,
+}
+
+/// Complete map data.
+///
+/// Segment-result reuse is opt-in and belongs only to this MapData instance.
+/// Keys retain all endpoint f32 bit patterns, and clones deliberately start
+/// empty so no result can cross a MapData or MatchContext lifetime.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MapData {
     /// Map name
     pub name: String,
@@ -464,9 +514,42 @@ pub struct MapData {
     /// BVH tree for 3D raycasting visibility (built from .tri files)
     #[serde(skip)]
     pub bvh: Option<BVHNode3D>,
+    #[serde(skip, default)]
+    pub(crate) segment_result_cache: RefCell<SegmentResultCache>,
+}
+
+impl Clone for MapData {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            bounds: self.bounds,
+            walls: self.walls.clone(),
+            spawns: self.spawns.clone(),
+            bombsites: self.bombsites.clone(),
+            nav_nodes: self.nav_nodes.clone(),
+            bvh: self.bvh.clone(),
+            segment_result_cache: RefCell::new(SegmentResultCache::default()),
+        }
+    }
 }
 
 impl MapData {
+    /// Enable exact-endpoint segment caching for this MapData instance only.
+    pub fn enable_segment_result_cache(&self) {
+        self.segment_result_cache.borrow_mut().enabled = true;
+    }
+
+    pub fn segment_result_cache_stats(&self) -> SegmentResultCacheStats {
+        let cache = self.segment_result_cache.borrow();
+        SegmentResultCacheStats {
+            enabled: cache.enabled,
+            calls: cache.calls,
+            hits: cache.hits,
+            misses: cache.misses,
+            entries: cache.entries.len(),
+        }
+    }
+
     /// Check if a line between two points intersects any wall
     pub fn line_blocked(&self, from: Vec2, to: Vec2) -> bool {
         self.walls
@@ -492,6 +575,32 @@ impl MapData {
     /// Check whether the finite segment from `from` to `to` intersects map geometry.
     /// Unlike [`line_blocked_3d`], an obstacle beyond the target does not block visibility.
     pub fn segment_blocked_3d(&self, from: Vec3, to: Vec3) -> bool {
+        let key = SegmentResultCacheKey::new(from, to);
+        let cache_enabled = {
+            let mut cache = self.segment_result_cache.borrow_mut();
+            cache.calls += 1;
+            if !cache.enabled {
+                false
+            } else if let Some(&blocked) = cache.entries.get(&key) {
+                cache.hits += 1;
+                return blocked;
+            } else {
+                cache.misses += 1;
+                true
+            }
+        };
+
+        let blocked = self.segment_blocked_3d_uncached(from, to);
+        if cache_enabled {
+            self.segment_result_cache
+                .borrow_mut()
+                .entries
+                .insert(key, blocked);
+        }
+        blocked
+    }
+
+    fn segment_blocked_3d_uncached(&self, from: Vec3, to: Vec3) -> bool {
         let distance = from.distance_to(&to);
         if distance <= 0.0001 {
             return false;
@@ -787,6 +896,7 @@ impl MapData {
             bombsites: Vec::new(),
             nav_nodes: Vec::new(),
             bvh: Some(bvh),
+            segment_result_cache: Default::default(),
         })
     }
 
@@ -967,6 +1077,7 @@ impl MapData {
             bombsites: Self::dust2_bombsites(),
             nav_nodes: Vec::new(),
             bvh: None,
+            segment_result_cache: Default::default(),
         }
     }
 
@@ -980,6 +1091,7 @@ impl MapData {
             bombsites: Self::mirage_bombsites(),
             nav_nodes: Vec::new(),
             bvh: None,
+            segment_result_cache: Default::default(),
         }
     }
 
@@ -993,6 +1105,7 @@ impl MapData {
             bombsites: Self::inferno_bombsites(),
             nav_nodes: Vec::new(),
             bvh: None,
+            segment_result_cache: Default::default(),
         }
     }
 
@@ -1345,6 +1458,7 @@ mod nav_tests {
             bombsites: Vec::new(),
             nav_nodes: areas,
             bvh: None,
+            segment_result_cache: Default::default(),
         }
     }
 
@@ -1461,6 +1575,7 @@ mod nav_tests {
             bombsites: Vec::new(),
             nav_nodes: areas,
             bvh: None,
+            segment_result_cache: Default::default(),
         };
 
         // Isolated areas should not reach each other
@@ -1544,6 +1659,7 @@ mod nav_tests {
             bombsites: Vec::new(),
             nav_nodes: Vec::new(), // No nav areas
             bvh: None,
+            segment_result_cache: Default::default(),
         };
 
         // With no nav areas, should fall back to wall checking
@@ -1553,5 +1669,28 @@ mod nav_tests {
             map.line_blocked_via_nav(from, to),
             "No nav areas should fall back to wall checking"
         );
+    }
+
+    #[test]
+    fn segment_result_cache_preserves_raw_endpoint_bits_and_clone_isolation() {
+        let map = MapData::dust2();
+        map.enable_segment_result_cache();
+        let from = Vec3::new(1300.0, 2800.0, 0.0);
+        let to = Vec3::new(1500.0, 2800.0, -0.0);
+
+        let first = map.segment_blocked_3d(from, to);
+        let second = map.segment_blocked_3d(from, to);
+        assert_eq!(first, second);
+        let stats = map.segment_result_cache_stats();
+        assert_eq!(stats.calls, 2);
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 1);
+        assert_eq!(stats.entries, 1);
+
+        let cloned = map.clone();
+        let cloned_stats = cloned.segment_result_cache_stats();
+        assert!(!cloned_stats.enabled);
+        assert_eq!(cloned_stats.calls, 0);
+        assert_eq!(cloned_stats.entries, 0);
     }
 }

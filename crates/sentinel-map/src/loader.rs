@@ -207,6 +207,7 @@ pub fn load_map_from_nav(path: &std::path::Path) -> Result<MapData, String> {
         bombsites: Vec::new(),
         nav_nodes,
         bvh: None,
+        segment_result_cache: Default::default(),
     })
 }
 

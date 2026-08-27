@@ -25,17 +25,20 @@ pub struct MatchContext {
 
 impl MatchContext {
     pub fn new(states: Vec<TickState>) -> Self {
+        let map = MapData::dust2();
+        map.enable_segment_result_cache();
         Self {
             states,
             feature_vectors: Vec::new(),
             evidence: Vec::new(),
-            map: MapData::dust2(),
+            map,
             kills: Vec::new(),
         }
     }
 
     /// Set the map data for visibility calculations
     pub fn set_map(&mut self, map: MapData) {
+        map.enable_segment_result_cache();
         self.map = map;
     }
 

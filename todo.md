@@ -179,3 +179,54 @@
 - [x] Write and approve the bounded state-only smoke/inferno lifecycle implementation contract.
 - [x] Implement observed entityid-paired smoke/inferno lifecycle state without inferred throw, owner, velocity or flash effect.
 - [x] Add focused lifecycle tests, validate current-demo grenade state population and publish the primary-repository update.
+- [x] Audit existing dataset and validation CLI contracts for a minimal real-demo corpus intake.
+- [x] Define a no-fabrication corpus manifest and label-provenance contract for 20–30 supplied demos.
+- [ ] Request qualified real demo inputs before running any training or validation metrics.
+- [x] Verify HITV public access, retention constraints, and public-demo metadata availability (blocked: specified `https://hitv.org` hostname was not resolvable from the permitted environment; no substitute source used).
+- [x] Verify HLTV, FACEIT and other public CS2 demo sources for access, demonstrable availability and restrictions only; do not download demos.
+- [x] Return verified source survey and await explicit source authorization before corpus acquisition.
+- [x] Receive explicit authorization for HLTV and/or FACEIT before inspecting match pages or downloading any demo (HLTV-only; FACEIT explicitly excluded).
+- [x] Confirm three 2024 HLTV CS2 match pages visibly expose a demo-download flow; raw download access remains unresolved without browser support.
+- [x] Receive explicit authorization for standard-browser public HLTV download controls only; no login, bypassing, header spoofing or third-party downloader.
+- [ ] Resolve the managed browser-session failure or receive user-supplied HLTV demo files before downloading the seven authorized all-unknown demos: 2396580, 2396565, 2396577, 2396612, 2396601, 2396456 and 2396494.
+- [x] Discover public non-HLTV CS2 demo datasets and hosts, prioritizing public GitHub/academic sources, then login-free FACEIT/SCL/other hosts.
+- [x] Verify raw `.dem` accessibility and access restrictions for alternative sources; only `blanchon/cs2_dataset_demo` exposes publicly retrievable raw map demos, but original tournament-rights basis remains unresolved.
+- [x] Verify and record the source-specific distribution/right-to-download basis before every public corpus acquisition; public reachability alone is insufficient (user accepted `blanchon/cs2_dataset_demo` documented research-only, non-redistributed conditional basis).
+- [x] Receive explicit approval of the conditional rights basis for `blanchon/cs2_dataset_demo` or proof of tournament-holder permission before downloading any mirrored raw demo (user approval received for bounded personal research intake).
+- [x] Select 24 diverse map-level `blanchon/cs2_dataset_demo` files across 12 matches and seven maps; every entry begins `unknown`.
+- [x] Reacquire the 24 selected approved public demos into `/home/ubuntu/sentinel-corpus/` after sandbox reset removed prior byte downloads; preserve selection and source metadata.
+- [x] Compute and record SHA-256 plus source/parser provenance for the 24 all-unknown OpenCS2 map demos.
+- [x] Review ReagentX/HLTVDemoDownloader for maintenance, dependencies and HLTV access behavior before executing any of its code (rejected: obsolete Python 2 and explicit user-agent spoofing).
+- [x] Verify supplied HLTV match IDs 2396612, 2396601, 2396554, 2396525, 2396494, 2396014 and 2396647 as CS2-era candidates; do not assign labels (2396525 mismatches the named SAW–EAC match, whose canonical ID is 2396456).
+- [ ] Select 20–30 public HLTV CS2-era demo candidates with source traceability and non-promoted label candidates.
+- [ ] Hash and inspect supplied HLTV demos outside Git; capture parser and header provenance.
+- [x] Build the all-unknown intake manifest and run `sentinel dataset init` plus `sentinel dataset audit` only.
+- [x] Deliver the included, held, and excluded registry; keep labelled metrics blocked.
+- [x] Inspect existing reusable parser, detector and telemetry output surfaces for a no-code read-only audit of the 24 all-unknown demos.
+- [x] Execute parser, identity and observed grenade-event coverage across all 24 all-unknown demos; run the existing full detector pipeline only until an explicit runtime boundary.
+- [x] Classify corpus units with the unmodified existing pipeline: 3 completed, 0 parser failure, 0 explicit detector-output failure, 1 runtime-bounded, 20 not attempted after resource stop.
+- [x] Publish concise data-quality / coverage audit with explicit denominators and zero supervised metric claims.
+- [ ] Map existing full-analysis stages and identify external read-only profiling measurements for three completed demos plus one runtime-bounded demo.
+- [ ] Collect wall-clock, CPU, peak-memory, workload-size and artifact-generation measurements without changing pipeline behavior.
+- [ ] Publish bottleneck ranking, scaling evidence and semantics-preserving optimization experiment recommendations; do not optimize yet.
+- [x] Characterize `trade_kill_timing` history-window `state_at` keys, repetition and cardinality before changing any implementation.
+- [x] Implement exactly one isolated `trade_kill_timing` reuse/removal optimization in an A/B workspace; do not alter other features, detector semantics or protected evidence boundaries.
+- [x] Compare Inferno, Nuke and Mirage A/B outputs byte-for-byte and retain the change only if FeatureVectors, JSON, replay and HTML artifacts are identical.
+- [x] Verify the accepted `trade_kill_timing` working-tree change with the complete relevant test suite, intended-diff audit and intact pre-existing intake files; do not commit yet (`cargo test --workspace` passed; `git diff --check` passed; only canonical source diff is `decision.rs`).
+- [x] Record accepted `trade_kill_timing` A/B baseline/result: 321 history ticks per calculation; 99.689% trade-local `state_at` reduction; end-to-end reductions Inferno 25.12%, Nuke 9.63%, Mirage 20.49%; FeatureVectors and normalized JSON/replay/HTML artifacts byte-identical; 25 feature identifiers and per-feature cardinalities unchanged.
+- [x] Perform external-only Nuke `information_availability` attribution with explicit inclusive/self-time classification; do not optimize or alter detector semantics.
+- [x] Publish the non-overlapping Nuke bottleneck ranking, call amplification, candidate boundary and regression requirements; stop after attribution.
+- [x] Classify the first `trade_kill_timing` optimization as verified: complete canonical tests and three-fixture byte-equivalence gates passed; retain it uncommitted.
+- [x] Collect external-only directed `{tick, observer, target, geometry}` repetition evidence for Nuke `information_availability`; do not cache, reuse results, or optimize.
+- [x] Publish the directed-key repetition analysis and stop before any second optimization.
+- [x] Trace the complete read-only dependency graph of `map_segment_blocked_3d` and classify every result-affecting input against the proposed directed key.
+- [x] Publish the minimum semantics-safe reuse key, unresolved dependencies and regression protocol; stop before caching or any second optimization.
+- [x] Measure external-only `{MatchContext, tick, observer, target}` to exact endpoint-bit uniqueness and map-instance lifetime for Nuke; do not cache or reuse results.
+- [x] Publish the context-scoped key proof decision, exact reusable/non-reusable repeat counts and remaining proof gap; stop before implementation.
+- [x] Verify sufficient external storage and preserve complete Inferno, Nuke and Mirage baselines for one isolated context-scoped `is_line_blocked` / `map_segment_blocked_3d` cache A/B experiment.
+- [x] Implement exactly one MatchContext/MapData-lifetime-bound segment-result cache in an isolated A/B workspace; do not optimize other paths.
+- [x] Retain after all three fixtures preserved byte-identical FeatureVectors, JSON, replay and HTML artifacts in same-path raw-byte confirmation runs; stop before further optimization.
+- [x] Record accepted context-scoped `map_segment_blocked_3d` reuse result: Nuke end-to-end 508.041 s → 418.520 s (−17.62%), feature extraction 490.208 s → 399.668 s (−18.47%), sampled segment time −27.103%, 2,273,942 / 6,247,231 hits (36.399%), 3,973,289 entries and +233.69 MiB peak RSS; Inferno/Mirage have zero active 3D cache calls and are not cache speedup claims.
+- [x] Re-run the final optimization-only commit-boundary checks: status, source diff, full workspace tests, diff whitespace, ledger accuracy, and protected-path exclusion.
+- [x] Commit only the verified `trade_kill_timing` and context-scoped `map_segment_blocked_3d` reuse optimizations with their ledger records; leave untracked intake documents outside the commit.
+- [ ] Return to detection planning by documenting the minimum reviewed ground-truth process required before Phase 3 supervised metrics; do not modify detector logic or label the all-unknown corpus.

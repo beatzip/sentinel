@@ -24,12 +24,10 @@ impl FeatureExt for TradeKillTiming {
         let window_start = tick.0.saturating_sub(5 * 64);
         let mut teammate_death_tick: Option<u32> = None;
 
-        for t in (window_start..=tick.0).rev() {
-            if let Some(state) = ctx.state_at(Tick(t)) {
-                let dead_count = state.players.iter().filter(|pp| !pp.alive).count();
-                if dead_count > 0 && teammate_death_tick.is_none() {
-                    teammate_death_tick = Some(t);
-                }
+        for state in ctx.states_in_range(Tick(window_start), tick).iter().rev() {
+            let dead_count = state.players.iter().filter(|pp| !pp.alive).count();
+            if dead_count > 0 && teammate_death_tick.is_none() {
+                teammate_death_tick = Some(state.tick.0);
             }
         }
 

@@ -168,6 +168,7 @@ impl VPhysData {
             bombsites: Vec::new(),
             nav_nodes: Vec::new(),
             bvh: Some(bvh),
+            segment_result_cache: Default::default(),
         })
     }
 }
