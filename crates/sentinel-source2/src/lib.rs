@@ -592,7 +592,10 @@ impl DemoCollector {
                     CONTROLLER_CHARACTER_DEFINITION_FIELD,
                     controller_character_definition.map(|(_, definition_index)| definition_index),
                     controller_character_definition.map(|(tick, _)| tick),
-                    self.get_i32(entity, "CBodyComponent.m_animationController.m_nSerializePoseRecipeAG2ActiveSlot"),
+                    self.get_i32(
+                        entity,
+                        "CBodyComponent.m_animationController.m_nSerializePoseRecipeAG2ActiveSlot"
+                    ),
                     skeleton.pose_recipe_version,
                     bytes.len(),
                     pose_recipe_sha256(&bytes),

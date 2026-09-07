@@ -3,19 +3,18 @@ use sentinel_map::{MapData, Material, Vec2, Vec3, WallSegment};
 use std::path::PathBuf;
 
 fn synthetic_wall() -> MapData {
-    let mut map = MapData {
-        name: "synthetic_wall".to_owned(),
-        bounds: (-100.0, -100.0, 100.0, 100.0),
-        walls: vec![WallSegment {
-            start: Vec2::new(0.0, 0.0),
-            end: Vec2::new(100.0, 0.0),
-            material: Material::Solid,
-        }],
-        spawns: Vec::new(),
-        bombsites: Vec::new(),
-        nav_nodes: Vec::new(),
-        bvh: None,
-    };
+    let mut map = MapData::dust2();
+    map.name = "synthetic_wall".to_owned();
+    map.bounds = (-100.0, -100.0, 100.0, 100.0);
+    map.walls = vec![WallSegment {
+        start: Vec2::new(0.0, 0.0),
+        end: Vec2::new(100.0, 0.0),
+        material: Material::Solid,
+    }];
+    map.spawns.clear();
+    map.bombsites.clear();
+    map.nav_nodes.clear();
+    map.bvh = None;
     map.build_bvh_from_walls();
     map
 }

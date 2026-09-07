@@ -29,7 +29,7 @@
 - [x] Добавить audited review labels с provenance и явным verified workflow для датасета.
 - [x] Добавить versioned utility meta-lineup library и mode-aware calibration gates без фиктивных lineups.
 - [x] Добавить optional structured AI summary, ограниченный facts-only evidence schema и retryable status.
-- [ ] Расширить Encounter Ledger реальными shot/damage sequences и TTD после экспорта верифицируемого event stream.
+- [x] Расширить Encounter Ledger наблюдаемыми shot/damage sequences, candidate shot-to-damage links и observed damage-to-death interval без синтетического TTD.
 - [ ] Подтвердить AI summary end-to-end на admin account и реальном report после подключения API в production.
 - [x] Экспортировать наблюдаемые shot/damage events и использовать их в Encounter Ledger без синтетического TTD.
 - [x] Добавить import validation для human-verified corpus и reviewed utility lineup coordinates.
@@ -229,4 +229,10 @@
 - [x] Record accepted context-scoped `map_segment_blocked_3d` reuse result: Nuke end-to-end 508.041 s → 418.520 s (−17.62%), feature extraction 490.208 s → 399.668 s (−18.47%), sampled segment time −27.103%, 2,273,942 / 6,247,231 hits (36.399%), 3,973,289 entries and +233.69 MiB peak RSS; Inferno/Mirage have zero active 3D cache calls and are not cache speedup claims.
 - [x] Re-run the final optimization-only commit-boundary checks: status, source diff, full workspace tests, diff whitespace, ledger accuracy, and protected-path exclusion.
 - [x] Commit only the verified `trade_kill_timing` and context-scoped `map_segment_blocked_3d` reuse optimizations with their ledger records; leave untracked intake documents outside the commit.
-- [ ] Return to detection planning by documenting the minimum reviewed ground-truth process required before Phase 3 supervised metrics; do not modify detector logic or label the all-unknown corpus.
+- [x] Return to detection planning by documenting the minimum reviewed ground-truth process required before Phase 3 supervised metrics; do not modify detector logic or label the all-unknown corpus.
+- [x] Audit checked items in the main and dashboard task ledgers against current source, tests, documentation and Git history; preserve external-only limitations explicitly.
+- [x] Preserve the accepted optimization boundary and reported measurements in a durable ledger without presenting missing raw benchmark artifacts as reproduced results.
+- [x] Repair the segment benchmark after the private context-scoped cache field made its external `MapData` struct literal uncompilable.
+- [x] Re-run repository formatting with the declared Rust 1.88 toolchain after the audit found the checked final-format claim was stale.
+- [ ] Build a reviewed corpus package that passes `docs/ground-truth-review-process.md`; keep every unresolved demo and player label `unknown`.
+- [ ] Freeze leakage-free train/validation/holdout partitions and run corpus-backed calibration, regression, A/B and feature-importance evaluation only after the reviewed-corpus gate passes.

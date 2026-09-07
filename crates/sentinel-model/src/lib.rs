@@ -7,11 +7,11 @@ pub mod kv3;
 pub mod resource_descriptor;
 
 pub use kv3::{
-    decode_binary_kv3_v5, inspect_vmdl_semantics, BinaryKv3Compression, BinaryKv3Header,
-    Kv3DecodeError, Kv3Document, Kv3Field, Kv3Value, VmdlSemanticFinding, VmdlSemanticInspection,
+    BinaryKv3Compression, BinaryKv3Header, Kv3DecodeError, Kv3Document, Kv3Field, Kv3Value,
+    VmdlSemanticFinding, VmdlSemanticInspection, decode_binary_kv3_v5, inspect_vmdl_semantics,
 };
 pub use resource_descriptor::{
-    describe_vmdl_file, resolve_dependencies, DependencyResolution, DependencyStatus,
-    ExternalDependency, ModelDependencyKind, ResourceBlock, ResourceDescriptor,
-    ResourceDescriptorError, ResourceHeader,
+    DependencyResolution, DependencyStatus, ExternalDependency, ModelDependencyKind, ResourceBlock,
+    ResourceDescriptor, ResourceDescriptorError, ResourceHeader, describe_vmdl_file,
+    resolve_dependencies,
 };

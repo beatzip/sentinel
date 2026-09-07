@@ -8,7 +8,7 @@ mod header;
 mod inspection;
 mod value;
 
-pub use decoder::{decode_binary_kv3_v5, Kv3DecodeError};
+pub use decoder::{Kv3DecodeError, decode_binary_kv3_v5};
 pub use header::{BinaryKv3Compression, BinaryKv3Header};
-pub use inspection::{inspect_vmdl_semantics, VmdlSemanticFinding, VmdlSemanticInspection};
+pub use inspection::{VmdlSemanticFinding, VmdlSemanticInspection, inspect_vmdl_semantics};
 pub use value::{Kv3Document, Kv3Field, Kv3Value};

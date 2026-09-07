@@ -2,8 +2,8 @@ use lz4_flex::block::decompress_into;
 use thiserror::Error;
 
 use super::header::{
-    BinaryKv3Compression, BinaryKv3Header, PoolCounts, BINARY_KV3_TRAILER, MAX_KV3_DEPTH,
-    MAX_KV3_NODES,
+    BINARY_KV3_TRAILER, BinaryKv3Compression, BinaryKv3Header, MAX_KV3_DEPTH, MAX_KV3_NODES,
+    PoolCounts,
 };
 use super::value::{Kv3Document, Kv3Field, Kv3Value};
 
@@ -574,7 +574,7 @@ fn align(value: &mut usize, alignment: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_binary_kv3_v5, Kv3DecodeError};
+    use super::{Kv3DecodeError, decode_binary_kv3_v5};
     use crate::kv3::Kv3Value;
 
     #[test]
