@@ -1,7 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-};
+use std::{cell::RefCell, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 

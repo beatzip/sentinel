@@ -8,9 +8,9 @@ use sentinel_features::FeatureEngine;
 use sentinel_map::loader;
 use sentinel_memory::{MatchObservation, Memory};
 use sentinel_report::{
-    link_observed_shot_damage, AnalysisProvenance, ConfidenceAssessment, Encounter,
+    AnalysisProvenance, ConfidenceAssessment, DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS, Encounter,
     LinkedShotDamage, MatchMetadata, MatchReport, ObservedDamage, ObservedShot, PlayerReport,
-    RosterKill, RoundContext, RoundStory, SupportingMatch, DEFAULT_SHOT_DAMAGE_LINK_WINDOW_TICKS,
+    RosterKill, RoundContext, RoundStory, SupportingMatch, link_observed_shot_damage,
 };
 use sentinel_validation::{DemoValidation, PlayerEvaluation, PlayerLabel, ValidationHarness};
 use sentinel_world::WorldRebuilder;
@@ -682,7 +682,7 @@ pub(crate) fn build_round_contexts(
 pub(crate) fn observed_combat_events(
     events: &[sentinel_events::kinds::GameEvent],
 ) -> (Vec<ObservedShot>, Vec<ObservedDamage>) {
-    use sentinel_events::{damage_from_game_event, shot_from_game_event, EventKind};
+    use sentinel_events::{EventKind, damage_from_game_event, shot_from_game_event};
 
     let shots = events
         .iter()
@@ -1144,6 +1144,8 @@ fn print_usage() {
     );
     println!("  replay <match.dem> [output]   Export sampled replay frames with visibility pairs");
     println!("  model-describe <vmdl_c> [out] Discover Source 2 VMDL blocks and RERL dependencies");
-    println!("  model-kv3-inspect <vmdl_c> <tag> [out] Decode one KV3 v5 block and report bounded semantic keys");
+    println!(
+        "  model-kv3-inspect <vmdl_c> <tag> [out] Decode one KV3 v5 block and report bounded semantic keys"
+    );
     println!("  verify                        Run verification checks");
 }

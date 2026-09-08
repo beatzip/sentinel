@@ -40,6 +40,7 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Versioned dataset manifest and local audit command (`sentinel dataset init|audit`)
 - [x] Verified feature-sidecar loader and supervised training command (`sentinel dataset train`)
 - [x] Regression-case contract and loader for real, human-verified demos
+- [x] Reviewed ground-truth process for immutable intake, independent labels, promotion, leakage-free splits and metric publication
 
 **Sources:**
 - HLTV pro matches (legit)
@@ -88,6 +89,10 @@ Open-source Behavioral Analysis Platform for Counter-Strike 2.
 - [x] Model versioning (memory schema version)
 - [x] A/B comparison contract for baseline, XGBoost and Transformer on one verified corpus
 - [ ] Corpus-backed A/B evaluation run
+
+> Supervised metrics remain blocked until the corpus passes
+> `docs/ground-truth-review-process.md`. The current empty manifest is not
+> ground truth.
 
 ### M8 - Web Interface
 

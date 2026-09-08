@@ -8,4 +8,6 @@ Train production artifacts with `sentinel dataset train datasets/manifest.json m
 
 Human review labels live in a separate versioned JSON manifest. Each promoted review must have a stable `review_id`, a reviewer, timestamp, evidence references, `verified: true`, and exact `player_labels` for a cheater demo. Apply them explicitly with `sentinel dataset promote-reviews datasets/manifest.json datasets/reviews.json`; reviews without evidence, unresolved labels, or missing manifest entries are reported and do not enter training.
 
+Before publishing supervised calibration, regression, A/B, feature-importance, precision, recall, or ROC metrics, apply the immutable intake, independent review, promotion, leakage prevention, and publication gates in [`docs/ground-truth-review-process.md`](../docs/ground-truth-review-process.md). The CLI enforces structural promotion rules; review independence, immutable hash matching, conflicts, adjudication, and frozen evaluation partitions remain required process checks.
+
 `utility-lineups.json` intentionally starts empty. Add only map-specific coordinates that have `source`, `reviewed: true`, and a non-empty `review_ref`; inspect incoming coordinates with `sentinel dataset audit-lineups datasets/utility-lineups.json`. Unreviewed coordinates are preserved for audit but cannot match in analysis.

@@ -375,8 +375,8 @@ pub fn bytes_to_f32_vec(bytes: &[u8]) -> Result<Vec<f32>, KV3Error> {
         )));
     }
     let mut result = Vec::with_capacity(bytes.len() / 4);
-    for chunk in bytes.chunks_exact(4) {
-        result.push(f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    for chunk in bytes.as_chunks::<4>().0 {
+        result.push(f32::from_le_bytes(*chunk));
     }
     Ok(result)
 }
@@ -390,8 +390,8 @@ pub fn bytes_to_i32_vec(bytes: &[u8]) -> Result<Vec<i32>, KV3Error> {
         )));
     }
     let mut result = Vec::with_capacity(bytes.len() / 4);
-    for chunk in bytes.chunks_exact(4) {
-        result.push(i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]));
+    for chunk in bytes.as_chunks::<4>().0 {
+        result.push(i32::from_le_bytes(*chunk));
     }
     Ok(result)
 }

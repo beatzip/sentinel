@@ -2,8 +2,8 @@ use lz4_flex::block::decompress_into;
 use thiserror::Error;
 
 use super::header::{
-    BinaryKv3Compression, BinaryKv3Header, PoolCounts, BINARY_KV3_TRAILER, MAX_KV3_DEPTH,
-    MAX_KV3_NODES,
+    BINARY_KV3_TRAILER, BinaryKv3Compression, BinaryKv3Header, MAX_KV3_DEPTH, MAX_KV3_NODES,
+    PoolCounts,
 };
 use super::value::{Kv3Document, Kv3Field, Kv3Value};
 
@@ -311,8 +311,10 @@ pub fn decode_binary_kv3_v5(bytes: &[u8]) -> Result<Kv3Document, Kv3DecodeError>
         .get(..object_lengths_size)
         .ok_or(Kv3DecodeError::UnexpectedEof("object lengths"))?;
     let object_lengths = raw_object_lengths
-        .chunks_exact(4)
-        .map(|chunk| i32::from_le_bytes(chunk.try_into().expect("four-byte chunks")))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|chunk| i32::from_le_bytes(*chunk))
         .collect();
     let main = Pools::from_buffer(&main_buffer, header.main_counts, object_lengths_size)?;
     let type_start = main_pool_end(&main_buffer, header.main_counts, object_lengths_size)?;
@@ -574,7 +576,7 @@ fn align(value: &mut usize, alignment: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::{decode_binary_kv3_v5, Kv3DecodeError};
+    use super::{Kv3DecodeError, decode_binary_kv3_v5};
     use crate::kv3::Kv3Value;
 
     #[test]
